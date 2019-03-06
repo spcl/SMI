@@ -35,7 +35,7 @@
 #include "../kernels/datatypes/network_message.h"
 
 
-//Message sent from application to the KP
+//Message sent from applications to the
 typedef struct __attribute__((packed)) {
    header_t header;
    int data;
@@ -46,6 +46,18 @@ typedef struct __attribute__((packed))  {
    header_t header;
    float data;
 }app_2_message_t;
+
+
+typedef struct __attribute__((packed)){
+    char sender_rank;
+    char receiver_rank;
+    char tag;
+    uint message_size;
+
+}chdesc_t;
+
+
+
 
 channel network_message_t io_out __attribute__((depth(16)));
 
@@ -63,18 +75,50 @@ channel network_message_t chan_from_ck_r[2] __attribute__((depth(16)));
 #define DATA_SIZE 4
 #define DATA_PER_PACKET 6
 
+
+/**
+    Channel helpers
+*/
+
+chdesc_t open_channel(char my_rank, char receiver_rank, char tag, uint message_size)
+{
+    chdesc_t chan;
+    chan.sender_rank=my_rank;
+    chan.receiver_rank=receiver_rank;
+    chan.tag=tag;
+    chan.message_size=message_size;
+    return chan;
+}
+
+void write_message_int(chdesc_t chan, int data)
+{
+    app_1_message_t mess;
+    mess.header.size=chan.message_size;
+    mess.header.src=chan.sender_rank;
+    mess.header.dst=chan.receiver_rank;
+    mess.data=data;
+    write_channel_intel(chan_to_packer_1,mess);
+}
+
+void write_message_float(chdesc_t chan, float data)
+{
+    app_2_message_t mess;
+    mess.header.size=chan.message_size;
+    mess.header.src=chan.sender_rank;
+    mess.header.dst=chan.receiver_rank;
+    mess.data=data;
+    write_channel_intel(chan_to_packer_2,mess);
+
+}
+
+
 __kernel void app_sender_1(const int N)
 {
 
-
+    chdesc_t chan=open_channel(0,0,0,N);
     for(int i=0;i<N;i++)
     {
-        app_1_message_t mess;
-        mess.header.size=N;
-        mess.data=i*2;
-        mess.header.src=0;
-        mess.header.dst=0;
-        write_channel_intel(chan_to_packer_1,mess);
+        write_message_int(chan,i*2);
     }
 
 }
@@ -83,14 +127,12 @@ __kernel void app_sender_2(const int N)
 {
 
     const float start=1.1f;
+    chdesc_t chan=open_channel(0,1,1,N);
+
     for(int i=0;i<N;i++)
     {
-        app_2_message_t mess;
-        mess.header.size=N;
-        mess.data=i+start;
-        mess.header.src=0;
-        mess.header.dst=1;
-        write_channel_intel(chan_to_packer_2,mess);
+        write_message_float(chan,i+start);
+
     }
 
 }
