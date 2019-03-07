@@ -22,11 +22,15 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     char receiver_rank;
     char tag;
     uint message_size;
-    uint sent; //how many data we have sent
-    uint data_id;
+    uint sent;          //how many data we have sent
+    uint data_id;       //which data we are currently processing
+    data_t type;
 }chdesc_t;
 
+//TODO: generalize this routing tables
 
+__constant char sender_rt[2]={0,1};
+__constant char receiver_rt[2]={0,1};
 
 
 channel network_message_t io_out __attribute__((depth(16)));
@@ -40,7 +44,7 @@ channel network_message_t chan_from_ck_r[2] __attribute__((depth(16)));
     Channel helpers
 */
 
-chdesc_t open_channel(char my_rank, char receiver_rank, char tag, uint message_size)
+chdesc_t open_channel(char my_rank, char receiver_rank, char tag, uint message_size, data_t type)
 {
     chdesc_t chan;
     chan.sender_rank=my_rank;
@@ -52,13 +56,14 @@ chdesc_t open_channel(char my_rank, char receiver_rank, char tag, uint message_s
     chan.net.header.size=message_size;
     chan.sent=0;
     chan.data_id=0;
+    chan.type=type;
     return chan;
 }
 
 //For the moment being it is separated: at the end it should exist some flag in the
 //channel descriptor to indicate the channel type
 //there is no matching
-chdesc_t open_receiver_channel(char my_rank, char tag, uint message_size)
+chdesc_t open_receiver_channel(char my_rank, char tag, uint message_size, data_t type)
 {
     chdesc_t chan;
     chan.sender_rank=my_rank;
@@ -67,14 +72,17 @@ chdesc_t open_receiver_channel(char my_rank, char tag, uint message_size)
     chan.message_size=message_size;
     chan.data_id=6; //data per packet
     chan.sent=0;
+    chan.type=type;
 
     return chan;
 }
 
-void write_message_int(chdesc_t *chan, int data)
+void push(chdesc_t *chan, void* data)
 {
+    //TODO: data size and element per packet depends on channel type
+    char *conv=(char*)data;
+    const char chan_idx=sender_rt[chan->tag];
 
-    char *conv=(char*)&data;
     for(int jj=0;jj<4;jj++) //data size
     {
         chan->net.data[chan->data_id*4+jj]=conv[jj];
@@ -85,75 +93,39 @@ void write_message_int(chdesc_t *chan, int data)
     if(chan->data_id==6 || chan->sent==chan->message_size) //send it if packet is filled or we reached the message size
     {
         chan->data_id=0;
-        write_channel_intel(chan_to_ck_s[0],chan->net);
+        write_channel_intel(chan_to_ck_s[chan_idx],chan->net);
     }
 
 }
 
-void write_message_float(chdesc_t *chan, float data)
-{
-
-    char *conv=(char*)&data;
-    #pragma unroll
-    for(int jj=0;jj<4;jj++)
-    {
-        chan->net.data[chan->data_id*4+jj]=conv[jj];
-    }
-    chan->sent++;
-    chan->data_id++;
-    if(chan->data_id==6 || chan->sent==chan->message_size) //send it if packet is filled or we reached the message size
-    {
-        chan->data_id=0;
-        write_channel_intel(chan_to_ck_s[1],chan->net);
-    }
-
-
-}
-
-int read_message_int(chdesc_t *chan)
+void pop(chdesc_t *chan, void *data)
 {
     //when it stalls? or return wrong messages? when we read more than we have...?
+    //in this case we have to copy the data into the target variable
     if(chan->data_id==6)
     {
+        const char chan_idx=receiver_rt[chan->tag];
         chan->data_id=0;
-        chan->net=read_channel_intel(chan_from_ck_r[0]);
+        chan->net=read_channel_intel(chan_from_ck_r[chan_idx]);
     }
     char * ptr=chan->net.data+(chan->data_id)*4;
     chan->data_id++;                       //first increment and then use it: otherwise compiler detects Fmax problems
     chan->sent++;   //this could be used for some basic checks
     //create packet
-    int *rcv=(int*)(ptr);
-    return rcv[0];
+    if(chan->type==INT)
+        *(int *)data= *(int*)(ptr);
+    if(chan->type==FLOAT)
+        *(float *)data= *(float*)(ptr);
 }
-
-float read_message_float(chdesc_t *chan)
-{
-    //when it stalls? or return wrong messages? when we read more than we have...?
-    if(chan->data_id==6)
-    {
-        chan->data_id=0;
-        chan->net=read_channel_intel(chan_from_ck_r[1]);
-    }
-    char * ptr=chan->net.data+(chan->data_id)*4;
-    chan->data_id++;                       //first increment and then use it: otherwise compiler detects Fmax problems
-    chan->sent++;   //this could be used for some basic checks
-    //create packet
-    float *rcv=(float*)(ptr);
-    //printf("Read 1 returns: %f\n",rcv[0]);
-
-    return rcv[0];
-}
-
-
-
 
 __kernel void app_sender_1(const int N)
 {
 
-    chdesc_t chan=open_channel(0,0,0,N);
+    chdesc_t chan=open_channel(0,0,0,N,INT);
     for(int i=0;i<N;i++)
     {
-        write_message_int(&chan,i*2);
+        int data=i*2;
+        push(&chan,&data);
     }
 }
 
@@ -161,11 +133,12 @@ __kernel void app_sender_2(const int N)
 {
 
     const float start=1.1f;
-    chdesc_t chan=open_channel(0,1,1,N);
+    chdesc_t chan=open_channel(0,1,1,N,FLOAT);
 
     for(int i=0;i<N;i++)
     {
-        write_message_float(&chan,i+start);
+        float data=i+start;
+        push(&chan,&data);
         //network_message_t mess;
         // write_channel_intel(chan_to_ck_s[1],mess);
 
@@ -230,10 +203,11 @@ __kernel void app_receiver_1(__global volatile char *mem, const int N)
     char check=1;
     int expected_0=0;
     //in questo caso riceviamo da due
-    chdesc_t chan=open_receiver_channel(0,1,N);
+    chdesc_t chan=open_receiver_channel(0,0,N,INT);
     for(int i=0; i< N;i++)
     {
-        int rcvd=read_message_int(&chan);
+        int rcvd;
+        pop(&chan,&rcvd);
         //printf("[RCV] received %d (expected %d)\n",mess.data,expected_0);
         check &= (rcvd==expected_0);
         expected_0+=2;
@@ -249,11 +223,12 @@ __kernel void app_receiver_2(__global volatile char *mem, const int N)
     char check=1;
     float expected_0=1.1f;
     //in questo caso riceviamo da due
-    chdesc_t chan=open_receiver_channel(0,1,N);
+    chdesc_t chan=open_receiver_channel(0,1,N,FLOAT);
 
     for(int i=0; i< N;i++)
     {
-        float rcvd=read_message_float(&chan);
+        float rcvd;
+        pop(&chan,&rcvd);
         //printf("[RCV] received %f (expected %f)\n",mess.data,expected_0);
         check &= (rcvd==(expected_0+i));
         //expected_0=expected_0+1.0f;
