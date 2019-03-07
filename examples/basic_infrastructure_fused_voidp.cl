@@ -1,27 +1,20 @@
 /**
-    The example shows a basic communication infrastructure constituted by
-    two application senders, two application receivers, packers, unpackers and CKs
+    This is the same as basic infrastructure, but with void pointers
+    and wirte read that are now called push and pop (to avoid confusion with
+    write/read_channel)
 
-    This version is obtained by fusing packing and unpacking directly in push/pop operations
-
-    The code for the various entity is a copy-pasted-adapted version of the one
-    contained in the kernels folder
-
-
-    Everything is on the same FPGA. It can be tested on two FPGAs by using I/O channels
-
-    Sender_1 sends integer to Receiver_1
-    Sender_2 sends floats to Receiver_2
-
-
+    In this case push and pop takes void *. Therefore in the channel
+    descriptor we have also the identification of the type
 */
-
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 
 #include "../kernels/datatypes/network_message.h"
 
-
+typedef enum{
+    INT,
+    FLOAT
+}data_t;
 
 typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     network_message_t net;

@@ -12,8 +12,8 @@
 typedef struct __attribute__((packed)) __attribute__((aligned(16))){
     union{
         struct __attribute__((packed)) __attribute__((aligned(16))){
-            header_t header;
             char data[24];
+            header_t header;
         };
         char padding_[32];
     };
