@@ -31,7 +31,7 @@ public:
      *			NOTE: it will use the first Intel device that it found
      * @return true if everything went ok
      */
-    static bool initOpenCL(cl::Platform &platform, cl::Device &device, cl::Context &context,  cl::Program &program, const std::string &program_path)
+    static bool initOpenCL(cl::Platform &platform, cl::Device &device, uint device_id,cl::Context &context,  cl::Program &program, const std::string &program_path)
     {
 	cl_int status;
 
@@ -44,7 +44,9 @@ public:
 	std::vector<cl::Device> devices;
 	status=platform.getDevices(CL_DEVICE_TYPE_ACCELERATOR,&devices);
 	checkError(status, __FILE__,__LINE__, "Query for device failed");
-	device=devices[0];
+        if(device_id>devices.size())
+            checkError(status, __FILE__,__LINE__, "Device id not present");
+        device=devices[device_id];
 
 	// Create the context
 	context=cl::Context({device});
@@ -57,11 +59,11 @@ public:
     /**
      * @brief initEnvironment instantiate platform, device, context command queues and kernels for a given set of kernels
      */
-    static bool initEnvironment(cl::Platform &platform, cl::Device &device, cl::Context &context,  cl::Program &program,
+    static bool initEnvironment(cl::Platform &platform, cl::Device &device, uint device_id,cl::Context &context,  cl::Program &program,
 				const std::string &program_path, std::vector<std::string> &kernel_names, std::vector<cl::Kernel> &kernels,
 				std::vector<cl::CommandQueue> &queues)
     {
-	bool init_ocl=initOpenCL(platform,device,context,program,program_path);
+        bool init_ocl=initOpenCL(platform,device,device_id,context,program,program_path);
 	if(!init_ocl)
 	    return false;
 	//create kernels and queues

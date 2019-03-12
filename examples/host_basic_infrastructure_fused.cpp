@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
     std::vector<std::string> kernel_names={"app_sender_1","app_sender_2","app_receiver_1","app_receiver_2","CK_sender","CK_receiver"};
 
     //this is for the case with classi channels
-    IntelFPGAOCLUtils::initEnvironment(platform,device,context,program,program_path,kernel_names, kernels,queues);
+    IntelFPGAOCLUtils::initEnvironment(platform,device,0,context,program,program_path,kernel_names, kernels,queues);
 
     cout << "Starting the receiver..."<<endl;
     //create memory buffers

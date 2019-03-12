@@ -9,10 +9,10 @@
 
 #include "header_message.h"
 
-typedef struct __attribute__((packed)) __attribute__((aligned(16))){
+typedef struct __attribute__((packed)) __attribute__((aligned(32))){
     union{
-        struct __attribute__((packed)) __attribute__((aligned(16))){
-            char data[24];
+        struct __attribute__((packed)) __attribute__((aligned(32))){
+            char data[28];
             header_t header;
         };
         char padding_[32];

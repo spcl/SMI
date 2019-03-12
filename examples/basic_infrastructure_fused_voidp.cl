@@ -16,15 +16,17 @@ typedef enum{
     FLOAT
 }data_t;
 
-typedef struct __attribute__((packed)) __attribute__((aligned(64))){
-    network_message_t net;
+typedef struct __attribute__((packed)) __attribute__((aligned(32))){
+    network_message_t net;          //buffered network message
     char sender_rank;
     char receiver_rank;
     char tag;
-    uint message_size;
-    uint sent;          //how many data we have sent
-    uint data_id;       //which data we are currently processing
-    data_t type;
+    uint message_size;              //given in number of data elements
+    uint processed_elements;        //how many data elements we have sent/received
+    uint packet_element_id;         //given a packet, the id of the element that we are currently processing (from 0 to the data elements per packet)
+    data_t type;                    //type of message
+    char size_of_type;              //size of data type
+    char elements_per_packet;       //number of data elements per packet
 }chdesc_t;
 
 //TODO: generalize this routing tables
@@ -33,8 +35,10 @@ __constant char sender_rt[2]={0,1};
 __constant char receiver_rt[2]={0,1};
 
 
-channel network_message_t io_out __attribute__((depth(16)));
-
+//channel network_message_t io_out __attribute__((depth(16)));
+channel network_message_t io_out __attribute__((depth(16)))
+                    __attribute__((io("kernel_input_ch0")));
+//kernel_input_ch0
 channel network_message_t chan_to_ck_s[2] __attribute__((depth(16)));
 channel network_message_t chan_from_ck_r[2] __attribute__((depth(16)));
 
@@ -46,17 +50,34 @@ channel network_message_t chan_from_ck_r[2] __attribute__((depth(16)));
 
 chdesc_t open_channel(char my_rank, char receiver_rank, char tag, uint message_size, data_t type)
 {
+   // printf("Size of network message: %d, sizeof header: %d, sizeof enum %d\n",sizeof(network_message_t), sizeof(header_t),sizeof(operation_t));
     chdesc_t chan;
+    //setup channel descriptor
     chan.sender_rank=my_rank;
     chan.receiver_rank=receiver_rank;
     chan.tag=tag;
     chan.message_size=message_size;
-    chan.net.header.dst=receiver_rank;
-    chan.net.header.src=my_rank;
-    chan.net.header.size=message_size;
-    chan.sent=0;
-    chan.data_id=0;
+    chan.processed_elements=0;
+    chan.packet_element_id=0;
     chan.type=type;
+
+    //setup header
+    SET_HEADER_DST(chan.net.header,receiver_rank);
+    SET_HEADER_SRC(chan.net.header,my_rank);
+    SET_HEADER_TAG(chan.net.header,tag);
+    SET_HEADER_OP(chan.net.header,SEND);
+
+    switch(type)
+    {
+        case(INT):
+            chan.size_of_type=4;
+            chan.elements_per_packet=6;
+            break;
+        case (FLOAT):
+            chan.size_of_type=4;
+            chan.elements_per_packet=6;
+            break;
+    }
     return chan;
 }
 
@@ -70,9 +91,22 @@ chdesc_t open_receiver_channel(char my_rank, char tag, uint message_size, data_t
     chan.receiver_rank=my_rank;
     chan.tag=tag;
     chan.message_size=message_size;
-    chan.data_id=6; //data per packet
-    chan.sent=0;
+    chan.processed_elements=0;
     chan.type=type;
+
+    switch(type)
+    {
+        case(INT):
+            chan.size_of_type=4;
+            chan.elements_per_packet=6;
+
+            break;
+        case (FLOAT):
+            chan.size_of_type=4;
+            chan.elements_per_packet=6;
+            break;
+    }
+    chan.packet_element_id=chan.elements_per_packet; //data per packet
 
     return chan;
 }
@@ -82,17 +116,17 @@ void push(chdesc_t *chan, void* data)
     //TODO: data size and element per packet depends on channel type
     char *conv=(char*)data;
     const char chan_idx=sender_rt[chan->tag];
-
-    for(int jj=0;jj<4;jj++) //data size
+    #pragma unroll
+    for(int jj=0;jj<chan->size_of_type;jj++) //data size
     {
-        chan->net.data[chan->data_id*4+jj]=conv[jj];
+        chan->net.data[chan->packet_element_id*4+jj]=conv[jj];
     }
-    chan->sent++;
-    chan->data_id++;
+    chan->processed_elements++;
+    chan->packet_element_id++;
     //printf("Sent: %d (out of %d), data id: %d\n",chan->sent,chan->message_size,chan->data_id);
-    if(chan->data_id==6 || chan->sent==chan->message_size) //send it if packet is filled or we reached the message size
+    if(chan->packet_element_id==chan->elements_per_packet || chan->processed_elements==chan->message_size) //send it if packet is filled or we reached the message size
     {
-        chan->data_id=0;
+        chan->packet_element_id=0;
         write_channel_intel(chan_to_ck_s[chan_idx],chan->net);
     }
 
@@ -102,21 +136,22 @@ void pop(chdesc_t *chan, void *data)
 {
     //when it stalls? or return wrong messages? when we read more than we have...?
     //in this case we have to copy the data into the target variable
-    if(chan->data_id==6)
+    if(chan->packet_element_id==chan->elements_per_packet)
     {
         const char chan_idx=receiver_rt[chan->tag];
-        chan->data_id=0;
+        chan->packet_element_id=0;
         chan->net=read_channel_intel(chan_from_ck_r[chan_idx]);
     }
-    char * ptr=chan->net.data+(chan->data_id)*4;
-    chan->data_id++;                       //first increment and then use it: otherwise compiler detects Fmax problems
-    chan->sent++;   //this could be used for some basic checks
+    char * ptr=chan->net.data+(chan->packet_element_id)*4;
+    chan->packet_element_id++;                       //first increment and then use it: otherwise compiler detects Fmax problems
+    chan->processed_elements++;   //this could be used for some basic checks
     //create packet
     if(chan->type==INT)
         *(int *)data= *(int*)(ptr);
     if(chan->type==FLOAT)
         *(float *)data= *(float*)(ptr);
 }
+#if 0
 
 __kernel void app_sender_1(const int N)
 {
@@ -147,7 +182,6 @@ __kernel void app_sender_2(const int N)
 }
 
 
-
 __kernel void CK_sender()
 {
     const uint num_sender=2;
@@ -173,7 +207,7 @@ __kernel void CK_sender()
     }
 
 }
-
+#endif
 
 __kernel void CK_receiver()
 {
@@ -197,7 +231,6 @@ __kernel void CK_receiver()
     }
 
 }
-
 __kernel void app_receiver_1(__global volatile char *mem, const int N)
 {
     char check=1;
@@ -237,3 +270,4 @@ __kernel void app_receiver_2(__global volatile char *mem, const int N)
     *mem=check;
     //printf("Receiver 2 finished\n");
 }
+//#endif
