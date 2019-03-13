@@ -113,13 +113,16 @@ int main(int argc, char *argv[])
     }
 
 
-
+    std::cout << "Let's start " <<std::endl;
     timestamp_t start=current_time_usecs();
     for(int i=0;i<kernel_names.size();i++)
         queues[i].enqueueTask(kernels[i]);
 
     for(int i=0;i<2;i++)
+    {
         queues[i].finish();
+        cout << "Kernel "<<i<<" finished"<<endl;
+    }
 
     timestamp_t end=current_time_usecs();
     cout << "Time elapsed (usecs): "<<end-start<<endl;
