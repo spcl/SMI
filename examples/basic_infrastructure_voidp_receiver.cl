@@ -149,7 +149,8 @@ void pop(chdesc_t *chan, void *data)
         *(float *)data= *(float*)(ptr);
 }
 
-
+//__attribute__((max_global_work_dim(0)))
+//__attribute__((autorun))
 __kernel void CK_receiver()
 {
 

@@ -114,7 +114,7 @@ void push(chdesc_t *chan, void* data)
     char *conv=(char*)data;
     const char chan_idx=sender_rt[chan->tag];
     #pragma unroll
-    for(int jj=0;jj</*chan->size_of_type*/4;jj++) //data size
+    for(int jj=0;jj<chan->size_of_type;jj++) //data size
     {
         chan->net.data[chan->packet_element_id*4+jj]=conv[jj];
     }
@@ -156,7 +156,7 @@ __kernel void app_sender_1(const int N)
     for(int i=0;i<N;i++)
     {
         int data=i*2;
-        printf("Sending %d\n",data);
+       // printf("Sending %d\n",data);
         push(&chan,&data);
     }
 }
@@ -178,7 +178,8 @@ __kernel void app_sender_2(const int N)
 
 }
 
-
+//__attribute__((max_global_work_dim(0)))
+//__attribute__((autorun))
 __kernel void CK_sender()
 {
     const uint num_sender=2;
