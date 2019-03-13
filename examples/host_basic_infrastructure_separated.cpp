@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
         cout << "Kernel "<<i<<" finished"<<endl;
     }
     timestamp_t end=current_time_usecs();
-    std::cout << "Sleeping a bit to ensure CK have finished their job"
+    std::cout << "Sleeping a bit to ensure CK have finished their job"<<std::endl;
     sleep(1);
 
     if(receiver)
