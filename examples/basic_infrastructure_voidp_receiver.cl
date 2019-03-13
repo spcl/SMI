@@ -61,7 +61,6 @@ channel network_message_t chan_from_ck_r[2] __attribute__((depth(16)));
 
 chdesc_t open_channel(char my_rank, char pair_rank, char tag, uint message_size, data_t type, operation_t op_type)
 {
-   // printf("Size of network message: %d, sizeof header: %d, sizeof enum %d\n",sizeof(network_message_t), sizeof(header_t),sizeof(operation_t));
     chdesc_t chan;
     //setup channel descriptor
     chan.tag=tag;
