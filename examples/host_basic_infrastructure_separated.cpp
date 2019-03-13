@@ -76,10 +76,6 @@ int main(int argc, char *argv[])
     std::vector<cl::Kernel> kernels;
     std::vector<cl::CommandQueue> queues;
     std::vector<std::string> kernel_names;
-    char res_1,res_2;
-    //create memory buffers
-    cl::Buffer check_1(context,CL_MEM_WRITE_ONLY,1);
-    cl::Buffer check_2(context,CL_MEM_WRITE_ONLY,1);
 
     //this is for the case with classi channels
     if(sender)
@@ -99,6 +95,10 @@ int main(int argc, char *argv[])
     }
 
     IntelFPGAOCLUtils::initEnvironment(platform,device,fpga,context,program,program_path,kernel_names, kernels,queues);
+    char res_1,res_2;
+    //create memory buffers
+    cl::Buffer check_1(context,CL_MEM_WRITE_ONLY,1);
+    cl::Buffer check_2(context,CL_MEM_WRITE_ONLY,1);
     if(sender)
     {
         kernels[0].setArg(0,sizeof(int),&n);
