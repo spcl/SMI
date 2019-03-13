@@ -24,7 +24,8 @@ typedef struct __attribute__((packed)) __attribute__((aligned(32))){
     uint message_size;              //given in number of data elements
     uint processed_elements;        //how many data elements we have sent/received
     uint packet_element_id;         //given a packet, the id of the element that we are currently processing (from 0 to the data elements per packet)
-    data_t type;                    //type of message
+    data_t data_type;               //type of message
+    operation_t op_type;            //type of operation
     char size_of_type;              //size of data type
     char elements_per_packet;       //number of data elements per packet
 }chdesc_t;
@@ -35,10 +36,15 @@ __constant char sender_rt[2]={0,1};
 __constant char receiver_rt[2]={0,1};
 
 
-//channel network_message_t io_out __attribute__((depth(16)));
-channel network_message_t io_out __attribute__((depth(16)))
-                    __attribute__((io("kernel_input_ch0")));
+channel network_message_t io_out __attribute__((depth(16)));
+//channel network_message_t io_out __attribute__((depth(16)))
+//                    __attribute__((io("kernel_input_ch0")));
 //kernel_input_ch0
+
+//internal switching tables
+//these maps endpoint -> channel_id
+//for the ck_s: (src rank, tag) -> channel_id
+//for ck_r: (dst rank,tag) -> channel_id
 channel network_message_t chan_to_ck_s[2] __attribute__((depth(16)));
 channel network_message_t chan_from_ck_r[2] __attribute__((depth(16)));
 
@@ -48,24 +54,15 @@ channel network_message_t chan_from_ck_r[2] __attribute__((depth(16)));
     Channel helpers
 */
 
-chdesc_t open_channel(char my_rank, char receiver_rank, char tag, uint message_size, data_t type)
+chdesc_t open_channel(char my_rank, char pair_rank, char tag, uint message_size, data_t type, operation_t op_type)
 {
    // printf("Size of network message: %d, sizeof header: %d, sizeof enum %d\n",sizeof(network_message_t), sizeof(header_t),sizeof(operation_t));
     chdesc_t chan;
     //setup channel descriptor
-    chan.sender_rank=my_rank;
-    chan.receiver_rank=receiver_rank;
     chan.tag=tag;
     chan.message_size=message_size;
-    chan.processed_elements=0;
-    chan.packet_element_id=0;
-    chan.type=type;
-
-    //setup header
-    SET_HEADER_DST(chan.net.header,receiver_rank);
-    SET_HEADER_SRC(chan.net.header,my_rank);
-    SET_HEADER_TAG(chan.net.header,tag);
-    SET_HEADER_OP(chan.net.header,SEND);
+    chan.data_type=type;
+    chan.op_type=op_type;
 
     switch(type)
     {
@@ -78,35 +75,30 @@ chdesc_t open_channel(char my_rank, char receiver_rank, char tag, uint message_s
             chan.elements_per_packet=6;
             break;
     }
-    return chan;
-}
-
-//For the moment being it is separated: at the end it should exist some flag in the
-//channel descriptor to indicate the channel type
-//there is no matching
-chdesc_t open_receiver_channel(char my_rank, char tag, uint message_size, data_t type)
-{
-    chdesc_t chan;
-    chan.sender_rank=my_rank;
-    chan.receiver_rank=my_rank;
-    chan.tag=tag;
-    chan.message_size=message_size;
-    chan.processed_elements=0;
-    chan.type=type;
-
-    switch(type)
+    if(op_type == SEND)
     {
-        case(INT):
-            chan.size_of_type=4;
-            chan.elements_per_packet=6;
+        //setup header for the message
+        SET_HEADER_DST(chan.net.header,pair_rank);
+        SET_HEADER_SRC(chan.net.header,my_rank);
+        SET_HEADER_TAG(chan.net.header,tag);
+        SET_HEADER_OP(chan.net.header,SEND);
 
-            break;
-        case (FLOAT):
-            chan.size_of_type=4;
-            chan.elements_per_packet=6;
-            break;
+        chan.sender_rank=my_rank;
+        chan.receiver_rank=pair_rank;
+        chan.processed_elements=0;
+        chan.packet_element_id=0;
     }
-    chan.packet_element_id=chan.elements_per_packet; //data per packet
+    else
+        if(op_type == RECEIVE)
+        {
+            chan.packet_element_id=chan.elements_per_packet; //data per packet
+            chan.processed_elements=0;
+            chan.sender_rank=pair_rank;
+            chan.receiver_rank=my_rank;
+
+            //no need here to setup the header of the message
+        }
+
 
     return chan;
 }
@@ -146,17 +138,16 @@ void pop(chdesc_t *chan, void *data)
     chan->packet_element_id++;                       //first increment and then use it: otherwise compiler detects Fmax problems
     chan->processed_elements++;   //this could be used for some basic checks
     //create packet
-    if(chan->type==INT)
+    if(chan->data_type==INT)
         *(int *)data= *(int*)(ptr);
-    if(chan->type==FLOAT)
+    if(chan->data_type==FLOAT)
         *(float *)data= *(float*)(ptr);
 }
-#if 0
 
 __kernel void app_sender_1(const int N)
 {
 
-    chdesc_t chan=open_channel(0,0,0,N,INT);
+    chdesc_t chan=open_channel(0,0,0,N,INT,SEND);
     for(int i=0;i<N;i++)
     {
         int data=i*2;
@@ -168,7 +159,7 @@ __kernel void app_sender_2(const int N)
 {
 
     const float start=1.1f;
-    chdesc_t chan=open_channel(0,1,1,N,FLOAT);
+    chdesc_t chan=open_channel(0,1,1,N,FLOAT,SEND);
 
     for(int i=0;i<N;i++)
     {
@@ -207,7 +198,6 @@ __kernel void CK_sender()
     }
 
 }
-#endif
 
 __kernel void CK_receiver()
 {
@@ -236,7 +226,7 @@ __kernel void app_receiver_1(__global volatile char *mem, const int N)
     char check=1;
     int expected_0=0;
     //in questo caso riceviamo da due
-    chdesc_t chan=open_receiver_channel(0,0,N,INT);
+    chdesc_t chan=open_channel(0,0,0,N,INT,RECEIVE);
     for(int i=0; i< N;i++)
     {
         int rcvd;
@@ -256,7 +246,7 @@ __kernel void app_receiver_2(__global volatile char *mem, const int N)
     char check=1;
     float expected_0=1.1f;
     //in questo caso riceviamo da due
-    chdesc_t chan=open_receiver_channel(0,1,N,FLOAT);
+    chdesc_t chan=open_channel(1,0,1,N,FLOAT,RECEIVE);
 
     for(int i=0; i< N;i++)
     {

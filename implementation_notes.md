@@ -16,9 +16,9 @@ There is no matching on the receiver side: only the communication tag are used t
 
 **Assumptions**
 
-- user writes SPMD programs;
-- tag are known at compile time, which means that **they do not depend from the rank**. This is done to generate efficient hardware and to avoid a different generated code (and therefore a different synthesized design) for each rank
-- only a rank will exist on a given FPGA
+- (user writes SPMD programs) -- not sure about this;
+- tags are known at compile time, which means that **they do not depend from the rank**. This is done to generate efficient hardware and to avoid the generation of a different code (and therefore a different synthesized design) for each rank in the case of SPMD programs;
+- only a rank will exist on a given FPGA.
 
 
 The channel is represented by a *channel descriptor*. The user can declare a channel by specifing the current rank of the computation, the pair-rank, tag, message size, message data type and type of the channel (send/receive) (**PROVISIONAL**)
@@ -73,4 +73,26 @@ The code of the receiver:
 
 
 ###Communication mode
-(In describing this I've started from the MPI definition of communication modes)
+Here we have to distinguish between the global message send/receive (i.e. the transferring of the whole message content) and the single push/pop.
+
+
+FIFO buffers that are used to actually implement our communication channels provide a certain buffer space (tunable at compile time). 
+Data push exploits this buffer space: therefore the single push (and hence message send) may complete if there is sufficient buffer space in the FIFO buffers and can complete before the corresponding pop is performed. Otherwise, the push will not complete until the `pop` is started.
+The send is *non-local*: it can be started wheter or not the corresponding receive has been posted but its completion may depend on the occurence of the matching receive.
+
+*Note*: this seems to be similar to MPI *standard* mode.
+
+### Correctness
+We assume that the correctenss of the program is guaranteed by the user.
+May program rely on buffering? Consider the case of 2D-stencil for example....
+
+
+Given that we assume that the receiver is ready to receive, we use an *eager* protocol to perform the communication: data is sent as soon as possible. There is no rendez-vous between sender and receiver.
+Why this:
+
+- for the sake of removing additional overhead (in terms of time and hardware) imposed by randez-vous;
+- because it is closer to the channel philosophy and HLS way of writing programs: if the receiver is ready to receive, a message element is sent at each clock-cycle and the send is actually pipelined.
+
+
+### Naming
+What about SMI: streaming message interface?

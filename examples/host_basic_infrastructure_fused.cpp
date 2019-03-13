@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
     if(argc<5)
     {
         cerr << "Send/Receiver tester " <<endl;
-        cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <length> "<<endl;
+        cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <length> -t "<<endl;
         exit(-1);
     }
     int n;

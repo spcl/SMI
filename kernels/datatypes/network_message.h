@@ -3,8 +3,8 @@
 
 /**
  * Message sent over the network. 256 bit wide. It contains
- * - the header
  * - an array of char that will hold the actual data
+ * - the header
  */
 
 #include "header_message.h"

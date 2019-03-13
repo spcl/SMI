@@ -13,6 +13,9 @@
 #define SET_HEADER_TAG(H,T) (H.tag=T)
 #define SET_HEADER_OP(H,O) (H.op=O)
 
+/**
+    Type of operation performed
+*/
 typedef enum{
     SEND = 0,
     RECEIVE = 1,
