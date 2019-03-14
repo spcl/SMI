@@ -94,3 +94,61 @@ This is done:
 
 ### Naming
 I would like to give a name to this library, in order to use it as prefix to function calls and constatns. What about SMI: Streaming Message Interface?
+
+
+##Implementation
+These notes are draft ideas on the implementation
+
+
+### Communicators
+In our architecture we have two types of communicator kernels:
+
+-  `CK_S`, sender communicator kernels: they receive data from applications (and not only) and forward it into a network channel;
+-  `CK_R`, receiver communicator kernels: they receive data from network and forward it to applications (or to `CK_S` as we will see).
+
+**Design choice**: should we have a single big CK_S and CK_R that handle all the I/O channels or having 4 of them? The former is simpler to implement, but will result in a deeper logic and an higher probability of stalls. Suppose that we have one of the I/O channels that is full: the CK_S will be not able to handle any other send because of this. This penalizes performances.
+
+Communication channels between applications and CK are known at compile time. An internal switching table is used to properly identify (inside an FPGA) endpoints and how they
+are connected to CKs. Therefore, there will be:
+
+- for sending channels, an *internal* switching table that maps `TAG -> ck_s_channel_id`. Here by channel we are referring to FIFO buffers. This `channel_id` is used by the `push` method to forward 
+   ready to go packets
+- for receiving channels, an *internal* switching table that maps `TAG -> ck_r_channel_id`. The `channel_id` is used by `CK_R` to forward data to the right application and from `pop` to receiving this data.
+
+This internal switching tables must be known at compile time. This is the reason why TAGs are compile time constant. Supposing that TAGs start from zero and are incremental, **possibly** the compiler will be able to create efficient hardware (i.e. connecting the different pushes/pops to the right channel).
+
+
+**Problem**: we have to define how communication channels/tag are bound to CKs. Let's consider the case of CK_S. Suppose that we have four of them, because all QSFP are connected. Decide to wich CK_S and endpoint is connected depends on the phisical topology, and cannot be done (efficiently) buy simply round robin between them (well....consider the first problem in the routing subsection)
+
+**NOTE**: we can have only one QSFP between two endpoints. In the case that two FPGAs are connected using multiple QSFPs, the user can exploit them by declaring and using multiple channels with differnt TAGs
+
+
+Communicators will be also connected between each other for routing issue (see the next section). In particular:
+- all CK_S are interconnected between each other (12 channels)
+- CK_R are connected to CK_S. Here we can decide if all of the are connected to all CK_S or just to one
+
+### Routing
+
+We have given a phisical topology of point-to point connections:
+```
+<nodename>:<device name>:<channel_id> <-> <nodename>:<device name>:<channel_id>
+
+```
+E.g:
+```
+fpga-0014:acl0:ch0 <-> fpga-0014:acl1:ch0
+fpga-0014:acl0:ch3 <-> fpga-0014:acl1:ch3
+```
+
+
+To each communication channel we can associate one CK_S and one CK_R.
+
+**Problem**:  this must be done according to the application requirements (i.e. knowing that app on rank 0, fpga 0 will communicate with rank 1, fpga 1) or we want to guarantee an all-to-all connections?
+
+The second solution is more flexible, even if it will possibly result in performance impairment.
+In the sense, it is more convienient to associate the endpoint to the closest CK_S, but it is probably not general? In the sense that if I want to do this, I have to know who communicates with whom at compile time.
+
+**Problem**: a different problem is that not all QSFP are connected so we may have less CKs than 4
+
+
+

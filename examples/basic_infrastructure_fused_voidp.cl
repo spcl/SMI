@@ -111,7 +111,7 @@ void push(chdesc_t *chan, void* data)
     #pragma unroll
     for(int jj=0;jj<chan->size_of_type;jj++) //data size
     {
-        chan->net.data[chan->packet_element_id*4+jj]=conv[jj];
+        chan->net.data[chan->packet_element_id*chan->size_of_type+jj]=conv[jj];
     }
     chan->processed_elements++;
     chan->packet_element_id++;
@@ -134,7 +134,7 @@ void pop(chdesc_t *chan, void *data)
         chan->packet_element_id=0;
         chan->net=read_channel_intel(chan_from_ck_r[chan_idx]);
     }
-    char * ptr=chan->net.data+(chan->packet_element_id)*4;
+    char * ptr=chan->net.data+(chan->packet_element_id)*chan->size_of_type;
     chan->packet_element_id++;                       //first increment and then use it: otherwise compiler detects Fmax problems
     chan->processed_elements++;   //this could be used for some basic checks
     //create packet

@@ -16,3 +16,5 @@
 	But, even in that case it is a problem...
 	Or can we rely on MPI_FINALIZE?
 
+
+- collective: we can think about having some small computation on CK_S CK_R

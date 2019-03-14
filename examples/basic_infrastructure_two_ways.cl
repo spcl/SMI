@@ -39,14 +39,11 @@ channel network_message_t io_out[2] __attribute__((depth(16)));
 //                    __attribute__((io("kernel_input_ch0")));
 //kernel_input_ch0
 
-//internal switching tables
-//these maps endpoint -> channel_id
-//for the ck_s: (src rank, tag) -> channel_id
-//for ck_r: (dst rank,tag) -> channel_id
 
 //these two channel goes from application sender to ck_s_0
 channel network_message_t chan_to_ck_s_0[2] __attribute__((depth(16)));
-//thene we have a channel between ck_s_0 and ck_s_1 (actually they should be two)
+
+//thene we have a channel between ck_s_0 and ck_s_1 (actually they should be two, one per direction, but here we use only one of them)
 channel network_message_t interconnect_ck_s __attribute__((depth(16)));
 
 //channel between ck_r and receiver (ok for now with the single implemetntation but then we have to move this
@@ -62,7 +59,7 @@ void push(chdesc_t *chan, void* data)
     #pragma unroll
     for(int jj=0;jj<chan->size_of_type;jj++) //data size
     {
-        chan->net.data[chan->packet_element_id*4+jj]=conv[jj];
+        chan->net.data[chan->packet_element_id*chan->size_of_type+jj]=conv[jj];
     }
     chan->processed_elements++;
     chan->packet_element_id++;
@@ -86,7 +83,7 @@ void pop(chdesc_t *chan, void *data)
         chan->packet_element_id=0;
         chan->net=read_channel_intel(chan_from_ck_r[chan_idx]);
     }
-    char * ptr=chan->net.data+(chan->packet_element_id)*4;
+    char * ptr=chan->net.data+(chan->packet_element_id)*chan->size_of_type;
     chan->packet_element_id++;                       //first increment and then use it: otherwise compiler detects Fmax problems
     chan->processed_elements++;   //this could be used for some basic checks
     //create packet
