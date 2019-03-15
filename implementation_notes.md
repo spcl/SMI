@@ -131,22 +131,57 @@ Communicators will be also connected between each other for routing issue (see t
 
 We have given a phisical topology of point-to point connections:
 ```
-<nodename>:<device name>:<channel_id> <-> <nodename>:<device name>:<channel_id>
+<nodename>:<device name>:<channel_id> - <nodename>:<device name>:<channel_id>
 
 ```
 E.g:
 ```
-fpga-0014:acl0:ch0 <-> fpga-0014:acl1:ch0
-fpga-0014:acl0:ch3 <-> fpga-0014:acl1:ch3
+fpga-0014:acl0:ch0 - fpga-0014:acl1:ch0
+fpga-0014:acl0:ch3 - fpga-0014:acl1:ch3
 ```
+
+Each channel is bi-directional. Cluster nodes goes from `fpga-0001` to `fpga-0016`. 
+In each node we have 2 FPGAs (`acl0` and `acl1`). Each FPGAs has 4 QSFPs, so channels goes from `ch0` to `ch3`. We can think at them as a list of numbers. Possibly, not all the QSFPs of an FPGA are connected.
+
+Concerning the sender side
+
+On each FPGA we will have a CK_S and CK_R for each QSFP:
+- application endpoints are connected to CK_S (to send data) and CK_R (to receive data)
+- connection are known at compile time
+- (internally connection are stored in a routing table tag-> channel_to_ck_s)
+
+
+Possiamo evitare gli hop interni? Andando a collegare opportunamente le applicazione ai CK_S?
+Non credo, da pensarci. Questo potrebbe semplificare?
+Che succede se la rete non e' simmetrica? 
+
+
+
+Each CK_S is connect to one QSFP and to the other CK_S.
+Furthermore it will receive data from a CK_R.
+Each CK_S has its own routing table: (dest rank, tag) -> output_port (so the QSFP or another CK_S)
+
+On the other side CK_R receive data that is directed to an application to which they are directly connected (E SE NON LO SONO CONNESSE?), or to another CK_S if we have to send it to another node.
+
+How internal channels are assigned to `$CK_S$` or `$CK_R$` is known at compile time.
+I think that it is not 100% guaranteed that we can assign them in a clever way. Suppose that 
+
+
 
 
 To each communication channel we can associate one CK_S and one CK_R.
+
+**Assumption**:
+- each rank must be able to reach all the other ones
+- 
 
 **Problem**:  this must be done according to the application requirements (i.e. knowing that app on rank 0, fpga 0 will communicate with rank 1, fpga 1) or we want to guarantee an all-to-all connections?
 
 The second solution is more flexible, even if it will possibly result in performance impairment.
 In the sense, it is more convienient to associate the endpoint to the closest CK_S, but it is probably not general? In the sense that if I want to do this, I have to know who communicates with whom at compile time.
+
+
+
 
 **Problem**: a different problem is that not all QSFP are connected so we may have less CKs than 4
 
