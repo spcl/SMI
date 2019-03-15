@@ -104,12 +104,20 @@ int main(int argc, char *argv[])
         kernels[0].setArg(1,sizeof(int),&n);
     }
 
+    if(sender)
+        std::cout << "Let's start the sender" <<std::endl;
+    else
+        std::cout << "Let's start the receiver" <<std::endl;
 
-    std::cout << "Let's start " <<std::endl;
     timestamp_t start=current_time_usecs();
-        queues[0].enqueueTask(kernels[0]);
+    queues[0].enqueueTask(kernels[0]);
+    queues[0].flush();
+    if(sender)
+        std::cout << "Let's wait the sender " <<std::endl;
+    else
+        std::cout << "Let's wait the receiver " <<std::endl;
 
-        queues[0].finish();
+    queues[0].finish();
     timestamp_t end=current_time_usecs();
 
 
