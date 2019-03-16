@@ -33,7 +33,7 @@ typedef struct __attribute__((packed)) __attribute__((aligned(32))){
 //TODO: generalize this routing tables
 
 __constant char sender_rt[2]={0,1};
-__constant char receiver_rt[2]={0,1};
+__constant char receiver_rt[3]={0,1,2};
 
 #if defined(EMULATION)
 channel network_message_t io_out __attribute__((depth(16)))
@@ -50,8 +50,13 @@ channel network_message_t io_out __attribute__((depth(16)))
 //these maps endpoint -> channel_id
 //for the ck_s: (src rank, tag) -> channel_id
 //for ck_r: (dst rank,tag) -> channel_id
-channel network_message_t chan_to_ck_s[2] __attribute__((depth(16)));
-channel network_message_t chan_from_ck_r[2] __attribute__((depth(16)));
+#if defined (THREE_SENDERS)
+    channel network_message_t chan_from_ck_r[3] __attribute__((depth(16)));
+#else
+    channel network_message_t chan_from_ck_r[2] __attribute__((depth(16)));
+#endif
+
+
 
 
 
@@ -107,26 +112,6 @@ chdesc_t open_channel(char my_rank, char pair_rank, char tag, uint message_size,
     return chan;
 }
 
-void push(chdesc_t *chan, void* data)
-{
-    //TODO: data size and element per packet depends on channel type
-    char *conv=(char*)data;
-    const char chan_idx=sender_rt[chan->tag];
-    #pragma unroll
-    for(int jj=0;jj<chan->size_of_type;jj++) //data size
-    {
-        chan->net.data[chan->packet_element_id*4+jj]=conv[jj];
-    }
-    chan->processed_elements++;
-    chan->packet_element_id++;
-    //printf("Sent: %d (out of %d), data id: %d\n",chan->sent,chan->message_size,chan->data_id);
-    if(chan->packet_element_id==chan->elements_per_packet || chan->processed_elements==chan->message_size) //send it if packet is filled or we reached the message size
-    {
-        chan->packet_element_id=0;
-        write_channel_intel(chan_to_ck_s[chan_idx],chan->net);
-    }
-
-}
 
 void pop(chdesc_t *chan, void *data)
 {
@@ -158,8 +143,7 @@ __kernel void CK_receiver()
         network_message_t m=read_channel_intel(io_out);
         //forward it to the right unpacker
         //TODO change this accordingly
-        //printf("CK_R received message for %d\n",m.header.dst);
-        switch(m.header.dst)
+        switch(m.header.tag)
         {
             case 0:
                 write_channel_intel(chan_from_ck_r[0],m);
@@ -167,6 +151,11 @@ __kernel void CK_receiver()
             case 1:
                 write_channel_intel(chan_from_ck_r[1],m);
                 break;
+            #if defined(THREE_SENDERS)
+            case 2:
+                write_channel_intel(chan_from_ck_r[2],m);
+                break;
+            #endif
         }
 
     }
@@ -211,4 +200,26 @@ __kernel void app_receiver_2(__global volatile char *mem, const int N)
     *mem=check;
     //printf("Receiver 2 finished\n");
 }
-//#endif
+
+
+#if defined (THREE_SENDERS)
+__kernel void app_receiver_3(__global volatile char *mem, const int N)
+{
+    char check=1;
+    float expected_0=3.1f;
+    //in questo caso riceviamo da due
+    chdesc_t chan=open_channel(1,0,2,N,FLOAT,RECEIVE);
+
+    for(int i=0; i< N;i++)
+    {
+        float rcvd;
+        pop(&chan,&rcvd);
+        check &= (rcvd==(expected_0+i));
+        //expected_0=expected_0+1.0f;
+    }
+
+    *mem=check;
+    //printf("Receiver 2 finished\n");
+}
+#endif
+

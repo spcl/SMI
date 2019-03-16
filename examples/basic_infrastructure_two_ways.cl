@@ -177,7 +177,7 @@ __kernel void CK_receiver_0()
         //forward it to the right unpacker
         //TODO change this accordingly
         //printf("CK_R received message for %d\n",m.header.dst);
-        switch(m.header.dst)
+        switch(m.header.tag)
         {
             case 1:
                 write_channel_intel(chan_from_ck_r[0],m);

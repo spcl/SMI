@@ -5,6 +5,8 @@
 
     In this case push and pop takes void *. Therefore in the channel
     descriptor we have also the identification of the type
+
+    With the Macro THREE_SENDERS, three senders are created
 */
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
@@ -32,8 +34,7 @@ typedef struct __attribute__((packed)) __attribute__((aligned(32))){
 
 //TODO: generalize this routing tables
 
-__constant char sender_rt[2]={0,1};
-__constant char receiver_rt[2]={0,1};
+__constant char sender_rt[3]={0,1,2};
 
 #if defined(EMULATION)
 channel network_message_t io_out __attribute__((depth(16)))
@@ -50,8 +51,12 @@ channel network_message_t io_out __attribute__((depth(16)))
 //these maps endpoint -> channel_id
 //for the ck_s: (src rank, tag) -> channel_id
 //for ck_r: (dst rank,tag) -> channel_id
-channel network_message_t chan_to_ck_s[2] __attribute__((depth(16)));
-channel network_message_t chan_from_ck_r[2] __attribute__((depth(16)));
+
+#if defined(THREE_SENDERS)
+    channel network_message_t chan_to_ck_s[3] __attribute__((depth(16)));
+#else
+        channel network_message_t chan_to_ck_s[2] __attribute__((depth(16)));
+#endif
 
 
 
@@ -129,26 +134,6 @@ void push(chdesc_t *chan, void* data)
 
 }
 
-void pop(chdesc_t *chan, void *data)
-{
-    //when it stalls? or return wrong messages? when we read more than we have...?
-    //in this case we have to copy the data into the target variable
-    if(chan->packet_element_id==chan->elements_per_packet)
-    {
-        const char chan_idx=receiver_rt[chan->tag];
-        chan->packet_element_id=0;
-        chan->net=read_channel_intel(chan_from_ck_r[chan_idx]);
-    }
-    char * ptr=chan->net.data+(chan->packet_element_id)*4;
-    chan->packet_element_id++;                       //first increment and then use it: otherwise compiler detects Fmax problems
-    chan->processed_elements++;   //this could be used for some basic checks
-    //create packet
-    if(chan->data_type==INT)
-        *(int *)data= *(int*)(ptr);
-    if(chan->data_type==FLOAT)
-        *(float *)data= *(float*)(ptr);
-}
-
 __kernel void app_sender_1(const int N)
 {
 
@@ -178,11 +163,34 @@ __kernel void app_sender_2(const int N)
 
 }
 
+#if defined(THREE_SENDERS)
+__kernel void app_sender_3(const int N)
+{
+
+    const float start=3.1f;
+    chdesc_t chan=open_channel(0,1,2,N,FLOAT,SEND);
+
+    for(int i=0;i<N;i++)
+    {
+        float data=i+start;
+        push(&chan,&data);
+        //network_message_t mess;
+        // write_channel_intel(chan_to_ck_s[1],mess);
+
+    }
+
+}
+#endif
+
 //__attribute__((max_global_work_dim(0)))
 //__attribute__((autorun))
 __kernel void CK_sender()
 {
-    const uint num_sender=2;
+    #if defined (THREE_SENDERS)
+        const uint num_sender=3;
+    #else
+        const uint num_sender=2;
+    #endif
     uint sender_id=0;
     bool valid=false;
     network_message_t mess;
@@ -197,11 +205,18 @@ __kernel void CK_sender()
             case 1:
             mess=read_channel_nb_intel(chan_to_ck_s[1],&valid);
             break;
+            #if defined(THREE_SENDERS)
+             case 2:
+             //printf("Sending to 3\n");
+            mess=read_channel_nb_intel(chan_to_ck_s[2],&valid);
+            break;
+            #endif
+
         }
         if(valid)
         {
-            printf("Invio dato arrivato da %d\n",sender_id);
             write_channel_intel(io_out,mess);
+            valid=false;
         }
         sender_id=(sender_id+1)%num_sender;
 
