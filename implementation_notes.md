@@ -129,7 +129,28 @@ Communicators will be also connected between each other for routing issue (see t
 
 ### Routing
 
-We have given a phisical topology of point-to point connections:
+As reference architecture we will use the one in which there is one `CK_S` and  one `CK_R` for each QSFP module.
+
+To recall, communications between application occur using channels identified by `<src rank, dest rank, tag>` (data type and message size are not important in this context).
+
+We can have two possible way of implementing the actual data transfers, that will result in different FPGA designs and routing problems. Feedbacks are appreciated:
+
+1.  the schema considered so far is the one in which the different `CK_S` are interconnected. Therefore an application endpoint (i.e. a push or pop to/from channels) can be connected to anyone of these `CK_S`. The `CK_S` will receive packets, will look at their destination, compute the route and then will forward them to the QSFP at which it is attached or to another `CK_S` in the FPGA. The routing tables used to compute the route are stored into the FPGA RAM. Similar reasoning applies to the receive side (`CK_R`): a `CK_R` receives a packet that can be directed to one of the endpoints directly connected to it. In this case it will forward the packet to the application. However, the packet could be directed to an endpoint connected to another `CK_R` (so it will forward the packet to it) or to another machine (so it will forward the packet to another `CK_S`) 
+
+2. another possibility is that `CK_S` and `CK_R` are not interconnected each other. In this case we have to compute the full routes between two endpoints and generate the proper hardware. For example, if we know that our application send data to `rank 1` and this rank is connected to `QSFP 0`, then the application endpoint will be connected to the `CK_S` attached to `QSFP 0`. Similar reasoning should apply also for the receiver side. In this case, communication kernels act only as interface: they take data from incoming channel and forward it. They don't need a routing table (or at least is simplified). All the routes must be pre-computed before compiling (the user will need to specify a list of them)
+
+What are the difference between this two solutions?  (*Also here, if something come to mind please tell me*)
+
+In my opinion, they are equivalent in terms of expressiveness. In the sense: any communication topology that you can express with solution 1 you can express also with 2.
+**However** I believe that solution 1 is more flexible. If, for example, the physical topology changes (because someone switched cables or because we are using different nodes), with 1 it would be sufficient to recompute the routing tables, while with 2 it could be the case that you need to recompile everything.
+Another point is that (if we want to provide this possibility), the rank of the receiver can be unknown at compile time with 1.
+
+**So** I am more incline to consider solution 1 even if it is slightly more complicated. But I'm open to discussions.
+
+
+So, considering solution 1., let's see what we need for the routing.
+
+In input we have the physical topology, that is a list  of point-to point connections:
 ```
 <nodename>:<device name>:<channel_id> - <nodename>:<device name>:<channel_id>
 
@@ -143,47 +164,20 @@ fpga-0014:acl0:ch3 - fpga-0014:acl1:ch3
 Each channel is bi-directional. Cluster nodes goes from `fpga-0001` to `fpga-0016`. 
 In each node we have 2 FPGAs (`acl0` and `acl1`). Each FPGAs has 4 QSFPs, so channels goes from `ch0` to `ch3`. We can think at them as a list of numbers. Possibly, not all the QSFPs of an FPGA are connected.
 
-Concerning the sender side
 
 On each FPGA we will have a CK_S and CK_R for each QSFP:
+
 - application endpoints are connected to CK_S (to send data) and CK_R (to receive data)
-- connection are known at compile time
-- (internally connection are stored in a routing table tag-> channel_to_ck_s)
+- connection between application endpoints and `CK_R`/`CK_S` are known at compile time. We have to decide how these are distributed. Initially we can consider a generic round-robin. TAGs are unique within each rank.
 
+We need a routing table for each `CK_S`/`CK_R`. From any rank we want to reach all  the others.
+Considering a generic `CK_S`, it will have a set of output channels. These are numbered with an index `0` for the one that goes to the QSFP and `1-2-3`  for the channels that go to the other `CK_S`.
+The routing table will be a function (stored into an array) that takes as input the destination rank and the tag and returns the output channel index (not sure if we need the tag).
 
-Possiamo evitare gli hop interni? Andando a collegare opportunamente le applicazione ai CK_S?
-Non credo, da pensarci. Questo potrebbe semplificare?
-Che succede se la rete non e' simmetrica? 
+The `CK_R` receive data from a QSFP and others `CK_R`. Its output channels are its "neighbors" `CK_S` (*to discuss*: `CK_R` must be connected to all other `CK_S` or just one?), the other `CK_R`s and the application endpoints.
+Also in this case the routing table is an array. The `CK_R` routing table must take into consideration that:
 
-
-
-Each CK_S is connect to one QSFP and to the other CK_S.
-Furthermore it will receive data from a CK_R.
-Each CK_S has its own routing table: (dest rank, tag) -> output_port (so the QSFP or another CK_S)
-
-On the other side CK_R receive data that is directed to an application to which they are directly connected (E SE NON LO SONO CONNESSE?), or to another CK_S if we have to send it to another node.
-
-How internal channels are assigned to `$CK_S$` or `$CK_R$` is known at compile time.
-I think that it is not 100% guaranteed that we can assign them in a clever way. Suppose that 
-
-
-
-
-To each communication channel we can associate one CK_S and one CK_R.
-
-**Assumption**:
-- each rank must be able to reach all the other ones
-- 
-
-**Problem**:  this must be done according to the application requirements (i.e. knowing that app on rank 0, fpga 0 will communicate with rank 1, fpga 1) or we want to guarantee an all-to-all connections?
-
-The second solution is more flexible, even if it will possibly result in performance impairment.
-In the sense, it is more convienient to associate the endpoint to the closest CK_S, but it is probably not general? In the sense that if I want to do this, I have to know who communicates with whom at compile time.
-
-
-
-
-**Problem**: a different problem is that not all QSFP are connected so we may have less CKs than 4
-
-
+- this packet can direct to an endpoint directly connected to it
+- this packet can be directed to an endpoint connected to another `CK_R`, so it should be forwarded to that one
+- this packet can be directed to another rank, so it should be forwarded to a `CK_S`
 
