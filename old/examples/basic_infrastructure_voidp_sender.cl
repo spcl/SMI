@@ -213,12 +213,15 @@ __kernel void CK_sender()
             #endif
 
         }
+
         if(valid)
         {
             write_channel_intel(io_out,mess);
             valid=false;
         }
-        sender_id=(sender_id+1)%num_sender;
+        sender_id=sender_id+1;
+        if(sender_id==num_sender)
+                sender_id=0;
 
     }
 

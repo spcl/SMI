@@ -181,7 +181,7 @@ __kernel void CK_receiver_0()
         {
             case 1:
                 write_channel_intel(chan_from_ck_r[0],m);
-                break;
+            break;
         }
 
     }

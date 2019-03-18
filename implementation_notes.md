@@ -181,3 +181,11 @@ Also in this case the routing table is an array. The `CK_R` routing table must t
 - this packet can be directed to an endpoint connected to another `CK_R`, so it should be forwarded to that one
 - this packet can be directed to another rank, so it should be forwarded to a `CK_S`
 
+
+##Code Generation
+
+Where we need code generation?
+
+- internal mapping application endpoint -> CK_S and CK_R -> endpoint. We can think that this is generated in an header file (something linke `internal_topology.h`) that is then included in the user program
+- CK_Sender, receivers: will need to be generated for the sake of interconnecting them properly
+
