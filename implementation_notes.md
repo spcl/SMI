@@ -127,7 +127,7 @@ Communicators will be also connected between each other for routing issue (see t
 - all CK_S are interconnected between each other (12 channels)
 - CK_R are connected to CK_S. Here we can decide if all of the are connected to all CK_S or just to one
 
-### Routing
+## Routing
 
 As reference architecture we will use the one in which there is one `CK_S` and  one `CK_R` for each QSFP module.
 
@@ -180,6 +180,18 @@ Also in this case the routing table is an array. The `CK_R` routing table must t
 - this packet can direct to an endpoint directly connected to it
 - this packet can be directed to an endpoint connected to another `CK_R`, so it should be forwarded to that one
 - this packet can be directed to another rank, so it should be forwarded to a `CK_S`
+
+### Connections between CK_Ss
+
+Each CK_S is connected to all the others using `intel_channel`s.
+These channel are mainted in a proper array (suppose that it is called `channels_btw_ck_s`).
+
+If $`N_Q`$ is the number of useful QSFPs we will have:
+
+- `$N_Q$` CK_S and `$N_Q (N_Q-1)$` connections between them.
+- each CK_S has `$N_Q$` output channels to other CK_S. 
+- each CK_S has an ID that goes from 0 to `$N_Q - 1 $`
+- for each CK_S the output channels (to others CK_S) are the one that goes from `$ID N_Q$` to `$ID N_Q+N_Q-1$`
 
 
 ##Code Generation
