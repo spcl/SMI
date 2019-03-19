@@ -23,12 +23,14 @@
 //TODO: understand where we should put this. Probably a code-generated header with the topology
 extern __constant char internal_sender_rt[2];
 extern channel SMI_NetworkMessage channel_to_ck_s[2];
+
 /**
  * @brief SMI_Push push a data elements in the data channel. Data transferring can be delayed
  * @param chan
  * @param data
+ * @param immediate: if true the data is immediately sent, without waiting for the completion of the network packet
  */
-void SMI_Push(SMI_Channel *chan, void* data)
+void SMI_PushI(SMI_Channel *chan, void* data, bool immediate)
 {
     char *conv=(char*)data;
     const char chan_idx=internal_sender_rt[chan->tag];
@@ -37,12 +39,20 @@ void SMI_Push(SMI_Channel *chan, void* data)
         chan->net.data[chan->packet_element_id*chan->size_of_type+jj]=conv[jj];
     chan->processed_elements++;
     chan->packet_element_id++;
-    if(chan->packet_element_id==chan->elements_per_packet || chan->processed_elements==chan->message_size) //send it if packet is filled or we reached the message size
+    if(chan->packet_element_id==chan->elements_per_packet || immediate || chan->processed_elements==chan->message_size) //send it if packet is filled or we reached the message size
     {
+        SET_HEADER_NUM_ELEMS(chan->net.header,chan->packet_element_id);
         chan->packet_element_id=0;
         write_channel_intel(channel_to_ck_s[chan_idx],chan->net);
     }
 }
+
+
+void SMI_Push(SMI_Channel *chan, void* data)
+{
+    SMI_PushI(chan,data,false);
+}
+
 
 
 #endif //ifndef PUSH_H

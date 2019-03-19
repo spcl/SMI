@@ -36,7 +36,7 @@ channel SMI_NetworkMessage io_out __attribute__((depth(16)))
                     __attribute__((io("kernel_output_ch3")));
 #endif
 
-//Internal routing table: maps tag -> chan_idx
+//Internal routing table: maps tag -> chan_to_ck_s idx
 __constant char internal_sender_rt[2]={0,1};
 
 //In this case there is no external routing table
@@ -79,12 +79,19 @@ __kernel void CK_sender()
 
 __kernel void app_sender_1(const int N)
 {
-
+    bool immediate=false;
     SMI_Channel chan=SMI_OpenChannel(0,0,0,N,SMI_INT,SMI_SEND);
     for(int i=0;i<N;i++)
     {
         int data=i;
-        SMI_Push(&chan,&data);
+        //each 16 we send immediately
+        if(i % 17 == 0)
+        {
+            immediate=true;
+        }
+        else
+            immediate=false;
+        SMI_PushI(&chan,&data,immediate);
     }
 }
 

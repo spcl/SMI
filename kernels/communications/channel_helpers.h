@@ -56,7 +56,8 @@ SMI_Channel SMI_OpenChannel(char my_rank, char pair_rank, char tag, uint message
     else
         if(op_type == SMI_RECEIVE)
         {
-            chan.packet_element_id=chan.elements_per_packet; //data per packet
+            SET_HEADER_NUM_ELEMS(chan.net.header,0);    //at the beginning no data
+            chan.packet_element_id=0; //data per packet
             chan.processed_elements=0;
             chan.sender_rank=pair_rank;
             chan.receiver_rank=my_rank;

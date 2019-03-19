@@ -77,6 +77,7 @@ __kernel void app_receiver_1(__global volatile char *mem, const int N)
     char check=1;
     int expected_0=0;
     SMI_Channel chan=SMI_OpenChannel(0,0,0,N,SMI_INT,SMI_RECEIVE);
+    bool immediate=false;
     for(int i=0; i< N;i++)
     {
         int rcvd;
