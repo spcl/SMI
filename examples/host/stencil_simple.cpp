@@ -7,7 +7,7 @@ using Data_t = DTYPE;
 constexpr int kW = W;
 constexpr int kH = H;
 constexpr int kT = T;
-constexpr auto kUsage = "Usage: ./stencil_single_node <[emulator/hardware]>\n";
+constexpr auto kUsage = "Usage: ./stencil_simple <[emulator/hardware]>\n";
 
 // Reference implementation for checking correctness
 void Reference(std::vector<Data_t> &domain) {
@@ -35,9 +35,9 @@ int main(int argc, char **argv) {
   std::string kernel_path;
   if (mode_str == "emulator") {
     emulator = true;
-    kernel_path = "stencil_single_node_emulator.aocx";
+    kernel_path = "stencil_simple_emulator.aocx";
   } else if (mode_str == "hardware") {
-    kernel_path = "stencil_single_node_hardware.aocx";
+    kernel_path = "stencil_simple_hardware.aocx";
     emulator = false;
   } else {
     std::cout << kUsage;

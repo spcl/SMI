@@ -47,4 +47,4 @@ function(opencl_target KERNEL_NAME)
   add_custom_target(run_${KERNEL_NAME}_emulator COMMAND CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=1 ${CMAKE_CURRENT_BINARY_DIR}/${KERNEL_NAME} emulator)
 endfunction()
 
-opencl_target("stencil_single_node")
+opencl_target("stencil_simple")
