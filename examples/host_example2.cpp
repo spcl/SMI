@@ -97,10 +97,23 @@ int main(int argc, char *argv[])
 
     //create memory buffers
     char res;
+    //ATTENTION: declare all the memory here otherwise it hangs
     cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
+    cl::Buffer routing_table1(context,CL_MEM_WRITE_ONLY,3);
+    cl::Buffer routing_table2(context,CL_MEM_WRITE_ONLY,3);
+
     if(sender)
     {
+        char ranks=3;
+        char rt1[3]={0,0,1};
+        char rt2[3]={100,100,0};
+        queues[0].enqueueWriteBuffer(routing_table1, CL_TRUE,0,3,rt1);
+        queues[0].enqueueWriteBuffer(routing_table2, CL_TRUE,0,3,rt2);
         kernels[0].setArg(0,sizeof(int),&n);
+        kernels[1].setArg(0,sizeof(cl_mem),&routing_table1);
+        kernels[1].setArg(1,sizeof(char),&ranks);
+        kernels[2].setArg(0,sizeof(cl_mem),&routing_table2);
+        kernels[2].setArg(1,sizeof(char),&ranks);
     }
     else
     {

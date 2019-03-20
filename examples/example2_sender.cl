@@ -61,12 +61,16 @@ channel SMI_NetworkMessage channel_interconnect_ck_s[2] __attribute__((depth(16)
 
 
 
-__kernel void CK_sender_0()
+__kernel void CK_sender_0(__global volatile char *restrict rt, const char R)
 {
     //this must be loaded from DRAM
     //this maps ranks to channels_id
     //0->qsfp, 1-> the other CK_S
-    char external_routing_table[3]={0,0,1}; //this receives packet to rank 1 e 2
+    //char external_routing_table[3]={0,0,1}; //this receives packet to rank 1 e 2
+    char external_routing_table[256];
+    for(int i=0;i<R;i++)
+        external_routing_table[i]=rt[i];
+
     const char ck_id=0;
     /* CK_S accepts input data from Applications and
      * from other CK_Ss (and possibly one CK_R, future work).
@@ -119,12 +123,15 @@ __kernel void CK_sender_0()
     }
 }
 
-__kernel void CK_sender_1()
+__kernel void CK_sender_1(__global volatile char *restrict rt,const char R)
 {
     //this must be loaded from DRAM
     //this maps ranks to channels_id
     //0->qsfp, 1-> the other CK_S
-    char external_routing_table[3]={100,100,0}; //this should receive packet to rank 1
+    //char external_routing_table[3]={100,100,0}; //this should receive packet to rank 1
+    char external_routing_table[256];
+    for(int i=0;i<R;i++)
+        external_routing_table[i]=rt[i];
     const char ck_id=1;
     //Ok this one is a special case in which we don't have application
     const char num_sender=1;
