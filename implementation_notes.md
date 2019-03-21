@@ -148,6 +148,11 @@ Another point is that (if we want to provide this possibility), the rank of the 
 **So** I am more incline to consider solution 1 even if it is slightly more complicated. But I'm open to discussions.
 
 
+**At the end we've choosen solution 1**:
+- so the user doesn't have to specify all the channels
+- more flexible and robust to changes in the topologies and so on...
+
+
 So, considering solution 1., let's see what we need for the routing.
 
 In input we have the physical topology, that is a list  of point-to point connections:
@@ -165,46 +170,129 @@ Each channel is bi-directional. Cluster nodes goes from `fpga-0001` to `fpga-001
 In each node we have 2 FPGAs (`acl0` and `acl1`). Each FPGAs has 4 QSFPs, so channels goes from `ch0` to `ch3`. We can think at them as a list of numbers. Possibly, not all the QSFPs of an FPGA are connected.
 
 
-On each FPGA we will have a CK_S and CK_R for each QSFP:
+On each FPGA we will have a CK_S and CK_R for each used QSFP. Let's analyze what happens on the sender and receiver side.
 
-- application endpoints are connected to CK_S (to send data) and CK_R (to receive data)
-- connection between application endpoints and `CK_R`/`CK_S` are known at compile time. We have to decide how these are distributed. Initially we can consider a generic round-robin. TAGs are unique within each rank.
+### CK_Ss
 
-We need a routing table for each `CK_S`/`CK_R`. From any rank we want to reach all  the others.
-Considering a generic `CK_S`, it will have a set of output channels. These are numbered with an index `0` for the one that goes to the QSFP and `1-2-3`  for the channels that go to the other `CK_S`.
-The routing table will be a function (stored into an array) that takes as input the destination rank and the tag and returns the output channel index (not sure if we need the tag).
+Let `$N_Q$` be the number of used QSFPs. Each CK_S has a certain number of input/output connections:
 
-The `CK_R` receive data from a QSFP and others `CK_R`. Its output channels are its "neighbors" `CK_S` (*to discuss*: `CK_R` must be connected to all other `CK_S` or just one?), the other `CK_R`s and the application endpoints.
-Also in this case the routing table is an array. The `CK_R` routing table must take into consideration that:
+ - **Input**: 
+     -  connections from application endpoints;
+     -  `$N_Q-1$` input channels from other CK_S;
+     -  a connection with its own paired CK_R: this is used for multi-hop routes;
+ - **Output**:
+     - the connections with the QSFP;
+     - `$N_Q-1$` output channels to other CK_S;
+     - a connection with its own paired CK_R: this is used for local sends.
 
-- this packet can direct to an endpoint directly connected to it
-- this packet can be directed to an endpoint connected to another `CK_R`, so it should be forwarded to that one
-- this packet can be directed to another rank, so it should be forwarded to a `CK_S`
-
-### Connections between CK_Ss
-
-Each CK_S is connected to all the others using `intel_channel`s.
-These channel are mainted in a proper array (suppose that it is called `channels_btw_ck_s`).
-
-If $`N_Q`$ is the number of useful QSFPs we will have:
-
-- `$N_Q$` CK_S and `$N_Q (N_Q-1)$` connections between them.
-- each CK_S has `$N_Q$` output channels to other CK_S. 
-- each CK_S has an ID that goes from 0 to `$N_Q - 1 $`
-- for each CK_S the output channels (to others CK_S) are the one that goes from `$ID N_Q$` to `$ID N_Q+N_Q-1$`
-
-
-### Internal routing
-That is how we connect application endpoints to CKs.
-For the moment being this connection is clearly known at compile time and we use an array of channels indexed using an internal routing table (which is accessed using the tag).
-Being the TAG known at compile time, this allows the compiler to create the right connection.
+For the *internal routing*, that is the connections between application endpoints and CK_S is clearly managed at compile time. These internal connections, are managed with an array of channels (FIFO buffers) indexed using an internal routing table (which is accessed using the TAG).
+Being the TAG known at compile time, this allows the compiler to create the right hardware connection.
 We are using the array of channels and internal routing table, simply because in this way the `push`/`pop` implementation can be generic.
-Otherwise each one use its own channel and we have to generate the code in such a way that on each `push`/`pop` occurence it is replace the write to the proper channel.
+Otherwise each one use its own channel and we have to generate the code in such a way that on each `push`/`pop` occurence it is replace the write to the proper channel.  
+For some details about code generation, check issue
+
+**How to associate the channel endpoints to the CK_S**: for the moment being we can use any logic, even Round Robin.
+
+
+For the *external routing*, each CK_S will have its own routing table. This will allow to reach any other *rank* which is currently involved in the computation. The routing table will be a simple array of that maps `$rank \rightarrow output_port$`, where output port is:
+
+- 0, forward to network (QSFP)
+- 1, send to the connected CK_R (local send)
+- 2,...,`$N_Q$`, send to other CK_S
+
+The routing table will be loaded at run-time, from DRAM.
+Possibly, the host compute it on the fly (considering the used topology) and copies it to device.
+
+
+### CK_Rs
+
+Each CK_R has the following connections:
+
+- **Input**: 
+     -  connections from the QSFP;
+     -  `$N_Q-1$` input channels from other CK_R;
+     -  a connection with its own paired CK_S: this is used for local sends;
+ - **Output**:
+     - the connections with the application endpoints;
+     - `$N_Q-1$` output channels to other CK_R;
+     - a connection with its own paired CK_R: this is used for multi-hops routes.
+
+As in the case of CK_S, the internal routing CK_R -> application endpoints, is done at compile time using an array of internal channel.
+
+For the *external routing*, each CK_R has its own table. This time it is indexed by using pairs `$(rank,tag) \rightarrow output_port$`, where output port is:
+
+- 0, send to the connected CK_S (remote send)
+- 1, ...,`$N_Q-1$`, send to other CK_R (the application endpoint is not connected to this CK_R)
+- other indexes: send to application
+
+Again, this routing table will be loaded from DRAM.
+*Therefore* to generate this routing table, we need to known the internal routing. This is known at compile time, we have to decide how to provide it to the function that computes the routes.
+
 
 ##Code Generation
 
+** We will not handle this now. These are just notes/idea on how we should handle this**
+
+What we need from the user is the number of TAGs used into his own program:
+- this will be a single number for SPMD program
+- multiple numbers for MPMD program
+
+Optionally, she can input also the number of used QSFPs
+
 Where we need code generation?
 
-- internal mapping application endpoint -> CK_S and CK_R -> endpoint. We can think that this is generated in an header file (something linke `internal_topology.h`) that is then included in the user program
-- CK_Sender, receivers: will need to be generated for the sake of interconnecting them properly
+- internal mapping application endpoint -> CK_S and CK_R -> endpoint. We can think that this is generated in an header file (something linke `smi_defines.h`) that is then included in the user program. This header will include an array with this internal_routing, constants (e.g. the number of used rank), channels definition (I/O channels, channels between endpoints and CKs, channels between CKs)
+
+- CK_Sender, CK_receivers: will need to be generated for the sake of interconnecting them properly with other pair and to application endpoints. Consider for example the pseudocode of a CK_S. It is organized as a `while(true)` loop that reads from its input channel
+
+```C++
+    const char num_sender=2+1; //number application endpoint + CK-pairs (in this case there is no CK_R attached)
+    char sender_id=0;
+    bool valid=false;
+    SMI_NetworkMessage mess;
+    while(1)
+    {
+        switch(sender_id)
+        {
+            case 0:
+                mess=read_channel_nb_intel(channel_to_ck_s[0],&valid);
+            break;
+            case 1:
+                mess=read_channel_nb_intel(channel_to_ck_s[1],&valid);
+            break;
+            case 2:
+                mess=read_channel_nb_intel(channel_interconnect_ck_s[1],&valid);
+            break;
+            //....
+        }
+
+        if(valid)
+        {
+            char idx=external_routing_table[GET_HEADER_DST(mess.header)];
+            switch(idx)
+            {
+                case 0:
+                    write_channel_intel(io_out_0,mess);
+                    break;
+                case 1:
+                    write_channel_intel(channel_interconnect_ck_s[0],mess);
+                    break;
+                //...
+
+            }
+            valid=false;
+        }
+        sender_id++;
+        if(sender_id==num_sender)
+                sender_id=0;
+
+    }
+
+```
+
+The first `switch` must be properly generated by considering the application endpoints that are connected to this particular CK_S
+
+
+Clearly, for MPMD programs we will have multiple generated files in output
+
 
