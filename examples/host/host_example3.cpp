@@ -1,13 +1,13 @@
 /**
- * Host program forexample2.
+ * Host program for example 3.
  */
 #include <stdio.h>
 #include <string>
 #include <iostream>
 #include <fstream>
 #include <unistd.h>
-#include "../include/utils/ocl_utils.hpp"
-#include "../include/utils/utils.hpp"
+#include "../../include/utils/ocl_utils.hpp"
+#include "../../include/utils/utils.hpp"
 
 //#define CHECK
 using namespace std;
@@ -80,44 +80,45 @@ int main(int argc, char *argv[])
     if(sender)
     {
         cout << "Starting the sender on FPGA "<<fpga<<endl;
-        kernel_names.push_back("app_sender");
+        kernel_names.push_back("app_sender_1");
+        kernel_names.push_back("app_sender_2");
         kernel_names.push_back("CK_sender_0");
-        kernel_names.push_back("CK_sender_1");
     }
     else
     {
         cout << "Starting a receiver on FPGA "<<fpga<<endl;
-        kernel_names.push_back("app_receiver");
-        kernel_names.push_back("CK_receiver");
+        kernel_names.push_back("app_receiver_1");
+        kernel_names.push_back("app_receiver_2");
+        kernel_names.push_back("CK_receiver_0");
+        kernel_names.push_back("CK_receiver_1");
 
     }
     //this is for the case with classi channels
     IntelFPGAOCLUtils::initEnvironment(platform,device,fpga,context,program,program_path,kernel_names, kernels,queues);
 
     //create memory buffers
-    char res;
+    char res1,res2;
     //ATTENTION: declare all the memory here otherwise it hangs
-    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
-    cl::Buffer routing_table1(context,CL_MEM_WRITE_ONLY,3);
-    cl::Buffer routing_table2(context,CL_MEM_WRITE_ONLY,3);
+    cl::Buffer check1(context,CL_MEM_WRITE_ONLY,1);
+    cl::Buffer check2(context,CL_MEM_WRITE_ONLY,1);
+    cl::Buffer routing_table(context,CL_MEM_WRITE_ONLY,2);
 
     if(sender)
     {
-        char ranks=3;
-        char rt1[3]={0,0,1};
-        char rt2[3]={100,100,0};
-        queues[0].enqueueWriteBuffer(routing_table1, CL_TRUE,0,3,rt1);
-        queues[0].enqueueWriteBuffer(routing_table2, CL_TRUE,0,3,rt2);
+        char ranks=2;
+        char rt[2]={0,0};
+        queues[0].enqueueWriteBuffer(routing_table, CL_TRUE,0,2,rt);
         kernels[0].setArg(0,sizeof(int),&n);
-        kernels[1].setArg(0,sizeof(cl_mem),&routing_table1);
-        kernels[1].setArg(1,sizeof(char),&ranks);
-        kernels[2].setArg(0,sizeof(cl_mem),&routing_table2);
+        kernels[1].setArg(0,sizeof(int),&n);
+        kernels[2].setArg(0,sizeof(cl_mem),&routing_table);
         kernels[2].setArg(1,sizeof(char),&ranks);
     }
     else
     {
-        kernels[0].setArg(0,sizeof(cl_mem),&check);
+        kernels[0].setArg(0,sizeof(cl_mem),&check1);
         kernels[0].setArg(1,sizeof(int),&n);
+        kernels[1].setArg(0,sizeof(cl_mem),&check2);
+        kernels[1].setArg(1,sizeof(int),&n);
     }
 
 
@@ -127,6 +128,8 @@ int main(int argc, char *argv[])
 
 
     queues[0].finish();
+    queues[1].finish();
+
 
     timestamp_t end=current_time_usecs();
 
@@ -134,8 +137,9 @@ int main(int argc, char *argv[])
     sleep(1);
     if(receiver)
     {
-        queues[0].enqueueReadBuffer(check,CL_TRUE,0,1,&res);
-        if(res==1)
+        queues[0].enqueueReadBuffer(check1,CL_TRUE,0,1,&res1);
+        queues[0].enqueueReadBuffer(check2,CL_TRUE,0,1,&res2);
+        if(res1==1 && res2==1)
             cout << "OK!"<<endl;
         else
             cout << "Error!!"<<endl;
