@@ -36,7 +36,7 @@ channel SMI_NetworkMessage io_out_0 __attribute__((depth(16)))
 #else
 
 channel SMI_NetworkMessage io_out_0 __attribute__((depth(16)))
-                    __attribute__((io("kernel_output_ch0")));
+                    __attribute__((io("kernel_output_ch1")));
 #endif
 //internal routing tables
 __constant char internal_sender_rt[2]={0,1};

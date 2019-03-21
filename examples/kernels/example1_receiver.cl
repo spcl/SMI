@@ -20,8 +20,8 @@
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 
-#include "../kernels/communications/channel_helpers.h"
-#include "../kernels/communications/pop.h"
+#include "../../kernels/communications/channel_helpers.h"
+#include "../../kernels/communications/pop.h"
 
 
 //****This part should be code-generated****

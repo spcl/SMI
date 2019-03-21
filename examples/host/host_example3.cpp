@@ -103,6 +103,8 @@ int main(int argc, char *argv[])
     cl::Buffer check2(context,CL_MEM_WRITE_ONLY,1);
     cl::Buffer routing_table(context,CL_MEM_WRITE_ONLY,2);
 
+    cl::Buffer routing_table_ck_r_0(context,CL_MEM_READ_ONLY,4);
+    cl::Buffer routing_table_ck_r_1(context,CL_MEM_READ_ONLY,4);
     if(sender)
     {
         char ranks=2;
@@ -115,10 +117,21 @@ int main(int argc, char *argv[])
     }
     else
     {
+        char rt_0[2][2]={{100,100},{0,1}};
+        char rt_1[2][2]={{100,100},{1,0}};
+        char ranks=2;
+        queues[0].enqueueWriteBuffer(routing_table_ck_r_0, CL_TRUE,0,4,rt_0);
+        queues[0].enqueueWriteBuffer(routing_table_ck_r_1, CL_TRUE,0,4,rt_1);
+
         kernels[0].setArg(0,sizeof(cl_mem),&check1);
         kernels[0].setArg(1,sizeof(int),&n);
         kernels[1].setArg(0,sizeof(cl_mem),&check2);
         kernels[1].setArg(1,sizeof(int),&n);
+
+        kernels[2].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
+        kernels[2].setArg(1,sizeof(char),&ranks);
+        kernels[3].setArg(0,sizeof(cl_mem),&routing_table_ck_r_1);
+        kernels[3].setArg(1,sizeof(char),&ranks);
     }
 
 

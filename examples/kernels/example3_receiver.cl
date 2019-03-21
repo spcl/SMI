@@ -35,9 +35,9 @@ channel SMI_NetworkMessage io_in_1 __attribute__((depth(16)))
 #else
 
 channel SMI_NetworkMessage io_in_0 __attribute__((depth(16)))
-                    __attribute__((io("kernel_input_ch0")));
-channel SMI_NetworkMessage io_in_1 __attribute__((depth(16)))
                     __attribute__((io("kernel_input_ch1")));
+channel SMI_NetworkMessage io_in_1 __attribute__((depth(16)))
+                    __attribute__((io("kernel_input_ch2")));
 
 #endif
 //internal routing tables
@@ -52,12 +52,23 @@ channel SMI_NetworkMessage channel_from_ck_r[2] __attribute__((depth(16)));
 
 
 
-__kernel void CK_receiver_0()
+__kernel void CK_receiver_0(__global volatile char *rt,const char numRanks)
 {
     //The CK_R will receive from i/o, others CK_R (and possibly a CK_S)
     //In this case, there will be no packet to RANK 0
     //And for Rank 1 (this rank)
-    char external_routing_table[2][2]={{100,100},{0,1}};
+    //Also, we statically know how many TAG we have in this program
+    //(in general we know the max number is 256, but having all of them will use a lot of BRAMs)
+    const char numTAGs=2;
+    char external_routing_table[32][numTAGs];
+    for(int i=0;i<numRanks;i++)
+    {
+
+        for(int j=0;j<numTAGs;j++)
+            external_routing_table[i][j]=rt[i*numTAGs+j];
+    }
+    //char external_routing_table[2][2]={{100,100},{0,1}};
+
     const char myRank=1;
     char sender_id=0;
     bool valid=false;
@@ -103,12 +114,23 @@ __kernel void CK_receiver_0()
 }
 
 
-__kernel void CK_receiver_1()
+__kernel void CK_receiver_1(__global volatile char *rt, const char numRanks)
 {
     //The CK_R will receive from i/o, others CK_R (and possibly a CK_S)
     //In this case, there will be no packet to RANK 0
     //And for Rank 1 (this rank)
-    char external_routing_table[2][2]={{100,100},{1,0}};
+
+    const char numTAGs=2;
+     char  external_routing_table[32][numTAGs];
+    for(int i=0;i<numRanks;i++)
+    {
+        //Attention: if the routing_table < 1024 byte it will be stored as register
+        //and it is better to unroll this loop (usually the compiler is smart enough)
+        //#pragma unroll  1
+        for(int j=0;j<numTAGs;j++)
+            external_routing_table[i][j]=rt[i*numTAGs+j];
+    }
+    //char external_routing_table[2][2]={{100,100},{1,0}};
     const char myRank=1;
     char sender_id=0;
     bool valid=false;
