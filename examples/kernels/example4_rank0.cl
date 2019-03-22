@@ -57,9 +57,9 @@ channel SMI_NetworkMessage io_out_0 __attribute__((depth(16)))
 channel SMI_NetworkMessage io_out_3 __attribute__((depth(16)))
                     __attribute__((io("kernel_output_ch3")));
 channel SMI_NetworkMessage io_in_0 __attribute__((depth(16)))
-                    __attribute__((io("kernel_output_ch0")));
+                    __attribute__((io("kernel_input_ch0")));
 channel SMI_NetworkMessage io_in_3 __attribute__((depth(16)))
-                    __attribute__((io("kernel_output_ch3")));
+                    __attribute__((io("kernel_input_ch3")));
 #endif
 
 //internal routing tables: this will be used by push and pop
@@ -361,7 +361,7 @@ __kernel void CK_receiver_1(__global volatile char *rt,const char myRank, const 
 __kernel void app_0(const int N)
 {
     //Rank 1, TAG 0
-    SMI_Channel chan=SMI_OpenChannel(0,1,0,N,SMI_INT,SMI_SEND);
+    SMI_Channel chan=SMI_OpenSendChannel(N,SMI_INT,1,0);
     for(int i=0;i<N;i++)
     {
         int data=i;
@@ -375,7 +375,7 @@ __kernel void app_2(__global volatile char *mem, const int N)
     char check=1;
     int expected_0=0;
     //Please notice: the TAG could have been 0 as well (in app_0 we use tag 0 for sending)
-    SMI_Channel chan=SMI_OpenChannel(1,0,1,N,SMI_INT,SMI_RECEIVE);
+    SMI_Channel chan=SMI_OpenReceiveChannel(N,SMI_INT,1,1);
     for(int i=0; i< N;i++)
     {
         int rcvd;
