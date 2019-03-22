@@ -1,0 +1,146 @@
+#define I_PX ${i_px}
+#define I_PY ${i_py}
+
+__kernel void Read${suffix}(__global volatile const float memory[]) {
+  // Extra artificial timestep to send first boundaries
+  for (int t = 0; t < T + 1; ++t) {
+    // Swap the timestep modulo to accommodate first artificial timestep
+    const int offset = (t == 0 || t % 2 == 1) ? 0 : X_LOCAL * Y_LOCAL;
+    for (int i = 0; i < X_LOCAL + 2 * HALO_X; ++i) {
+      for (int j = 0; j < Y_LOCAL + 2 * HALO_Y; ++j) {
+        DTYPE read;
+        const bool on_top = i < HALO_X;
+        const bool on_bottom = i >= X_LOCAL + HALO_X;
+        const bool on_left = j < HALO_Y;
+        const bool on_right = j >= Y_LOCAL + HALO_Y;
+        const bool on_corner = (on_top && on_left) ||
+                               (on_top && on_right) ||
+                               (on_bottom && on_left) ||
+                               (on_bottom && on_right);
+        if (on_top) {
+          if (t > 0 && !on_corner) {
+#if I_PX > 0
+            // Read from channel above
+            read = read_channel_intel(vert_down[(I_PX - 1)*PY + I_PY]);
+#else
+            read = BOUNDARY_VALUE;
+#endif
+          }
+        } else if (on_bottom) {
+          if (t > 0 && !on_corner) {
+#if I_PX < PX - 1
+            // Read from channel below
+            read = read_channel_intel(vert_up[I_PX*PY + I_PY]);
+#else
+            read = BOUNDARY_VALUE;
+#endif
+          }
+        } else if (on_left) {
+          if (t > 0 && !on_corner) {
+#if I_PY > 0 
+            // Read from left channel
+            read = read_channel_intel(hori_right[I_PX*(PY - 1) + I_PY - 1]);
+#else
+            read = BOUNDARY_VALUE;
+#endif
+          }
+        } else if (on_right) {
+          if (t > 0 && !on_corner) {
+#if I_PY < PY - 1 
+            // Read from right channel
+            read = read_channel_intel(hori_left[I_PX*(PY - 1) + I_PY]);
+#else
+            read = BOUNDARY_VALUE;
+#endif
+          }
+        } else {
+          // Read from memory
+          read = memory[offset + (i - HALO_X)*Y_LOCAL + j - HALO_Y];
+        }
+        write_channel_intel(read_stream[I_PX*PY + I_PY], read);
+      }
+    }
+  }
+}
+
+__kernel void Stencil${suffix}() {
+  for (int t = 0; t < T + 1; ++t) {
+    DTYPE buffer[(2 * HALO_X) * (Y_LOCAL + 2 * HALO_Y) + 1];
+    for (int i = 0; i < X_LOCAL + 2 * HALO_X; ++i) {
+      for (int j = 0; j < Y_LOCAL + 2 * HALO_Y; ++j) {
+        // Shift buffer
+        #pragma unroll
+        for (int b = 0; b < 2 * (Y_LOCAL + 2 * HALO_Y); ++b) {
+          buffer[b] = buffer[b + 1];
+        }
+        // Read into front
+        DTYPE read = read_channel_intel(read_stream[I_PX * PY + I_PY]);
+        buffer[2 * (Y_LOCAL + 2 * HALO_Y)] = read;
+        // If in bounds, compute and output
+        if (i >= 2 * HALO_X && j >= HALO_Y && j < Y_LOCAL + HALO_Y) {
+          DTYPE res;
+          if (t > 0) {
+            res = 0.25 * (buffer[2 * (Y_LOCAL + 2 * HALO_Y)] +
+                          buffer[Y_LOCAL + 2 * HALO_Y - 1] +
+                          buffer[Y_LOCAL + 2 * HALO_Y + 1] + buffer[0]);
+          } else {
+            // Just forward value on the first artifical timestep
+            res = buffer[Y_LOCAL + 2 * HALO_Y]; 
+          }
+          write_channel_intel(write_stream[I_PX*PY + I_PY], res);
+        }
+      }
+    }
+  }
+}
+
+__kernel void Write${suffix}(__global volatile float memory[]) {
+  // Extra timestep to write first halos before starting computation
+  for (int t = 0; t < T + 1; ++t) {
+    // Extra artifical timestep shifts the offset
+    int offset = (t % 2 == 0) ? 0 : X_LOCAL * Y_LOCAL;
+    for (int i = 0; i < X_LOCAL; ++i) {
+      for (int j = 0; j < Y_LOCAL; ++j) {
+        DTYPE read = read_channel_intel(write_stream[I_PX*PY + I_PY]);
+#if I_PX > 0
+        if (i < HALO_X) {
+          if (t < T) {
+            // Write to channel above
+            write_channel_intel(vert_up[(I_PX - 1)*PY + I_PY], read);
+          }
+        }
+#endif
+#if I_PX < PX - 1 
+        if (i >= X_LOCAL - HALO_X) {
+          if (t < T) {
+            // Write channel below
+            write_channel_intel(vert_down[I_PX*PY + I_PY], read);
+          }
+        }
+#endif
+#if I_PY > 0 
+        if (j < HALO_Y) {
+          if (t < T) {
+            // Write to left channel
+            write_channel_intel(hori_left[I_PX*(PY - 1) + I_PY - 1], read);
+          }
+        }
+#endif
+#if I_PY < PY - 1 
+        if (j >= Y_LOCAL - HALO_Y) {
+          if (t < T) {
+            // Write to right channel
+            write_channel_intel(hori_right[I_PX*(PY - 1) + I_PY], read);
+          }
+        }
+#endif
+        if (t > 0) {
+          memory[offset + i*Y_LOCAL + j] = read;
+        }
+      }
+    }
+  }
+}
+
+#undef I_PX
+#undef I_PY

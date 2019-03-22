@@ -1,0 +1,20 @@
+#pragma once
+
+#pragma OPENCL EXTENSION cl_intel_channels : enable
+
+// Constants (for now)
+#define HALO_X 1
+#define HALO_Y 1
+#define BOUNDARY_VALUE 1
+
+// CMake config
+#define X ${SMI_STENCIL_SIZE_X} 
+#define Y ${SMI_STENCIL_SIZE_Y} 
+#define T ${SMI_TIMESTEPS}
+#define DTYPE ${SMI_DATATYPE} 
+#define PX ${SMI_STENCIL_NUM_PROCS_X}
+#define PY ${SMI_STENCIL_NUM_PROCS_Y}
+
+// Derived numbers
+#define X_LOCAL (X / PX)
+#define Y_LOCAL (Y / PY)

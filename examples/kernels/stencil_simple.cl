@@ -1,14 +1,14 @@
 #include "stencil.h"
 
-channel float read_stream __attribute__((depth(W)));
-channel float write_stream __attribute__((depth(W)));
+channel float read_stream __attribute__((depth(Y)));
+channel float write_stream __attribute__((depth(Y)));
 
 __kernel void Read(__global volatile const float memory[]) {
   for (int t = 0; t < T; ++t) {
-    int offset = (t % 2 == 0) ? 0 : H * W;
-    for (int i = 0; i < H; ++i) {
-      for (int j = 0; j < W; ++j) {
-        DTYPE read = memory[offset + i*W + j];
+    int offset = (t % 2 == 0) ? 0 : X * Y;
+    for (int i = 0; i < X; ++i) {
+      for (int j = 0; j < Y; ++j) {
+        DTYPE read = memory[offset + i * Y + j];
         write_channel_intel(read_stream, read);
       }
     }
@@ -17,19 +17,19 @@ __kernel void Read(__global volatile const float memory[]) {
 
 __kernel void Stencil() {
   for (int t = 0; t < T; ++t) {
-    DTYPE buffer[2*W + 1];
-    for (int i = 0; i < H; ++i) {
-      for (int j = 0; j < W; ++j) {
+    DTYPE buffer[2 * Y + 1];
+    for (int i = 0; i < X; ++i) {
+      for (int j = 0; j < Y; ++j) {
         // Shift buffer
         #pragma unroll
-        for (int b = 0; b < 2*W; ++b) {
+        for (int b = 0; b < 2 * Y; ++b) {
           buffer[b] = buffer[b + 1];
         }
         // Read into front
-        buffer[2*W] = read_channel_intel(read_stream);
-        if (i >= 2 && j >= 1 && j < W - 1) {
-          DTYPE res = 0.25 * (buffer[2*W] + buffer[W - 1] +
-                              buffer[W + 1] + buffer[0]);
+        buffer[2 * Y] = read_channel_intel(read_stream);
+        if (i >= 2 && j >= 1 && j < Y - 1) {
+          DTYPE res = 0.25 * (buffer[2 * Y] + buffer[Y - 1] + buffer[Y + 1] +
+                              buffer[0]);
           write_channel_intel(write_stream, res);
         }
       }
@@ -39,11 +39,11 @@ __kernel void Stencil() {
 
 __kernel void Write(__global volatile float memory[]) {
   for (int t = 0; t < T; ++t) {
-    int offset = (t % 2 == 0) ? H * W : 0;
-    for (int i = 1; i < H - 1; ++i) {
-      for (int j = 1; j < W - 1; ++j) {
+    int offset = (t % 2 == 0) ? X * Y : 0;
+    for (int i = 1; i < X - 1; ++i) {
+      for (int j = 1; j < Y - 1; ++j) {
         DTYPE read = read_channel_intel(write_stream);
-        memory[offset + i*W + j] = read;
+        memory[offset + i * Y + j] = read;
       }
     }
   }
