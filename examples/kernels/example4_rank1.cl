@@ -131,7 +131,6 @@ __kernel void CK_sender_0(__global volatile char *restrict rt, const char numRan
             // - 1, send to the connected CK_R (local send)
             // - 2,... send to other CK_S
             char idx=external_routing_table[GET_HEADER_DST(mess.header)];
-            printf("CK_S_0: pacchetto diretto a %d\n",idx);
             switch(idx)
             {
                 case 0:
@@ -193,7 +192,6 @@ __kernel void CK_sender_1(__global volatile char *restrict rt, const char numRan
             // - 1, send to the connected CK_R (local send)
             // - 2,... send to other CK_S
             char idx=external_routing_table[GET_HEADER_DST(mess.header)];
-            printf("CK_S_0: pacchetto diretto a %d\n",idx);
 
             switch(idx)
             {
@@ -362,12 +360,11 @@ __kernel void app_1(const int N)
 {
 
     SMI_Channel chan_rcv=SMI_OpenChannel(0,1,0,N,SMI_INT,SMI_RECEIVE);
-    SMI_Channel chan=SMI_OpenChannel(1,0,0,N,SMI_INT,SMI_SEND);
+    SMI_Channel chan=SMI_OpenChannel(1,0,1,N,SMI_INT,SMI_SEND);
     for(int i=0;i<N;i++)
     {
         int rcvd;
         SMI_Pop(&chan_rcv,&rcvd);
-        printf("Ricevuto e forwardo %d\n", rcvd);
         SMI_Push(&chan,&rcvd);
     }
 }

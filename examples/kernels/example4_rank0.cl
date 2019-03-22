@@ -326,6 +326,7 @@ __kernel void CK_receiver_1(__global volatile char *rt,const char myRank, const 
                 dest=0;
             else
                 dest=external_routing_table[GET_HEADER_TAG(mess.header)];
+            //printf("Hello, I've received data that goes to %d! The tag was: %d\n",dest,GET_HEADER_TAG(mess.header));
             //notice: in this case we don't use the internal_receiver_routing_table
             //this is somehow included in the routing table and the code below
             //in this case we know that if the routing table there is written 2 then we forward to the application
@@ -379,6 +380,7 @@ __kernel void app_2(__global volatile char *mem, const int N)
     {
         int rcvd;
         SMI_Pop(&chan,&rcvd);
+       // printf("App received data!!\n");
         check &= (rcvd==expected_0);
         expected_0+=1;
     }
