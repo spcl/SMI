@@ -1,3 +1,4 @@
+#include <cmath>
 #include <iostream>
 #include "hlslib/intel/OpenCL.h"
 #include "stencil.h"
