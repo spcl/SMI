@@ -40,7 +40,7 @@ channel SMI_NetworkMessage io_out __attribute__((depth(16)))
 __constant char internal_sender_rt[2]={0,1};
 
 //In this case there is no external routing table
-channel SMI_NetworkMessage channel_to_ck_s[2] __attribute__((depth(16)));
+channel SMI_NetworkMessage channels_to_ck_s[2] __attribute__((depth(16)));
 
 
 

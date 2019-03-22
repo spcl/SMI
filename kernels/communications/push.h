@@ -22,7 +22,7 @@
 
 //TODO: understand where we should put this. Probably a code-generated header with the topology
 extern __constant char internal_sender_rt[2];
-extern channel SMI_NetworkMessage channel_to_ck_s[2];
+extern channel SMI_NetworkMessage channels_to_ck_s[2];
 
 /**
  * @brief SMI_Push push a data elements in the data channel. Data transferring can be delayed
@@ -43,7 +43,7 @@ void SMI_PushI(SMI_Channel *chan, void* data, bool immediate)
     {
         SET_HEADER_NUM_ELEMS(chan->net.header,chan->packet_element_id);
         chan->packet_element_id=0;
-        write_channel_intel(channel_to_ck_s[chan_idx],chan->net);
+        write_channel_intel(channels_to_ck_s[chan_idx],chan->net);
     }
 }
 

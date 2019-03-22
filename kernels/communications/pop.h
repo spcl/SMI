@@ -19,7 +19,7 @@
 
 //TODO: understand where we should put this. Probably a code-generated header with the topology
 extern __constant char internal_receiver_rt[2];
-extern channel SMI_NetworkMessage channel_from_ck_r[2]; //provisional
+extern channel SMI_NetworkMessage channels_from_ck_r[1]; //provisional
 
 /**
  * @brief SMI_Pop: this stalls until data arrives
@@ -32,7 +32,7 @@ void SMI_Pop(SMI_Channel *chan, void *data)
     if(chan->packet_element_id==0)
     {
         const char chan_idx=internal_receiver_rt[chan->tag];
-        chan->net=read_channel_intel(channel_from_ck_r[chan_idx]);
+        chan->net=read_channel_intel(channels_from_ck_r[chan_idx]);
     }
     char * ptr=chan->net.data+(chan->packet_element_id)*chan->size_of_type;
     chan->packet_element_id++;                       //first increment and then use it: otherwise compiler detects Fmax problems

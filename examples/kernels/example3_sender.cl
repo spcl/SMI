@@ -43,7 +43,7 @@ __constant char internal_sender_rt[2]={0,1};
 
 
 //channel to CK_S
-channel SMI_NetworkMessage channel_to_ck_s[2] __attribute__((depth(16)));
+channel SMI_NetworkMessage channels_to_ck_s[2] __attribute__((depth(16)));
 
 
 //inteconnection between CK_S (one of this two is actually never used)
