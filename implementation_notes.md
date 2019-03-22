@@ -194,6 +194,13 @@ If $`N_Q`$ is the number of useful QSFPs we will have:
 - for each CK_S the output channels (to others CK_S) are the one that goes from `$ID N_Q$` to `$ID N_Q+N_Q-1$`
 
 
+### Internal routing
+That is how we connect application endpoints to CKs.
+For the moment being this connection is clearly known at compile time and we use an array of channels indexed using an internal routing table (which is accessed using the tag).
+Being the TAG known at compile time, this allows the compiler to create the right connection.
+We are using the array of channels and internal routing table, simply because in this way the `push`/`pop` implementation can be generic.
+Otherwise each one use its own channel and we have to generate the code in such a way that on each `push`/`pop` occurence it is replace the write to the proper channel.
+
 ##Code Generation
 
 Where we need code generation?
