@@ -1,0 +1,1 @@
+$ ml mpi/OpenMPI intelFPGA_pro/18.1.1_max nalla_pcie/18.1.1_max lang/Python/3.6.6-foss-2018b devel/CMake/3.12.1-GCCcore-7.3.0

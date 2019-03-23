@@ -5,28 +5,74 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <unistd.h>
+#include <mpi.h>
+
 #include "../../include/utils/ocl_utils.hpp"
 #include "../../include/utils/utils.hpp"
+
+void checkMpiCall(int code, const char* location, int line)
+{
+    if (code != MPI_SUCCESS)
+    {
+        char error[256];
+        int length;
+        MPI_Error_string(code, error, &length);
+        std::cerr << "MPI error at " << location << ":" << line << ": " << error << std::endl;
+    }
+}
+
+#define CHECK_MPI(err) checkMpiCall((err), __FILE__, __LINE__);
+
+template <typename DataSize>
+void load_routing_table(int rank, int channel, int ranks, const std::string& routing_directory,
+        const std::string& prefix, DataSize* table)
+{
+    std::stringstream path;
+    path << routing_directory << "/" << prefix << "-rank" << rank << "-channel" << channel;
+
+    std::ifstream file(path.str(), std::ios::binary);
+    if (!file)
+    {
+        std::cerr << "Routing table " << path.str() << " not found" << std::endl;
+        std::exit(1);
+    }
+
+    auto byte_size = ranks * sizeof(DataSize);
+    file.read(table, byte_size);
+}
+
+std::string replace(std::string source, const std::string& pattern, const std::string& replacement)
+{
+    auto pos = source.find(pattern);
+    if (pos != std::string::npos)
+    {
+        return source.substr(0, pos) + replacement + source.substr(pos + pattern.length());
+    }
+    return source;
+}
+
 
 //#define CHECK
 using namespace std;
 int main(int argc, char *argv[])
 {
+    CHECK_MPI(MPI_Init(&argc, &argv));
 
     //command line argument parsing
-    if(argc<9)
+    if(argc < 7)
     {
         cerr << "Send/Receiver tester " <<endl;
-        cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <length> -r <rank 0/1> -f <fpga> "<<endl;
+        cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <length> -r <routing-directory>"<<endl;
         exit(-1);
     }
     int n;
     int c;
     std::string program_path;
-    char rank;
-    int fpga;
-    while ((c = getopt (argc, argv, "n:b:r:f:")) != -1)
+    std::string routing_directory;
+    while ((c = getopt (argc, argv, "n:b:r:")) != -1)
+    {
         switch (c)
         {
             case 'n':
@@ -35,27 +81,28 @@ int main(int argc, char *argv[])
             case 'b':
                 program_path=std::string(optarg);
                 break;
-            case 'f':
-                fpga=atoi(optarg);
-                break;
             case 'r':
-                {
-                    rank=atoi(optarg);
-                    if(rank!=0 && rank!=1)
-                    {
-                        cerr << "Error: rank may be 1 or 0"<<endl;
-                        exit(-1);
-                    }
-
-                    break;
-                }
-
+                routing_directory=std::string(optarg);
+                break;
             default:
                 cerr << "Usage: "<< argv[0]<<"-b <binary file> -n <length>"<<endl;
                 exit(-1);
         }
+    }
 
-    cout << "Performing send/receive test with "<<n<<" integers"<<endl;
+    int rank_count;
+    CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &rank_count));
+
+    int rank;
+    CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
+
+    int fpga = rank % 2; // TODO: change?
+
+    cout << "Performing send/receive test with " << n << " integers"<<endl;
+    std::cout << "Rank: " << rank << " out of " << rank_count << " ranks" << std::endl;
+
+    program_path = replace(program_path, "<rank>", std::to_string(rank));
+    std::cerr << "Program: " << program_path << std::endl;
 
     cl::Platform  platform;
     cl::Device device;
@@ -105,11 +152,19 @@ int main(int argc, char *argv[])
         //senders routing tables
         char rt_s_0[2]={1,0}; //from CK_S_0 we go to the QSFP
         char rt_s_1[2]={1,2}; //from CK_S_1 we go to CK_S_0 to go to rank 1 (not used)
+
+        load_routing_table<char>(rank, 0, rank_count, routing_directory, "ckr", rt_s_0);
+        load_routing_table<char>(rank, 1, rank_count, routing_directory, "ckr", rt_s_1);
+
         queues[0].enqueueWriteBuffer(routing_table_ck_s_0, CL_TRUE,0,2,rt_s_0);
         queues[0].enqueueWriteBuffer(routing_table_ck_s_1, CL_TRUE,0,2,rt_s_1);
         //receivers routing tables
         char rt_r_0[2]={100,100}; //the first doesn't do anything
         char rt_r_1[2]={0,2};   //the second is attached to the ck_r (channel has TAG 1)
+
+        load_routing_table<char>(rank, 0, rank_count, routing_directory, "cks", rt_r_0);
+        load_routing_table<char>(rank, 1, rank_count, routing_directory, "cks", rt_r_1);
+
         queues[0].enqueueWriteBuffer(routing_table_ck_r_0, CL_TRUE,0,2,rt_r_0);
         queues[0].enqueueWriteBuffer(routing_table_ck_r_1, CL_TRUE,0,2,rt_r_1);
         //args for the apps
@@ -133,15 +188,22 @@ int main(int argc, char *argv[])
     }
     else
     {
-
         char ranks=2;
         char rt_s_0[2]={2,1}; //from CK_S_0 we go to the other CK_S if we have to ho to rank 0
         char rt_s_1[2]={0,1}; //from CK_S_1 we go to this QSFP if we have to go to rank 0
+
+        load_routing_table<char>(rank, 0, rank_count, routing_directory, "ckr", rt_s_0);
+        load_routing_table<char>(rank, 1, rank_count, routing_directory, "ckr", rt_s_1);
+
         queues[0].enqueueWriteBuffer(routing_table_ck_s_0, CL_TRUE,0,2,rt_s_0);
         queues[0].enqueueWriteBuffer(routing_table_ck_s_1, CL_TRUE,0,2,rt_s_1);
         //receivers routing tables
         char rt_r_0[2]={2,100}; //the first  is connect to application endpoint (TAG=0)
         char rt_r_1[2]={100,100};   //the second doesn't do anything
+
+        load_routing_table<char>(rank, 0, rank_count, routing_directory, "cks", rt_r_0);
+        load_routing_table<char>(rank, 1, rank_count, routing_directory, "cks", rt_r_1);
+
         queues[0].enqueueWriteBuffer(routing_table_ck_r_0, CL_TRUE,0,2,rt_r_0);
         queues[0].enqueueWriteBuffer(routing_table_ck_r_1, CL_TRUE,0,2,rt_r_1);
 
@@ -165,6 +227,8 @@ int main(int argc, char *argv[])
 
     }
 
+    // wait for other nodes
+    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
 
     timestamp_t start=current_time_usecs();
     for(int i=0;i<kernel_names.size();i++)
@@ -189,4 +253,5 @@ int main(int argc, char *argv[])
         cout << "Time elapsed (usecs): "<<end-start<<endl;
     }
 
+    CHECK_MPI(MPI_Finalize());
 }

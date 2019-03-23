@@ -1,9 +1,8 @@
-from typing import Dict
+from typing import List
 
 import bitstring
 
-from common import CHANNELS_PER_FPGA, Channel
-
+from common import CHANNELS_PER_FPGA, Channel, FPGA
 
 CKS_TARGET_QSFP = 0
 CKS_TARGET_CKR = 1
@@ -13,23 +12,19 @@ class NoRouteFound(BaseException):
     pass
 
 
-def closest_path_to_rank(paths, channel: Channel, target_rank: str):
+def closest_path_to_fpga(paths, channel: Channel, target: FPGA):
     routes = paths[channel]
     connections = []
     for destination in routes:
-        if destination.fpga_key() == target_rank:
+        if destination.fpga == target:
             connections.append(routes[destination])
 
     if not connections:
-        raise NoRouteFound("No route found from {} to {}".format(channel, target_rank))
+        raise NoRouteFound("No route found from {} to {}".format(channel, target))
     return min(connections, key=lambda c: len(c))
 
 
-def is_local(channel_a: Channel, channel_b: Channel):
-    return channel_a.fpga_key() == channel_b.fpga_key()
-
-
-def get_output_target(paths, channel, target_fpga: str):
+def get_output_target(paths, channel: Channel, target: FPGA):
     """
     0 -> local QSFP
     1 -> CK_R
@@ -37,25 +32,32 @@ def get_output_target(paths, channel, target_fpga: str):
     3 -> second neighbour
     4 -> ...
     """
-    if target_fpga == channel.fpga_key():
+    if target == channel.fpga:
         return CKS_TARGET_CKR
 
-    path = closest_path_to_rank(paths, channel, target_fpga)[1:]  # skip the channel itself
-    if is_local(path[0], channel):
+    path = closest_path_to_fpga(paths, channel, target)[1:]  # skip the channel itself
+    if path[0].fpga == channel.fpga:
         return 1 + (((path[0].index + CHANNELS_PER_FPGA) - channel.index) % CHANNELS_PER_FPGA)
     else:
         return CKS_TARGET_QSFP
 
 
-def ckr_routing_table(paths, ranks: Dict[int, str], channel: Channel):
+def ckr_routing_table(paths, fpgas: List[FPGA], channel: Channel) -> List[int]:
     table = []
-    for r in ranks:
-        target = get_output_target(paths, channel, ranks[r])
+    for fpga in fpgas:
+        target = get_output_target(paths, channel, fpga)
         table.append(target)
     return table
 
 
-def serialize_to_array(table, bytes=1):
+def cks_routing_table(paths, fpgas: List[FPGA], channel: Channel) -> List[int]:
+    table = []
+    for index, _ in enumerate(fpgas):
+        table.append(index)
+    return table
+
+
+def serialize_to_array(table: List[int], bytes=1):
     stream = bitstring.BitStream()
     bitcount = bytes * 8
     for target in table:

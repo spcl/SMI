@@ -1,27 +1,47 @@
+from typing import List
+
+from networkx import Graph
+
 COST_INTER_FPGA = 100
 COST_INTRA_FPGA = 1
 CHANNELS_PER_FPGA = 4
 
 
 class Channel:
-    def __init__(self, node: str, fpga: str, index: int):
-        self.node = node
+    def __init__(self, fpga: "FPGA", index: int):
         self.fpga = fpga
         self.index = index
-
-    def fpga_key(self) -> str:
-        return "{}:{}".format(self.node, self.fpga)
 
     def next_index(self):
         return (self.index + 1) % CHANNELS_PER_FPGA
 
     def __repr__(self):
-        return "{}:{}:{}".format(self.node, self.fpga, self.index)
+        return "Channel({}:{})".format(self.fpga, self.index)
 
 
-def write_nodefile(ranks, stream):
-    items = sorted(ranks.items(), key=lambda i: i[0])
+class FPGA:
+    def __init__(self, node, name):
+        self.node = node
+        self.name = name
+        self.channels = [None] * CHANNELS_PER_FPGA
+        self.rank = None
 
-    for _, node in items:
-        stream.write(node)
-        stream.write("\n")
+    def key(self):
+        return "{}:{}".format(self.node, self.name)
+
+    def __repr__(self):
+        return "FPGA({})".format(self.key())
+
+
+class RoutingContext:
+    def __init__(self, graph: Graph, routes, fpgas: List[FPGA]):
+        self.graph = graph
+        self.routes = routes
+        self.fpgas = fpgas
+
+
+def write_nodefile(fpgas: List[FPGA], stream):
+    fpgas = sorted(fpgas, key=lambda f: f.rank)
+
+    for fpga in fpgas:
+        stream.write("{}  # {}\n".format(fpga.node, fpga.name))

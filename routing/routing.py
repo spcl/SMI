@@ -1,9 +1,9 @@
 import re
-from typing import Dict
+from typing import List
 
 import networkx
 
-from common import COST_INTRA_FPGA, COST_INTER_FPGA, Channel
+from common import COST_INTRA_FPGA, COST_INTER_FPGA, Channel, FPGA, RoutingContext
 
 """
 Each CK_R/CK_S separate QSFP
@@ -14,44 +14,45 @@ fpga-0014:acl0:ch0 - fpga-0014:acl1:ch0
 """
 
 
-class RoutingContext:
-    def __init__(self, graph, routes, ranks):
-        self.graph = graph
-        self.routes = routes
-        self.ranks = ranks
-
-
 def create_routing_context(stream):
     graph = networkx.Graph()
-    load_inter_fpga_connections(graph, stream)
+    fpgas = load_inter_fpga_connections(graph, stream)
     add_intra_fpga_connections(graph)
     routes = shortest_paths(graph)
-    return RoutingContext(graph, routes, create_ranks_for_fpgas(graph))
+    fpgas = create_ranks_for_fpgas(fpgas)
+    return RoutingContext(graph, routes, fpgas)
 
 
-def load_inter_fpga_connections(graph, stream):
-    channels = {}
+def load_inter_fpga_connections(graph, stream) -> List[FPGA]:
+    fpgas = {}
     channel_regex = re.compile(r".*(\d+)$")
 
     def parse_channel(data):
-        node, fpga, channel = data.split(":")
+        node, fpga_name, channel = data.split(":")
+        fpga_key = "{}:{}".format(node, fpga_name)
+        if fpga_key not in fpgas:
+            fpgas[fpga_key] = FPGA(node, fpga_name)
+        fpga = fpgas[fpga_key]
+
         match = channel_regex.match(channel)
         index = int(match.group(1))
-        if data not in channels:
-            channels[data] = Channel(node, fpga, index)
-        return channels[data]
+        if fpga.channels[index] is None:
+            fpga.channels[index] = Channel(fpga, index)
+        return fpga.channels[index]
 
     for line in stream:
         line = line.strip()
         if line:
-            src, dst = [parse_channel(l.strip()) for l in line.split(" - ")]
+            src, dst = [parse_channel(l.strip()) for l in line.split("<->")]
             graph.add_edge(src, dst, weight=COST_INTER_FPGA)
+
+    return list(fpgas.values())
 
 
 def add_intra_fpga_connections(graph):
     for a in graph.nodes:
         for b in graph.nodes:
-            if a is not b and a.fpga_key() == b.fpga_key():
+            if a is not b and a.fpga == b.fpga:
                 graph.add_edge(a, b, weight=COST_INTRA_FPGA)
 
 
@@ -59,9 +60,12 @@ def shortest_paths(graph):
     return networkx.shortest_path(graph, source=None, target=None, weight="weight")
 
 
-def create_ranks_for_fpgas(graph: networkx.Graph) -> Dict[int, str]:
-    nodes = set()
-    for channel in graph.nodes:
-        nodes.add(channel.fpga_key())
-    nodes = sorted(nodes)
-    return dict(enumerate(nodes))
+def create_ranks_for_fpgas(fpgas: List[FPGA]) -> List[FPGA]:
+    """
+    Enumerates all channels and assigns ranks to individual FPGAs, sorted by their (node, fpga)
+    name pair.
+    """
+    fpgas = sorted(fpgas, key=lambda f: f.key())
+    for (rank, fpga) in enumerate(fpgas):
+        fpga.rank = rank
+    return fpgas
