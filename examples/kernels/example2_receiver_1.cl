@@ -1,4 +1,8 @@
 /**
+
+        DISCLAIMER: this must be updated with the new API 
+
+        
     In this example we have 1 sender (FPGA_0) and 2 receivers (FPGA_1)
 
                     -------> FPGA_1

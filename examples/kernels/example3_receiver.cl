@@ -1,4 +1,7 @@
 /**
+    DISCLAIMER: this must be updated with the new API 
+
+    
     In this example we have 1 sender and two receivers.
     Sender is allocated on FPGA0, receivers are allocate on FPGA1
 

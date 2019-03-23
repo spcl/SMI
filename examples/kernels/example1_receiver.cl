@@ -1,4 +1,7 @@
 /**
+
+    DISCLAIMER: this must be updated with the new API 
+
    Example 1:
     The application is composed by two senders and two receivers.
     The two senders and the two receivers are allocated in two different FPGAs.

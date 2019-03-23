@@ -34,8 +34,8 @@
 	The routing tables for CK_Rs, instead, maps TAGs to internal port id (0,...Q-2 other CK_R, others: application endpoints):
 	- rank 0: meaningless
 	- rank 1: 	CK_R_0: meaningless (no attached endpoints), if it receives something with TAG 0 it should send to CK_R_1 but we are not using it
-				CK_R_1: 1,xxx (send to APP_2...tag 1 is already handled by looking at the rank)
-	- rank 2: 	CK_R_0: xxx, 1
+				CK_R_1: 2,xxx (send to APP_2...tag 1 is already handled by looking at the rank and forwarding to the CKS)
+	- rank 2: 	CK_R_0: xxx, 2
 
 
  */
@@ -45,8 +45,8 @@
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 
 #include "../../kernels/communications/channel_helpers.h"
-#include "../../kernels/communications/push.h"
-//#include "../../kernels/communications/pop.h"
+//#include "../../kernels/communications/push.h"
+#include "../../kernels/communications/pop.h"
 
 
 //#define EMULATION
@@ -55,13 +55,13 @@
 
 #if defined(EMULATION)
 channel SMI_NetworkMessage io_out_0 __attribute__((depth(16)))
-                    __attribute__((io("emulatedChannel_15_0_to_16_0_0")));
+                    __attribute__((io("emulatedChannel_16_1_to_15_1_0")));
 channel SMI_NetworkMessage io_out_1 __attribute__((depth(16)))
-                    __attribute__((io("emulatedChannel_15_0_to_15_1_1")));
+                    __attribute__((io("emulatedChannel_16_1_to_16_0_1")));
 channel SMI_NetworkMessage io_in_0 __attribute__((depth(16)))
-                    __attribute__((io("emulatedChannel_16_0_to_15_0_0")));
+                    __attribute__((io("emulatedChannel_15_1_to_16_1_0")));
 channel SMI_NetworkMessage io_in_1 __attribute__((depth(16)))
-                    __attribute__((io("emulatedChannel_15_1_to_15_0_1")));
+                    __attribute__((io("emulatedChannel_16_0_to_16_1_1")));
 
 #else
 
@@ -75,18 +75,19 @@ channel SMI_NetworkMessage io_in_1 __attribute__((depth(16)))
                     __attribute__((io("kernel_output_ch1")));
 #endif
 
+
+
 //internal routing tables: this will be used by push and pop
-//on rank 0, App_0 is connected to CK_S_0, App_1 to CK_S_1
-__constant char internal_sender_rt[2]={0,1};
-//no receivers on this rank
-__constant char internal_receiver_rt[2]={0,0};
+//on rank 1, APPs do not send, so we acoid including the push.h
+//__constant char internal_sender_rt[2]={0,1};
+//in rank 1, APP_2 (tag 0) is connected to CK_R_1
+__constant char internal_receiver_rt[2]={100,0};
 
-//channels to CK_S 
-channel SMI_NetworkMessage channels_to_ck_s[2] __attribute__((depth(16)));
+//channels to CK_S  (not used here)
+//channel SMI_NetworkMessage channels_to_ck_s[2] __attribute__((depth(16)));
 
-//channels from CK_R: we don't use them, so we remove otherwise the compiler complains
-//indeed we dind'nt include the pop.h header
-//channel SMI_NetworkMessage channels_from_ck_r[1] __attribute__((depth(16)));
+//channels from CK_R
+channel SMI_NetworkMessage channels_from_ck_r[1] __attribute__((depth(16)));
 
 
 //inteconnection between CK_S and CK_R (some of these are not used in this example)
@@ -99,7 +100,7 @@ channel SMI_NetworkMessage channels_interconnect_ck_r_to_ck_s[QSFP] __attribute_
 
 
 
-
+//This one does not anything
 __kernel void CK_sender_0(__global volatile char *restrict rt, const char numRanks)
 {
     char external_routing_table[256];
@@ -112,7 +113,7 @@ __kernel void CK_sender_0(__global volatile char *restrict rt, const char numRan
      */
     //Number of senders to this CK_S is given by the number of application connected to this CK_S
     //and the number of CK_Ss pair
-    const char num_sender=1+1+1; //1 CK_S, 1 CK_R, 1 application
+    const char num_sender=1+1; //1 CK_S, 1 CK_R
     char sender_id=0;
     bool valid=false;
     SMI_NetworkMessage mess;
@@ -126,9 +127,6 @@ __kernel void CK_sender_0(__global volatile char *restrict rt, const char numRan
             break;
             case 1: //CK_R
                 mess=read_channel_nb_intel(channels_interconnect_ck_r_to_ck_s[0],&valid);
-            break;
-            case 2: //appl
-                mess=read_channel_nb_intel(channels_to_ck_s[0],&valid);
             break;
 
         }
@@ -163,7 +161,7 @@ __kernel void CK_sender_0(__global volatile char *restrict rt, const char numRan
 }
 
 
-
+//this one does not receives from application
 __kernel void CK_sender_1(__global volatile char *restrict rt, const char numRanks)
 {
     
@@ -177,7 +175,7 @@ __kernel void CK_sender_1(__global volatile char *restrict rt, const char numRan
      */
     //Number of sender is given by the number of application connected to this CK_S
     //and the number of CK_Ss pair
-    const char num_sender=1+1+1; //1 CK_S, 1 CK_R, 1 application
+    const char num_sender=1+1; //1 CK_S, 1 CK_R
     char sender_id=0;
     bool valid=false;
     SMI_NetworkMessage mess;
@@ -190,9 +188,6 @@ __kernel void CK_sender_1(__global volatile char *restrict rt, const char numRan
             break;
             case 1: //CK_R
                 mess=read_channel_nb_intel(channels_interconnect_ck_r_to_ck_s[1],&valid);
-            break;
-            case 2: //appl
-                mess=read_channel_nb_intel(channels_to_ck_s[1],&valid);
             break;
 
         }
@@ -226,7 +221,7 @@ __kernel void CK_sender_1(__global volatile char *restrict rt, const char numRan
 }
 
 
-//This one is attached to the first QSFP: it will not do anything
+//This one is attached to the first QSFP: it will receive the data for APP 3
 __kernel void CK_receiver_0(__global volatile char *rt,const char myRank, const char numRanks)
 {
     //The CK_R will receive from i/o, others CK_R and the paired CK_S (for local sends)
@@ -251,7 +246,6 @@ __kernel void CK_receiver_0(__global volatile char *rt,const char myRank, const 
         {
             case 0: //QSFP
                 mess=read_channel_nb_intel(io_in_0,&valid);
-
             break;
             case 1: //CK_R
                 mess=read_channel_nb_intel(channels_interconnect_ck_r[0],&valid);
@@ -282,8 +276,9 @@ __kernel void CK_receiver_0(__global volatile char *rt,const char myRank, const 
                 case 1:
                     write_channel_intel(channels_interconnect_ck_r[1],mess);
                 break;
-                    //there no other cases for this, since there is no application endpoints connected to it
-            }
+                case 2:
+                    write_channel_intel(channels_from_ck_r[0],mess);
+                    break;               }
             valid=false;
         }
         sender_id++;
@@ -294,10 +289,9 @@ __kernel void CK_receiver_0(__global volatile char *rt,const char myRank, const 
 
 }
 
-
+//This one do nothing
 __kernel void CK_receiver_1(__global volatile char *rt,const char myRank, const char numRanks)
 {
-	//also this one doesn't do anything in this case
     char external_routing_table[256];
     //load the routing table: in this case is useless
     for(int i=0;i<numRanks;i++)
@@ -348,7 +342,7 @@ __kernel void CK_receiver_1(__global volatile char *rt,const char myRank, const 
                 case 1:
                     write_channel_intel(channels_interconnect_ck_r[0],mess);
                 break;
-                //no APPs
+                                
             }
             valid=false;
         }
@@ -364,26 +358,18 @@ __kernel void CK_receiver_1(__global volatile char *rt,const char myRank, const 
 
 
 //****End code-generated part ****
-
-__kernel void app_0(const int N)
+__kernel void app_3(__global volatile char *mem, const int N)
 {
-    //Rank 1, TAG 0
-    SMI_Channel chan=SMI_OpenSendChannel(N,SMI_INT,1,0);
-    for(int i=0;i<N;i++)
+    char check=1;
+    float expected_0=1.1f;
+    SMI_Channel chan=SMI_OpenReceiveChannel(N,SMI_FLOAT,0,1);
+    for(int i=0; i< N;i++)
     {
-        int data=i;
-        SMI_Push(&chan,&data);
+        float rcvd;
+        SMI_Pop(&chan,&rcvd);
+        check &= (rcvd==(expected_0+i));
     }
+
+    *mem=check;
 }
 
-__kernel void app_1(const int N)
-{
-    //Rank 1, TAG 0
-    SMI_Channel chan=SMI_OpenSendChannel(N,SMI_FLOAT,2,1);
-    const float start=1.1f;
-    for(int i=0;i<N;i++)
-    {
-        float data=i+start;
-        SMI_Push(&chan,&data);
-    }
-}

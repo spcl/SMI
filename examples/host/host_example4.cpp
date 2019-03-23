@@ -1,5 +1,5 @@
 /**
- * Host program for example 3.
+ * Host program for example 4.
  */
 #include <stdio.h>
 #include <string>
