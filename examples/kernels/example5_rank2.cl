@@ -70,9 +70,9 @@ channel SMI_NetworkMessage io_out_0 __attribute__((depth(16)))
 channel SMI_NetworkMessage io_out_1 __attribute__((depth(16)))
                     __attribute__((io("kernel_output_ch1")));
 channel SMI_NetworkMessage io_in_0 __attribute__((depth(16)))
-                    __attribute__((io("kernel_output_ch0")));
+                    __attribute__((io("kernel_input_ch0")));
 channel SMI_NetworkMessage io_in_1 __attribute__((depth(16)))
-                    __attribute__((io("kernel_output_ch1")));
+                    __attribute__((io("kernel_input_ch1")));
 #endif
 
 
@@ -246,6 +246,8 @@ __kernel void CK_receiver_0(__global volatile char *rt,const char myRank, const 
         {
             case 0: //QSFP
                 mess=read_channel_nb_intel(io_in_0,&valid);
+                if(valid)
+                    printf("Rank 2, received from I/O\n");
             break;
             case 1: //CK_R
                 mess=read_channel_nb_intel(channels_interconnect_ck_r[0],&valid);

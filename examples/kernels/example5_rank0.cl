@@ -70,9 +70,9 @@ channel SMI_NetworkMessage io_out_0 __attribute__((depth(16)))
 channel SMI_NetworkMessage io_out_1 __attribute__((depth(16)))
                     __attribute__((io("kernel_output_ch1")));
 channel SMI_NetworkMessage io_in_0 __attribute__((depth(16)))
-                    __attribute__((io("kernel_output_ch0")));
+                    __attribute__((io("kernel_input_ch0")));
 channel SMI_NetworkMessage io_in_1 __attribute__((depth(16)))
-                    __attribute__((io("kernel_output_ch1")));
+                    __attribute__((io("kernel_input_ch1")));
 #endif
 
 //internal routing tables: this will be used by push and pop
@@ -150,6 +150,8 @@ __kernel void CK_sender_0(__global volatile char *restrict rt, const char numRan
                     write_channel_intel(channels_interconnect_ck_s_to_ck_r[0],mess);
                     break;
                 case 2:
+                    printf("Rank 0: CKS0 forward to CKS 1\n");
+
                     write_channel_intel(channels_interconnect_ck_s[1],mess);
                     break;
             }
@@ -208,6 +210,7 @@ __kernel void CK_sender_1(__global volatile char *restrict rt, const char numRan
             switch(idx)
             {
                 case 0:
+                    printf("Rank 0 send to I/O\n");
                     write_channel_intel(io_out_1,mess);
                     break;
                 case 1:

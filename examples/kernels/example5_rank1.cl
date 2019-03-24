@@ -70,9 +70,9 @@ channel SMI_NetworkMessage io_out_0 __attribute__((depth(16)))
 channel SMI_NetworkMessage io_out_1 __attribute__((depth(16)))
                     __attribute__((io("kernel_output_ch1")));
 channel SMI_NetworkMessage io_in_0 __attribute__((depth(16)))
-                    __attribute__((io("kernel_output_ch0")));
+                    __attribute__((io("kernel_input_ch0")));
 channel SMI_NetworkMessage io_in_1 __attribute__((depth(16)))
-                    __attribute__((io("kernel_output_ch1")));
+                    __attribute__((io("kernel_input_ch1")));
 #endif
 
 
@@ -143,6 +143,7 @@ __kernel void CK_sender_0(__global volatile char *restrict rt, const char numRan
             {
                 case 0:
                     write_channel_intel(io_out_0,mess);
+                    printf("Rank 1, forwarded to Rank 2\n");
                     break;
                 case 1:
                     write_channel_intel(channels_interconnect_ck_s_to_ck_r[0],mess);
@@ -330,7 +331,7 @@ __kernel void CK_receiver_1(__global volatile char *rt,const char myRank, const 
             char dest;
             if(GET_HEADER_DST(mess.header)!=myRank)
             {
-
+                printf("Rank 1, arrived packet not directed to this rank!\n");
                 dest=0;
             }
             else
@@ -347,6 +348,7 @@ __kernel void CK_receiver_1(__global volatile char *rt,const char myRank, const 
                     write_channel_intel(channels_interconnect_ck_r[0],mess);
                 break;
                 case 2:
+                    printf("Rank1, arrived packet for APp 2\n");
                     write_channel_intel(channels_from_ck_r[0],mess);
                     break;                    
             }
