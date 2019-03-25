@@ -76,7 +76,6 @@ int main(int argc, char **argv) {
   kernels.emplace_back(program.MakeKernel("Read", device_buffer));
   kernels.emplace_back(program.MakeKernel("Stencil"));
   kernels.emplace_back(program.MakeKernel("Write", device_buffer));
-  std::vector<std::future<std::pair<double, double>>> futures;
   std::cout << "Copying data to device...\n" << std::flush;
   // Copy to both sections of device memory, so that the boundary conditions
   // are reflected in both
@@ -85,6 +84,8 @@ int main(int argc, char **argv) {
 
   // Execute kernel
   std::cout << "Launching kernels...\n" << std::flush;
+  std::vector<std::future<std::pair<double, double>>> futures;
+  const auto start = std::chrono::high_resolution_clock::now();
   for (auto &k : kernels) {
     futures.emplace_back(k.ExecuteTaskAsync());
   }
@@ -92,6 +93,11 @@ int main(int argc, char **argv) {
   for (auto &f : futures) {
     f.wait();
   }
+  const auto end = std::chrono::high_resolution_clock::now();
+  const double elapsed =
+      1e-9 *
+      std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+  std::cout << "Finished in " << elapsed << " seconds.\n" << std::flush;
 
   // Copy back result
   std::cout << "Copying back result...\n" << std::flush;
