@@ -10,9 +10,12 @@ constexpr int kH = Y;
 constexpr int kT = T;
 constexpr auto kUsage = "Usage: ./stencil_simple <[emulator/hardware]>\n";
 
+using AlignedVec_t =
+    std::vector<Data_t, hlslib::ocl::AlignedAllocator<Data_t, 64>>;
+
 // Reference implementation for checking correctness
-void Reference(std::vector<Data_t> &domain) {
-  std::vector<Data_t> buffer(domain);
+void Reference(AlignedVec_t &domain) {
+  AlignedVec_t buffer(domain);
   for (int t = 0; t < kT; ++t) {
     for (int i = 1; i < kH - 1; ++i) {
       for (int j = 1; j < kW - 1; ++j) {
@@ -48,7 +51,7 @@ int main(int argc, char **argv) {
 
   std::cout << "Initializing host memory...\n" << std::flush;
   // Set center to 0
-  std::vector<Data_t> host_buffer(kW * kH, 0);
+  AlignedVec_t host_buffer(kW * kH, 0);
   // Set boundaries to 1
   for (int i = 0; i < kW; ++i) {
     host_buffer[i] = 1;
@@ -58,7 +61,7 @@ int main(int argc, char **argv) {
     host_buffer[i * kW] = 1;
     host_buffer[i * kW + kW - 1] = 1;
   }
-  std::vector<Data_t> reference(host_buffer);
+  AlignedVec_t reference(host_buffer);
 
   // Create OpenCL kernels
   std::cout << "Creating OpenCL context...\n" << std::flush;
@@ -93,7 +96,7 @@ int main(int argc, char **argv) {
   // Copy back result
   std::cout << "Copying back result...\n" << std::flush;
   int offset = (kT % 2 == 0) ? 0 : kH * kW;
-  std::vector<Data_t> derp(2 * kH * kW);
+  AlignedVec_t derp(2 * kH * kW);
   device_buffer.CopyToHost(offset, kH * kW, host_buffer.begin());
 
   // Run reference implementation

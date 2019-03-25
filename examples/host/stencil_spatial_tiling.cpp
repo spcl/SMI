@@ -1,5 +1,6 @@
 #include <cmath>
 #include <iostream>
+#include <vector>
 #include "hlslib/intel/OpenCL.h"
 #include "stencil.h"
 
@@ -16,9 +17,12 @@ constexpr int kYLocal = kY / kPY;
 constexpr auto kUsage =
     "Usage: ./stencil_spatial_tiling <[emulator/hardware]>\n";
 
+using AlignedVec_t =
+    std::vector<Data_t, hlslib::ocl::AlignedAllocator<Data_t, 64>>;
+
 // Reference implementation for checking correctness
-void Reference(std::vector<Data_t> &domain) {
-  std::vector<Data_t> buffer(domain);
+void Reference(AlignedVec_t &domain) {
+  AlignedVec_t buffer(domain);
   for (int t = 0; t < T; ++t) {
     for (int i = 0; i < kX; ++i) {
       for (int j = 0; j < kY; ++j) {
@@ -34,10 +38,9 @@ void Reference(std::vector<Data_t> &domain) {
   }
 }
 
-std::vector<std::vector<Data_t>> SplitMemory(
-    std::vector<Data_t> const &memory) {
-  std::vector<std::vector<Data_t>> split(
-      kPX * kPY, std::vector<Data_t>((kXLocal) * (kYLocal)));
+std::vector<AlignedVec_t> SplitMemory(AlignedVec_t const &memory) {
+  std::vector<AlignedVec_t> split(kPX * kPY,
+                                  AlignedVec_t((kXLocal) * (kYLocal)));
   for (int px = 0; px < kPX; ++px) {
     for (int py = 0; py < kPY; ++py) {
       for (int x = 0; x < kXLocal; ++x) {
@@ -51,9 +54,8 @@ std::vector<std::vector<Data_t>> SplitMemory(
   return split;
 }
 
-std::vector<Data_t> CombineMemory(
-    std::vector<std::vector<Data_t>> const &split) {
-  std::vector<Data_t> memory(kX * kY);
+AlignedVec_t CombineMemory(std::vector<AlignedVec_t> const &split) {
+  AlignedVec_t memory(kX * kY);
   for (int px = 0; px < kPX; ++px) {
     for (int py = 0; py < kPY; ++py) {
       for (int x = 0; x < kXLocal; ++x) {
@@ -89,7 +91,7 @@ int main(int argc, char **argv) {
 
   std::cout << "Initializing host memory...\n" << std::flush;
   // Set center to 0
-  std::vector<Data_t> reference(kX * kY, 0);
+  AlignedVec_t reference(kX * kY, 0);
   auto host_buffers = SplitMemory(reference);
 
   // Create OpenCL kernels
