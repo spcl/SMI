@@ -10,9 +10,12 @@ constexpr int kH = Y;
 constexpr auto kUsage =
     "Usage: ./stencil_simple <[emulator/hardware]> <timesteps>\n";
 
+using AlignedVec_t =
+    std::vector<Data_t, hlslib::ocl::AlignedAllocator<Data_t, 64>>;
+
 // Reference implementation for checking correctness
-void Reference(std::vector<Data_t> &domain, const int timesteps) {
-  std::vector<Data_t> buffer(domain);
+void Reference(AlignedVec_t &domain, const int timesteps) {
+  AlignedVec_t buffer(domain);
   for (int t = 0; t < timesteps; ++t) {
     for (int i = 1; i < kH - 1; ++i) {
       for (int j = 1; j < kW - 1; ++j) {
@@ -50,7 +53,7 @@ int main(int argc, char **argv) {
 
   std::cout << "Initializing host memory...\n" << std::flush;
   // Set center to 0
-  std::vector<Data_t> host_buffer(kW * kH, 0);
+  AlignedVec_t host_buffer(kW * kH, 0);
   // Set boundaries to 1
   for (int i = 0; i < kW; ++i) {
     host_buffer[i] = 1;
@@ -60,7 +63,7 @@ int main(int argc, char **argv) {
     host_buffer[i * kW] = 1;
     host_buffer[i * kW + kW - 1] = 1;
   }
-  std::vector<Data_t> reference(host_buffer);
+  AlignedVec_t reference(host_buffer);
 
   // Create OpenCL kernels
   std::cout << "Creating OpenCL context...\n" << std::flush;
@@ -75,7 +78,6 @@ int main(int argc, char **argv) {
   kernels.emplace_back(program.MakeKernel("Read", device_buffer, timesteps));
   kernels.emplace_back(program.MakeKernel("Stencil", timesteps));
   kernels.emplace_back(program.MakeKernel("Write", device_buffer, timesteps));
-  std::vector<std::future<std::pair<double, double>>> futures;
   std::cout << "Copying data to device...\n" << std::flush;
   // Copy to both sections of device memory, so that the boundary conditions
   // are reflected in both
@@ -84,6 +86,8 @@ int main(int argc, char **argv) {
 
   // Execute kernel
   std::cout << "Launching kernels...\n" << std::flush;
+  std::vector<std::future<std::pair<double, double>>> futures;
+  const auto start = std::chrono::high_resolution_clock::now();
   for (auto &k : kernels) {
     futures.emplace_back(k.ExecuteTaskAsync());
   }
@@ -91,11 +95,15 @@ int main(int argc, char **argv) {
   for (auto &f : futures) {
     f.wait();
   }
+  const auto end = std::chrono::high_resolution_clock::now();
+  const double elapsed =
+      1e-9 *
+      std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+  std::cout << "Finished in " << elapsed << " seconds.\n" << std::flush;
 
   // Copy back result
   std::cout << "Copying back result...\n" << std::flush;
   int offset = (timesteps % 2 == 0) ? 0 : kH * kW;
-  std::vector<Data_t> derp(2 * kH * kW);
   device_buffer.CopyToHost(offset, kH * kW, host_buffer.begin());
 
   // Run reference implementation

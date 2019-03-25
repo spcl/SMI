@@ -1,5 +1,6 @@
 #include <cmath>
 #include <iostream>
+#include <vector>
 #include "hlslib/intel/OpenCL.h"
 #include "stencil.h"
 
@@ -15,9 +16,12 @@ constexpr int kYLocal = kY / kPY;
 constexpr auto kUsage =
     "Usage: ./stencil_spatial_tiling <[emulator/hardware]>\n";
 
+using AlignedVec_t =
+    std::vector<Data_t, hlslib::ocl::AlignedAllocator<Data_t, 64>>;
+
 // Reference implementation for checking correctness
-void Reference(std::vector<Data_t> &domain, const int timesteps) {
-  std::vector<Data_t> buffer(domain);
+void Reference(AlignedVec_t &domain, const int timesteps) {
+  AlignedVec_t buffer(domain);
   for (int t = 0; t < timesteps; ++t) {
     for (int i = 0; i < kX; ++i) {
       for (int j = 0; j < kY; ++j) {
@@ -33,10 +37,9 @@ void Reference(std::vector<Data_t> &domain, const int timesteps) {
   }
 }
 
-std::vector<std::vector<Data_t>> SplitMemory(
-    std::vector<Data_t> const &memory) {
-  std::vector<std::vector<Data_t>> split(
-      kPX * kPY, std::vector<Data_t>((kXLocal) * (kYLocal)));
+std::vector<AlignedVec_t> SplitMemory(AlignedVec_t const &memory) {
+  std::vector<AlignedVec_t> split(kPX * kPY,
+                                  AlignedVec_t((kXLocal) * (kYLocal)));
   for (int px = 0; px < kPX; ++px) {
     for (int py = 0; py < kPY; ++py) {
       for (int x = 0; x < kXLocal; ++x) {
@@ -50,9 +53,8 @@ std::vector<std::vector<Data_t>> SplitMemory(
   return split;
 }
 
-std::vector<Data_t> CombineMemory(
-    std::vector<std::vector<Data_t>> const &split) {
-  std::vector<Data_t> memory(kX * kY);
+AlignedVec_t CombineMemory(std::vector<AlignedVec_t> const &split) {
+  AlignedVec_t memory(kX * kY);
   for (int px = 0; px < kPX; ++px) {
     for (int py = 0; py < kPY; ++py) {
       for (int x = 0; x < kXLocal; ++x) {
@@ -90,7 +92,7 @@ int main(int argc, char **argv) {
 
   std::cout << "Initializing host memory...\n" << std::flush;
   // Set center to 0
-  std::vector<Data_t> reference(kX * kY, 0);
+  AlignedVec_t reference(kX * kY, 0);
   auto host_buffers = SplitMemory(reference);
 
   // Create OpenCL kernels
@@ -134,6 +136,7 @@ int main(int argc, char **argv) {
   // Execute kernel
   std::cout << "Launching kernels...\n" << std::flush;
   std::vector<std::future<std::pair<double, double>>> futures;
+  const auto start = std::chrono::high_resolution_clock::now();
   for (auto &k : kernels) {
     futures.emplace_back(k.ExecuteTaskAsync());
   }
@@ -141,6 +144,11 @@ int main(int argc, char **argv) {
   for (auto &f : futures) {
     f.wait();
   }
+  const auto end = std::chrono::high_resolution_clock::now();
+  const double elapsed =
+      1e-9 *
+      std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+  std::cout << "Finished in " << elapsed << " seconds.\n" << std::flush;
 
   // Copy back result
   std::cout << "Copying back result...\n" << std::flush;
