@@ -1,7 +1,8 @@
 # Configuration 
-set(SMI_STENCIL_SIZE_X 256 CACHE STRING "Vertical size of domain.")
-set(SMI_STENCIL_SIZE_Y 256 CACHE STRING "Horizontal size of domain.")
+set(SMI_STENCIL_SIZE_X 512 CACHE STRING "Vertical size of domain.")
+set(SMI_STENCIL_SIZE_Y 512 CACHE STRING "Horizontal size of domain.")
 set(SMI_DATATYPE float CACHE STRING "Data type of computations.")
+set(SMI_VECTORIZATION_WIDTH 16 CACHE STRING "Width for exploiting vector parallelism.")
 set(SMI_STENCIL_NUM_PROCS_X 2 CACHE STRING "Number of processes in X dimension.")
 set(SMI_STENCIL_NUM_PROCS_Y 2 CACHE STRING "Number of processes in Y dimension.")
 
@@ -64,6 +65,7 @@ function(opencl_target KERNEL_NAME USE_CODEGEN)
 endfunction()
 
 opencl_target("stencil_simple" OFF)
+opencl_target("stencil_test" OFF)
 if(PythonInterp_FOUND)
   opencl_target("stencil_spatial_tiling" ON)
 endif()
