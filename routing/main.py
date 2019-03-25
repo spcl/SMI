@@ -3,6 +3,7 @@ from typing import List
 
 import click
 
+from codegen import generate_kernels
 from common import Channel, write_nodefile, CHANNELS_PER_FPGA
 from routing import create_routing_context
 from table import serialize_to_array, cks_routing_table, ckr_routing_table
@@ -24,7 +25,7 @@ def write_table(channel: Channel, prefix: str, table: List[int], output_folder):
 @click.command()
 @click.argument("connection-list")
 @click.argument("output-folder")
-@click.argument("tag-count", default=1)
+@click.argument("tag-count", default=8)
 def build(connection_list, output_folder, tag_count):
     with open(connection_list) as f:
         ctx = create_routing_context(f)
@@ -44,6 +45,11 @@ def build(connection_list, output_folder, tag_count):
         ckr_table = ckr_routing_table(channel, CHANNELS_PER_FPGA, tag_count)
         write_table(channel, "ckr", ckr_table, output_folder)
         print("CKR: {}\n".format(ckr_table))
+
+    for fpga in ctx.fpgas:
+        channels = fpga.channels
+        with open(os.path.join(output_folder, "{}-routing.kernel.cl".format(fpga.key())), "w") as f:
+            f.write(generate_kernels(channels, CHANNELS_PER_FPGA, tag_count))
 
     with open(os.path.join(output_folder, "hostfile"), "w") as f:
         write_nodefile(ctx.fpgas, f)

@@ -36,8 +36,6 @@ def load_inter_fpga_connections(graph, stream) -> List[FPGA]:
 
         match = channel_regex.match(channel)
         index = int(match.group(1))
-        if not fpga.has_channel(index):
-            fpga.add_channel(index)
         return fpga.channels[index]
 
     for line in stream:

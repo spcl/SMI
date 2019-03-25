@@ -24,14 +24,6 @@ def closest_path_to_fpga(paths, channel: Channel, target: FPGA):
     return min(connections, key=lambda c: len(c))
 
 
-def get_channel_index(source: int, target: int) -> int:
-    """Returns the index of the target channel, skipping the index of the `source` channel."""
-    assert source != target
-    if target < source:
-        return target
-    return target - 1
-
-
 def get_output_target(paths, channel: Channel, target: FPGA):
     """
     0 -> local QSFP
@@ -45,7 +37,7 @@ def get_output_target(paths, channel: Channel, target: FPGA):
 
     path = closest_path_to_fpga(paths, channel, target)[1:]  # skip the channel itself
     if path[0].fpga == channel.fpga:
-        return 2 + get_channel_index(channel.index, path[0].index)
+        return 2 + channel.target_index(path[0].index)
     else:
         return CKS_TARGET_QSFP
 
@@ -72,7 +64,7 @@ def get_input_target(channel: Channel, tag: int, channels_per_fpga: int) -> int:
     if target_channel_index == channel.index:
         return channels_per_fpga + tag // channels_per_fpga
     else:
-        return 1 + get_channel_index(channel.index, target_channel_index)
+        return 1 + channel.target_index(target_channel_index)
 
 
 def ckr_routing_table(channel: Channel, channels_per_fpga: int, tag_count: int) -> List[int]:
