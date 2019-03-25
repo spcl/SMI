@@ -1,4 +1,0 @@
-bitstring
-click
-networkx
-pytest
