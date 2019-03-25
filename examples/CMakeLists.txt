@@ -65,7 +65,6 @@ function(opencl_target KERNEL_NAME USE_CODEGEN)
 endfunction()
 
 opencl_target("stencil_simple" OFF)
-opencl_target("stencil_test" OFF)
 if(PythonInterp_FOUND)
   opencl_target("stencil_spatial_tiling" ON)
 endif()
