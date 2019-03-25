@@ -7,13 +7,13 @@
 using Data_t = DTYPE;
 constexpr int kW = X;
 constexpr int kH = Y;
-constexpr int kT = T;
-constexpr auto kUsage = "Usage: ./stencil_simple <[emulator/hardware]>\n";
+constexpr auto kUsage =
+    "Usage: ./stencil_simple <[emulator/hardware]> <timesteps>\n";
 
 // Reference implementation for checking correctness
-void Reference(std::vector<Data_t> &domain) {
+void Reference(std::vector<Data_t> &domain, const int timesteps) {
   std::vector<Data_t> buffer(domain);
-  for (int t = 0; t < kT; ++t) {
+  for (int t = 0; t < timesteps; ++t) {
     for (int i = 1; i < kH - 1; ++i) {
       for (int j = 1; j < kW - 1; ++j) {
         buffer[i * kW + j] =
@@ -28,7 +28,7 @@ void Reference(std::vector<Data_t> &domain) {
 
 int main(int argc, char **argv) {
   // Handle input arguments
-  if (argc != 2) {
+  if (argc != 3) {
     std::cout << kUsage;
     return 1;
   }
@@ -45,6 +45,8 @@ int main(int argc, char **argv) {
     std::cout << kUsage;
     return 2;
   }
+
+  const int timesteps = std::stoi(argv[2]);
 
   std::cout << "Initializing host memory...\n" << std::flush;
   // Set center to 0
@@ -70,9 +72,9 @@ int main(int argc, char **argv) {
   auto program = context.MakeProgram(kernel_path);
   std::cout << "Creating kernels...\n" << std::flush;
   std::vector<hlslib::ocl::Kernel> kernels;
-  kernels.emplace_back(program.MakeKernel("Read", device_buffer));
-  kernels.emplace_back(program.MakeKernel("Stencil"));
-  kernels.emplace_back(program.MakeKernel("Write", device_buffer));
+  kernels.emplace_back(program.MakeKernel("Read", device_buffer, timesteps));
+  kernels.emplace_back(program.MakeKernel("Stencil", timesteps));
+  kernels.emplace_back(program.MakeKernel("Write", device_buffer, timesteps));
   std::vector<std::future<std::pair<double, double>>> futures;
   std::cout << "Copying data to device...\n" << std::flush;
   // Copy to both sections of device memory, so that the boundary conditions
@@ -92,13 +94,13 @@ int main(int argc, char **argv) {
 
   // Copy back result
   std::cout << "Copying back result...\n" << std::flush;
-  int offset = (kT % 2 == 0) ? 0 : kH * kW;
+  int offset = (timesteps % 2 == 0) ? 0 : kH * kW;
   std::vector<Data_t> derp(2 * kH * kW);
   device_buffer.CopyToHost(offset, kH * kW, host_buffer.begin());
 
   // Run reference implementation
   std::cout << "Running reference implementation...\n" << std::flush;
-  Reference(reference);
+  Reference(reference, timesteps);
 
   // Compare result
   for (int i = 0; i < kH; ++i) {

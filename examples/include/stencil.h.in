@@ -10,7 +10,6 @@
 // CMake config
 #define X ${SMI_STENCIL_SIZE_X} 
 #define Y ${SMI_STENCIL_SIZE_Y} 
-#define T ${SMI_TIMESTEPS}
 #define DTYPE ${SMI_DATATYPE} 
 #define PX ${SMI_STENCIL_NUM_PROCS_X}
 #define PY ${SMI_STENCIL_NUM_PROCS_Y}

@@ -1,9 +1,10 @@
 #define I_PX ${i_px}
 #define I_PY ${i_py}
 
-__kernel void Read${suffix}(__global volatile const float memory[]) {
+__kernel void Read${suffix}(__global volatile const float memory[],
+                            const int timesteps) {
   // Extra artificial timestep to send first boundaries
-  for (int t = 0; t < T + 1; ++t) {
+  for (int t = 0; t < timesteps + 1; ++t) {
     // Swap the timestep modulo to accommodate first artificial timestep
     const int offset = (t == 0 || t % 2 == 1) ? 0 : X_LOCAL * Y_LOCAL;
     for (int i = 0; i < X_LOCAL + 2 * HALO_X; ++i) {
@@ -63,8 +64,8 @@ __kernel void Read${suffix}(__global volatile const float memory[]) {
   }
 }
 
-__kernel void Stencil${suffix}() {
-  for (int t = 0; t < T + 1; ++t) {
+__kernel void Stencil${suffix}(const int timesteps) {
+  for (int t = 0; t < timesteps + 1; ++t) {
     DTYPE buffer[(2 * HALO_X) * (Y_LOCAL + 2 * HALO_Y) + 1];
     for (int i = 0; i < X_LOCAL + 2 * HALO_X; ++i) {
       for (int j = 0; j < Y_LOCAL + 2 * HALO_Y; ++j) {
@@ -94,9 +95,10 @@ __kernel void Stencil${suffix}() {
   }
 }
 
-__kernel void Write${suffix}(__global volatile float memory[]) {
+__kernel void Write${suffix}(__global volatile float memory[],
+                             const int timesteps) {
   // Extra timestep to write first halos before starting computation
-  for (int t = 0; t < T + 1; ++t) {
+  for (int t = 0; t < timesteps + 1; ++t) {
     // Extra artifical timestep shifts the offset
     int offset = (t % 2 == 0) ? 0 : X_LOCAL * Y_LOCAL;
     for (int i = 0; i < X_LOCAL; ++i) {
@@ -104,7 +106,7 @@ __kernel void Write${suffix}(__global volatile float memory[]) {
         DTYPE read = read_channel_intel(write_stream[I_PX*PY + I_PY]);
 #if I_PX > 0
         if (i < HALO_X) {
-          if (t < T) {
+          if (t < timesteps) {
             // Write to channel above
             write_channel_intel(vert_up[(I_PX - 1)*PY + I_PY], read);
           }
@@ -112,7 +114,7 @@ __kernel void Write${suffix}(__global volatile float memory[]) {
 #endif
 #if I_PX < PX - 1 
         if (i >= X_LOCAL - HALO_X) {
-          if (t < T) {
+          if (t < timesteps) {
             // Write channel below
             write_channel_intel(vert_down[I_PX*PY + I_PY], read);
           }
@@ -120,7 +122,7 @@ __kernel void Write${suffix}(__global volatile float memory[]) {
 #endif
 #if I_PY > 0 
         if (j < HALO_Y) {
-          if (t < T) {
+          if (t < timesteps) {
             // Write to left channel
             write_channel_intel(hori_left[I_PX*(PY - 1) + I_PY - 1], read);
           }
@@ -128,7 +130,7 @@ __kernel void Write${suffix}(__global volatile float memory[]) {
 #endif
 #if I_PY < PY - 1 
         if (j >= Y_LOCAL - HALO_Y) {
-          if (t < T) {
+          if (t < timesteps) {
             // Write to right channel
             write_channel_intel(hori_right[I_PX*(PY - 1) + I_PY], read);
           }

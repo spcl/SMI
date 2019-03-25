@@ -3,8 +3,9 @@
 channel float read_stream __attribute__((depth(Y)));
 channel float write_stream __attribute__((depth(Y)));
 
-__kernel void Read(__global volatile const float memory[]) {
-  for (int t = 0; t < T; ++t) {
+__kernel void Read(__global volatile const float memory[],
+                   const int timesteps) {
+  for (int t = 0; t < timesteps; ++t) {
     int offset = (t % 2 == 0) ? 0 : X * Y;
     for (int i = 0; i < X; ++i) {
       for (int j = 0; j < Y; ++j) {
@@ -15,8 +16,8 @@ __kernel void Read(__global volatile const float memory[]) {
   }
 }
 
-__kernel void Stencil() {
-  for (int t = 0; t < T; ++t) {
+__kernel void Stencil(const int timesteps) {
+  for (int t = 0; t < timesteps; ++t) {
     DTYPE buffer[2 * Y + 1];
     for (int i = 0; i < X; ++i) {
       for (int j = 0; j < Y; ++j) {
@@ -37,8 +38,8 @@ __kernel void Stencil() {
   }
 }
 
-__kernel void Write(__global volatile float memory[]) {
-  for (int t = 0; t < T; ++t) {
+__kernel void Write(__global volatile float memory[], const int timesteps) {
+  for (int t = 0; t < timesteps; ++t) {
     int offset = (t % 2 == 0) ? X * Y : 0;
     for (int i = 1; i < X - 1; ++i) {
       for (int j = 1; j < Y - 1; ++j) {

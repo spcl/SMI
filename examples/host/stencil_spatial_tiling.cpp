@@ -8,7 +8,6 @@ using Data_t = DTYPE;
 constexpr Data_t kBoundary = BOUNDARY_VALUE;
 constexpr int kX = X;
 constexpr int kY = Y;
-constexpr int kT = T;
 constexpr int kPX = PX;
 constexpr int kPY = PY;
 constexpr int kXLocal = kX / kPX;
@@ -17,9 +16,9 @@ constexpr auto kUsage =
     "Usage: ./stencil_spatial_tiling <[emulator/hardware]>\n";
 
 // Reference implementation for checking correctness
-void Reference(std::vector<Data_t> &domain) {
+void Reference(std::vector<Data_t> &domain, const int timesteps) {
   std::vector<Data_t> buffer(domain);
-  for (int t = 0; t < T; ++t) {
+  for (int t = 0; t < timesteps; ++t) {
     for (int i = 0; i < kX; ++i) {
       for (int j = 0; j < kY; ++j) {
         const auto left = (i > 0) ? domain[(i - 1) * kY + j] : kBoundary;
@@ -69,7 +68,7 @@ std::vector<Data_t> CombineMemory(
 
 int main(int argc, char **argv) {
   // Handle input arguments
-  if (argc != 2) {
+  if (argc != 3) {
     std::cout << kUsage;
     return 1;
   }
@@ -86,6 +85,8 @@ int main(int argc, char **argv) {
     std::cout << kUsage;
     return 2;
   }
+
+  const int timesteps = std::stoi(argv[2]);
 
   std::cout << "Initializing host memory...\n" << std::flush;
   // Set center to 0
@@ -109,9 +110,11 @@ int main(int argc, char **argv) {
               2 * kXLocal * kYLocal);
       const std::string suffix("_" + std::to_string(i) + "_" +
                                std::to_string(j));
-      kernels.emplace_back(program.MakeKernel("Read" + suffix, device_buffer));
-      kernels.emplace_back(program.MakeKernel("Stencil" + suffix));
-      kernels.emplace_back(program.MakeKernel("Write" + suffix, device_buffer));
+      kernels.emplace_back(
+          program.MakeKernel("Read" + suffix, device_buffer, timesteps));
+      kernels.emplace_back(program.MakeKernel("Stencil" + suffix, timesteps));
+      kernels.emplace_back(
+          program.MakeKernel("Write" + suffix, device_buffer, timesteps));
       device_buffers.emplace_back(std::move(device_buffer));
     }
   }
@@ -141,7 +144,7 @@ int main(int argc, char **argv) {
 
   // Copy back result
   std::cout << "Copying back result...\n" << std::flush;
-  int offset = (kT % 2 == 0) ? 0 : kYLocal * kXLocal;
+  int offset = (timesteps % 2 == 0) ? 0 : kYLocal * kXLocal;
   for (int i = 0; i < kPX; ++i) {
     for (int j = 0; j < kPY; ++j) {
       auto &device_buffer = device_buffers[i * kPY + j];
@@ -152,7 +155,7 @@ int main(int argc, char **argv) {
 
   // Run reference implementation
   std::cout << "Running reference implementation...\n" << std::flush;
-  Reference(reference);
+  Reference(reference, timesteps);
 
   const auto result = CombineMemory(host_buffers);
 
