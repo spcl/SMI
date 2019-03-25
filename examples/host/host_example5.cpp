@@ -112,28 +112,28 @@ int main(int argc, char *argv[])
             cout << "Starting rank 0 on FPGA "<<fpga<<endl;
             kernel_names.push_back("app_0");
             kernel_names.push_back("app_1");
-            kernel_names.push_back("CK_sender_0");
-            kernel_names.push_back("CK_sender_1");
-            kernel_names.push_back("CK_receiver_0");
-            kernel_names.push_back("CK_receiver_1");
+            kernel_names.push_back("CK_S_0");
+            kernel_names.push_back("CK_S_1");
+            kernel_names.push_back("CK_R_0");
+            kernel_names.push_back("CK_R_1");
             break;
         case 1:
         	cout << "Starting rank 1 on FPGA "<<fpga<<endl;
         	kernel_names.push_back("app_2");
-        	kernel_names.push_back("CK_sender_0");
-        	kernel_names.push_back("CK_sender_1");
-        	kernel_names.push_back("CK_receiver_0");
-        	kernel_names.push_back("CK_receiver_1");
+                kernel_names.push_back("CK_S_0");
+                kernel_names.push_back("CK_S_1");
+                kernel_names.push_back("CK_R_0");
+                kernel_names.push_back("CK_R_1");
 
         break;
 
         case 2:
         	cout << "Starting rank 2 on FPGA "<<fpga<<endl;
         	kernel_names.push_back("app_3");
-        	kernel_names.push_back("CK_sender_0");
-        	kernel_names.push_back("CK_sender_1");
-        	kernel_names.push_back("CK_receiver_0");
-        	kernel_names.push_back("CK_receiver_1");
+                kernel_names.push_back("CK_S_0");
+                kernel_names.push_back("CK_S_1");
+                kernel_names.push_back("CK_R_0");
+                kernel_names.push_back("CK_R_1");
 
         break;
 
@@ -192,8 +192,8 @@ int main(int argc, char *argv[])
         queues[0].enqueueWriteBuffer(routing_table_ck_s_0, CL_TRUE,0,ranks,rt_s_0);
         queues[0].enqueueWriteBuffer(routing_table_ck_s_1, CL_TRUE,0,ranks,rt_s_1);
         //receivers routing tables
-        char rt_r_0[2]={100,100}; //the first  is connect to application endpoint (TAG=0)
-        char rt_r_1[2]={2,100};  
+        char rt_r_0[2]={4,100}; //the first  is connect to application endpoint (TAG=0)
+        char rt_r_1[2]={1,100};
         queues[0].enqueueWriteBuffer(routing_table_ck_r_0, CL_TRUE,0,2,rt_r_0);
         queues[0].enqueueWriteBuffer(routing_table_ck_r_1, CL_TRUE,0,2,rt_r_1);
 
@@ -227,8 +227,8 @@ int main(int argc, char *argv[])
         queues[0].enqueueWriteBuffer(routing_table_ck_s_0, CL_TRUE,0,ranks,rt_s_0);
         queues[0].enqueueWriteBuffer(routing_table_ck_s_1, CL_TRUE,0,ranks,rt_s_1);
         //receivers routing tables
-        char rt_r_0[2]={100,2}; //the first  is connect to application endpoint (TAG=0)
-        char rt_r_1[2]={100,100};   //the second doesn't do anything
+        char rt_r_0[2]={100,4}; //the first  is connect to application endpoint (TAG=0)
+        char rt_r_1[2]={100,4};   //the second doesn't do anything
         queues[0].enqueueWriteBuffer(routing_table_ck_r_0, CL_TRUE,0,2,rt_r_0);
         queues[0].enqueueWriteBuffer(routing_table_ck_r_1, CL_TRUE,0,2,rt_r_1);
 
