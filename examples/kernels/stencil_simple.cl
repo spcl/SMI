@@ -31,7 +31,7 @@ kernel void Write(global volatile VTYPE memory[], const int timesteps) {
 
 kernel void Stencil(const int timesteps) {
 
-  float buffer[2 * HALO_X * Y + W];
+  DTYPE buffer[2 * HALO_X * Y + W];
 
   #pragma loop_coalesce
   for (int t = 0; t < timesteps; ++t) {

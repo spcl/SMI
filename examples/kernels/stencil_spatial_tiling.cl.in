@@ -1,10 +1,10 @@
 #include "stencil.h"
 
-channel float read_stream[PX*PY] __attribute__((depth(Y/PY)));
-channel float write_stream[PX*PY] __attribute__((depth(Y/PY)));
-channel float vert_up[PX*(PY - 1)] __attribute__((depth(Y/PY)));
-channel float vert_down[PX*(PY - 1)] __attribute__((depth(Y/PY)));
-channel float hori_left[(PX - 1)*PY] __attribute__((depth(X/PX)));
-channel float hori_right[(PX - 1)*PY] __attribute__((depth(X/PX)));
+channel DTYPE read_stream[PX*PY] __attribute__((depth(Y/PY)));
+channel DTYPE write_stream[PX*PY] __attribute__((depth(Y/PY)));
+channel DTYPE vert_up[PX*(PY - 1)] __attribute__((depth(Y/PY)));
+channel DTYPE vert_down[PX*(PY - 1)] __attribute__((depth(Y/PY)));
+channel DTYPE hori_left[(PX - 1)*PY] __attribute__((depth(X/PX)));
+channel DTYPE hori_right[(PX - 1)*PY] __attribute__((depth(X/PX)));
 
 ${code}

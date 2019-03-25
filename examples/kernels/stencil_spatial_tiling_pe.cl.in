@@ -1,7 +1,7 @@
 #define I_PX ${i_px}
 #define I_PY ${i_py}
 
-__kernel void Read${suffix}(__global volatile const float memory[],
+__kernel void Read${suffix}(__global volatile const DTYPE memory[],
                             const int timesteps) {
   // Extra artificial timestep to send first boundaries
   for (int t = 0; t < timesteps + 1; ++t) {
@@ -95,7 +95,7 @@ __kernel void Stencil${suffix}(const int timesteps) {
   }
 }
 
-__kernel void Write${suffix}(__global volatile float memory[],
+__kernel void Write${suffix}(__global volatile DTYPE memory[],
                              const int timesteps) {
   // Extra timestep to write first halos before starting computation
   for (int t = 0; t < timesteps + 1; ++t) {
