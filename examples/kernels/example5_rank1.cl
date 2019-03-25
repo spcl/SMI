@@ -36,7 +36,8 @@
         - rank 1: 	CK_R_0: 4,xxx  send to APP_2
                         CK_R_1: 1,xxx data for TAG 0 must be routed to CK_R_0 to which the APP is attached. This one also receives data that is directed to rank2
 
-        - rank 2: 	CK_R_0: xxx, 4
+        - rank 2: 	CK_R_0: xxx, xxx Meanigless
+                        CK_R_1: xxx, 4
 
 
  */

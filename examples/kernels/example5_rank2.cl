@@ -36,7 +36,8 @@
         - rank 1: 	CK_R_0: 4,xxx  send to APP_2
                         CK_R_1: 1,xxx data for TAG 0 must be routed to CK_R_0 to which the APP is attached. This one also receives data that is directed to rank2
 
-        - rank 2: 	CK_R_0: xxx, 4
+        - rank 2: 	CK_R_0: xxx, xxx Meanigless
+                        CK_R_1: xxx, 4
 
 
  */
@@ -98,7 +99,7 @@ channel SMI_NetworkMessage io_in_3 __attribute__((depth(16)))
 //internal routing tables: this will be used by push and pop
 //on rank 1, APPs do not send, so we acoid including the push.h
 //__constant char internal_sender_rt[2]={0,1};
-//in rank 1, APP_3 (tag 1) is connected to CK_R_0
+//in rank 1, APP_3 (tag 1) is connected to CK_R_1
 __constant char internal_receiver_rt[2]={100,0};
 
 //channels to CK_S  (not used here)
@@ -456,9 +457,7 @@ __kernel void CK_R_0(__global volatile char *rt,const char myRank, const char nu
                 case 3: //CK_R_3
                     write_channel_intel(channels_interconnect_ck_r[9],mess);
                 break;
-                case 4:
-                    write_channel_intel(channels_from_ck_r[0],mess);
-                break;
+
             }
             valid=false;
         }
@@ -470,7 +469,7 @@ __kernel void CK_R_0(__global volatile char *rt,const char myRank, const char nu
 
 }
 
-//This one do nothing
+//This one has tag one attached to it
 __kernel void CK_R_1(__global volatile char *rt,const char myRank, const char numRanks)
 {
     const char ck_id=1;
@@ -537,7 +536,9 @@ __kernel void CK_R_1(__global volatile char *rt,const char myRank, const char nu
                 case 3: //CK_R_3
                     write_channel_intel(channels_interconnect_ck_r[10],mess);
                 break;
-                //no APPs
+                case 4:
+                    write_channel_intel(channels_from_ck_r[0],mess);
+                break;
             }
             valid=false;
         }

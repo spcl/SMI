@@ -37,7 +37,8 @@
         - rank 1: 	CK_R_0: 4,xxx  send to APP_2
                         CK_R_1: 1,xxx data for TAG 0 must be routed to CK_R_0 to which the APP is attached. This one also receives data that is directed to rank2
 
-        - rank 2: 	CK_R_0: xxx, 4
+         rank 2: 	CK_R_0: xxx, xxx Meanigless
+                        CK_R_1: xxx, 4
 
 
  */
@@ -518,7 +519,7 @@ __kernel void CK_R_1(__global volatile char *rt,const char myRank, const char nu
         {
             //forward it to the right application endpoint or to another CK_R
             //0, send to the connected CK_S (remote send)
-            //1, ...,NQ−1N_Q-1N​Q​​−1, send to other CK_R (the application endpoint is not connected to this CK_R)
+            //1, ...,NQ−1, send to other CK_R (the application endpoint is not connected to this CK_R)
             //other indexes: send to the application
             char dest;
             if(GET_HEADER_DST(mess.header)!=myRank)

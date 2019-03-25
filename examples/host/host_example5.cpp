@@ -227,8 +227,8 @@ int main(int argc, char *argv[])
         queues[0].enqueueWriteBuffer(routing_table_ck_s_0, CL_TRUE,0,ranks,rt_s_0);
         queues[0].enqueueWriteBuffer(routing_table_ck_s_1, CL_TRUE,0,ranks,rt_s_1);
         //receivers routing tables
-        char rt_r_0[2]={100,4}; //the first  is connect to application endpoint (TAG=0)
-        char rt_r_1[2]={100,4};   //the second doesn't do anything
+        char rt_r_0[2]={100,1}; //the first  does not do anything, tag 1 attached to ck_r_1
+        char rt_r_1[2]={100,4};   //the secondis connect to application endpoint  (TAG=1)
         queues[0].enqueueWriteBuffer(routing_table_ck_r_0, CL_TRUE,0,2,rt_r_0);
         queues[0].enqueueWriteBuffer(routing_table_ck_r_1, CL_TRUE,0,2,rt_r_1);
 
