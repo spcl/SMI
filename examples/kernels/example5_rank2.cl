@@ -246,8 +246,6 @@ __kernel void CK_receiver_0(__global volatile char *rt,const char myRank, const 
         {
             case 0: //QSFP
                 mess=read_channel_nb_intel(io_in_0,&valid);
-                if(valid)
-                    printf("Rank 2, received from I/O\n");
             break;
             case 1: //CK_R
                 mess=read_channel_nb_intel(channels_interconnect_ck_r[0],&valid);

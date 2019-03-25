@@ -150,8 +150,6 @@ __kernel void CK_sender_0(__global volatile char *restrict rt, const char numRan
                     write_channel_intel(channels_interconnect_ck_s_to_ck_r[0],mess);
                     break;
                 case 2:
-                    printf("Rank 0: CKS0 forward to CKS 1\n");
-
                     write_channel_intel(channels_interconnect_ck_s[1],mess);
                     break;
             }
@@ -210,7 +208,6 @@ __kernel void CK_sender_1(__global volatile char *restrict rt, const char numRan
             switch(idx)
             {
                 case 0:
-                    printf("Rank 0 send to I/O\n");
                     write_channel_intel(io_out_1,mess);
                     break;
                 case 1:
