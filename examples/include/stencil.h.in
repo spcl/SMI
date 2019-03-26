@@ -12,7 +12,17 @@
 #define Y ${SMI_STENCIL_SIZE_Y} 
 #define DTYPE ${SMI_DATATYPE} 
 #define VTYPE ${SMI_DATATYPE}${SMI_VECTORIZATION_WIDTH} 
+#if HALO_Y > 1
+#define HTYPE_PASTE(a, b) a ## b
+#define HTYPE_EVAL(a, b) HTYPE_PASTE(a, b)
+#define HTYPE HTYPE_EVAL(${SMI_DATATYPE}, HALO_Y)
+#else
+#define HTYPE ${SMI_DATATYPE}
+#endif
 #define W ${SMI_VECTORIZATION_WIDTH}
+#if W < HALO_Y
+#error "Vectorization width must be greater than or equal to the horizontal halo size."
+#endif
 #define PX ${SMI_STENCIL_NUM_PROCS_X}
 #define PY ${SMI_STENCIL_NUM_PROCS_Y}
 

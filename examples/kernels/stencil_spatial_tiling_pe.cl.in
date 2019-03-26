@@ -1,23 +1,39 @@
 #define I_PX ${i_px}
 #define I_PY ${i_py}
 
-__kernel void Read${suffix}(__global volatile const DTYPE memory[],
+__kernel void Read${suffix}(__global volatile const VTYPE memory[],
                             const int timesteps) {
   // Extra artificial timestep to send first boundaries
   for (int t = 0; t < timesteps + 1; ++t) {
     // Swap the timestep modulo to accommodate first artificial timestep
     const int offset = (t == 0 || t % 2 == 1) ? 0 : X_LOCAL * Y_LOCAL;
-    for (int i = 0; i < X_LOCAL + 2 * HALO_X; ++i) {
-      for (int j = 0; j < Y_LOCAL + 2 * HALO_Y; ++j) {
+    // +1 for each boundary
+    for (int i = 0; i < X_LOCAL + 2; ++i) {
+      // +1 for each boundary
+      for (int j = 0; j < Y_LOCAL / W + 2; ++j) {
         DTYPE read;
-        const bool on_top = i < HALO_X;
-        const bool on_bottom = i >= X_LOCAL + HALO_X;
-        const bool on_left = j < HALO_Y;
-        const bool on_right = j >= Y_LOCAL + HALO_Y;
-        const bool on_corner = (on_top && on_left) ||
-                               (on_top && on_right) ||
-                               (on_bottom && on_left) ||
-                               (on_bottom && on_right);
+        const bool on_other_halo_top = i < HALO_X;
+        const bool on_other_halo_bottom = i >= X_LOCAL + HALO_X;
+        const bool on_own_halo_top = i >= HALO_X && i < 2 * HALO_X;
+        const bool on_own_halo_bottom = i >= X_LOCAL && i < X_LOCAL + HALO_X;
+        for (int w = 0; w < W; ++w) {
+          const int jj = j * W + w; // Non-vectorized horizontal index
+          // oob: out of bounds
+          const bool oob_left = jj < W;
+          const bool oob_right = jj >= Y_LOCAL + W;
+          const bool valid_read = !on_other_halo_top && !on_other_halo_bottom &&
+                                  !oob_left && !oob_right;
+          const bool valid_index = jj >= W - HALO_Y && jj < W + Y_LOCAL + Y_HALO; 
+          const bool on_other_halo_left = jj >= W - HALO_Y && oob_left; 
+          const bool on_own_halo_left = !oob_left && jj < W + HALO_Y;
+          const bool on_own_halo_right =
+              jj >= W + Y_LOCAL - HALO_Y && !oob_right;
+          const bool on_other_halo_right =
+              oob_right && jj < W + Y_LOCAL + Y_HALO;
+          const bool on_corner = (on_other_halo_top && oob_left) ||
+                                 (on_other_halo_top && oob_right) ||
+                                 (on_other_halo_bottom && oob_left) ||
+                                 (on_other_halo_bottom && oob_right);
         if (on_top) {
           if (t > 0 && !on_corner) {
 #if I_PX > 0
