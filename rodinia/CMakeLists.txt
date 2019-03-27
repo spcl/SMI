@@ -38,4 +38,4 @@ function(opencl_target KERNEL_FOLDER_NAME KERNEL_FILE HOST_FILES)
 endfunction()
 
 opencl_target("srad" "kernel/srad_kernel_v5.cl" "main.c util/graphics/graphics.c util/graphics/resize.c kernel/kernel_gpu_opencl_wrapper.c util/opencl/opencl.c")
-opencl_target("pathfinder" "pathfinder_v5.cl" "main.cpp OpenCL.cpp")
+opencl_target("pathfinder" "pathfinder_kernel_v5.cl" "main.cpp OpenCL.cpp")
