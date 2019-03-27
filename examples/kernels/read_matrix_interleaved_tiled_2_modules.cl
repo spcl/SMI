@@ -67,8 +67,8 @@ __kernel void receiver(__global volatile  float *restrict mem, int N, int M)
     const int loop_it=((int)(TILE_M))/W;   //W must be a divisor of M
     float  sum=0;
     float recv[W];
-    float expected=0.0f;
-    int errors=0;
+    //float expected=0.0f;
+    //int errors=0;
     for(int ti=0;ti<BlocksN;ti++)
     {
         for(int tj=0;tj<BlocksM;tj++)
@@ -83,12 +83,12 @@ __kernel void receiver(__global volatile  float *restrict mem, int N, int M)
                     {
                         recv[k]=read_channel_intel(channel_matrix_A);
                         acc+=recv[k];
-                        expected=(ti*TILE_N+i)*M+tj*TILE_M+j*W+k;
+                        /*expected=(ti*TILE_N+i)*M+tj*TILE_M+j*W+k;
                         if(recv[k]!=expected && errors <16)
                         {
                             printf("Error on element %d, %d (%.1f != %.1f) \n",ti*TILE_N+i,tj*TILE_M+j*W+k,recv[k],expected);
                             errors++;
-                        }
+                        }*/
                     }
                     sum+=acc;
                 }
