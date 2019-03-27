@@ -35,6 +35,7 @@ function(opencl_target KERNEL_NAME USE_CODEGEN)
     -cl-no-signed-zeros
     -cl-fast-relaxed-math
     -cl-single-precision-constant
+    -no-interleaving=default
     -board=${SMI_TARGET_BOARD}
     ${KERNEL_FILE})
   add_custom_target(build_${KERNEL_NAME}_report
