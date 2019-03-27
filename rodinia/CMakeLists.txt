@@ -1,6 +1,10 @@
 # Configuration 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-add_definitions(-DALTERA -DNO_INTERLEAVE)
+add_definitions(-DALTERA -DNO_INTERLEAVE -DPROFILE -DBENCHMARK)
+
+find_package(OpenMP)
+set(SMI_RODINIA_LIBS ${IntelFPGAOpenCL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT}
+    m ${OpenMP_CXX_LIBRARIES})
 
 # All targets related to each kernel 
 function(add_opencl_executable KERNEL_FOLDER_NAME HOST_FILES)
@@ -9,8 +13,9 @@ function(add_opencl_executable KERNEL_FOLDER_NAME HOST_FILES)
   string(REGEX REPLACE "([^;]+)" "${KERNEL_FOLDER}/\\1"
          HOST_FILES "${HOST_FILES}")
   add_executable(${KERNEL_FOLDER_NAME}.exe ${HOST_FILES})
-  target_link_libraries(${KERNEL_FOLDER_NAME}.exe ${IntelFPGAOpenCL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} m)
+  target_link_libraries(${KERNEL_FOLDER_NAME}.exe ${SMI_RODINIA_LIBS})
   target_include_directories(${KERNEL_FOLDER_NAME}.exe PRIVATE ${KERNEL_FOLDER} ${KERNEL_FOLDER}/util)
+  target_compile_options(${KERNEL_FOLDER_NAME}.exe PRIVATE "${OpenMP_CXX_FLAGS}")
 endfunction()
 
 function(add_opencl_kernel KERNEL_FOLDER_NAME KERNEL_FILE)
@@ -50,3 +55,5 @@ add_opencl_executable("nw" "nw.cpp")
 add_opencl_kernel("nw" "nw_kernel_v5.cl")
 add_opencl_executable("hotspot" "hotspot.c OpenCL_helper_library.c")
 add_opencl_kernel("hotspot" "hotspot_kernel_v5.cl")
+add_opencl_executable("lud" "ocl/lud.cpp common/common.c")
+add_opencl_kernel("lud" "ocl/lud_kernel_v5.cl")
