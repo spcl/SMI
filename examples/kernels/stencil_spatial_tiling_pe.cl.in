@@ -6,75 +6,85 @@ __kernel void Read${suffix}(__global volatile const VTYPE memory[],
   // Extra artificial timestep to send first boundaries
   for (int t = 0; t < timesteps + 1; ++t) {
     // Swap the timestep modulo to accommodate first artificial timestep
-    const int offset = (t == 0 || t % 2 == 1) ? 0 : X_LOCAL * Y_LOCAL;
+    const int offset = (t == 0 || t % 2 == 1) ? 0 : X_LOCAL * (Y_LOCAL / W);
     // +1 for each boundary
-    for (int i = 0; i < X_LOCAL + 2; ++i) {
+    for (int i = 0; i < X_LOCAL + 2 * HALO_X; ++i) {
       // +1 for each boundary
-      for (int j = 0; j < Y_LOCAL / W + 2; ++j) {
-        DTYPE read;
-        const bool on_other_halo_top = i < HALO_X;
-        const bool on_other_halo_bottom = i >= X_LOCAL + HALO_X;
-        const bool on_own_halo_top = i >= HALO_X && i < 2 * HALO_X;
-        const bool on_own_halo_bottom = i >= X_LOCAL && i < X_LOCAL + HALO_X;
-        for (int w = 0; w < W; ++w) {
-          const int jj = j * W + w; // Non-vectorized horizontal index
-          // oob: out of bounds
-          const bool oob_left = jj < W;
-          const bool oob_right = jj >= Y_LOCAL + W;
-          const bool valid_read = !on_other_halo_top && !on_other_halo_bottom &&
-                                  !oob_left && !oob_right;
-          const bool valid_index = jj >= W - HALO_Y && jj < W + Y_LOCAL + Y_HALO; 
-          const bool on_other_halo_left = jj >= W - HALO_Y && oob_left; 
-          const bool on_own_halo_left = !oob_left && jj < W + HALO_Y;
-          const bool on_own_halo_right =
-              jj >= W + Y_LOCAL - HALO_Y && !oob_right;
-          const bool on_other_halo_right =
-              oob_right && jj < W + Y_LOCAL + Y_HALO;
-          const bool on_corner = (on_other_halo_top && oob_left) ||
-                                 (on_other_halo_top && oob_right) ||
-                                 (on_other_halo_bottom && oob_left) ||
-                                 (on_other_halo_bottom && oob_right);
-        if (on_top) {
-          if (t > 0 && !on_corner) {
-#if I_PX > 0
-            // Read from channel above
-            read = read_channel_intel(vert_down[(I_PX - 1)*PY + I_PY]);
-#else
-            read = BOUNDARY_VALUE;
-#endif
-          }
-        } else if (on_bottom) {
-          if (t > 0 && !on_corner) {
-#if I_PX < PX - 1
-            // Read from channel below
-            read = read_channel_intel(vert_up[I_PX*PY + I_PY]);
-#else
-            read = BOUNDARY_VALUE;
-#endif
-          }
-        } else if (on_left) {
-          if (t > 0 && !on_corner) {
-#if I_PY > 0 
-            // Read from left channel
-            read = read_channel_intel(hori_right[I_PX*(PY - 1) + I_PY - 1]);
-#else
-            read = BOUNDARY_VALUE;
-#endif
-          }
-        } else if (on_right) {
-          if (t > 0 && !on_corner) {
-#if I_PY < PY - 1 
-            // Read from right channel
-            read = read_channel_intel(hori_left[I_PX*(PY - 1) + I_PY]);
-#else
-            read = BOUNDARY_VALUE;
-#endif
-          }
+      for (int j = 0; j < (Y_LOCAL / W) + 2; ++j) {
+        VTYPE res = -1000;
+        // oob: out of bounds with respect to the local domain, i.e., not
+        // necessarily the global domain.
+        const bool oob_top = i < HALO_X;
+        const bool oob_bottom = i >= X_LOCAL + HALO_X;
+        // It's assumed that the horizontal halo fits in one vector, such that
+        // HALO_Y <= W (hence, we use 1 here).
+        const bool oob_left = j < 1;
+        const bool oob_right = j >= (Y_LOCAL / W) + 1;
+        const bool valid_read =
+            !oob_top && !oob_bottom && !oob_left && !oob_right;
+        if (valid_read) {
+          res = memory[offset + (i - HALO_X) * (Y_LOCAL / W) + j - 1];
         } else {
-          // Read from memory
-          read = memory[offset + (i - HALO_X)*Y_LOCAL + j - HALO_Y];
-        }
-        write_channel_intel(read_stream[I_PX*PY + I_PY], read);
+          // We don't need to communicate on the corner, as this is not used by
+          // the stencil.
+          const bool on_corner =
+              (oob_top && oob_left) || (oob_top && oob_right) ||
+              (oob_bottom && oob_left) || (oob_bottom && oob_right);
+          if (oob_top) {
+            if (t > 0 && !on_corner) {
+#if I_PX > 0
+              // Read from channel above
+              res = read_channel_intel(vert_down[(I_PX - 1) * PY + I_PY]);
+#endif
+            }
+          } else if (oob_bottom) {
+            if (t > 0 && !on_corner) {
+#if I_PX < PX - 1
+              // Read from channel below
+              res = read_channel_intel(vert_up[I_PX * PY + I_PY]);
+#endif
+            }
+          } else if (oob_left) {
+            if (t > 0 && !on_corner) {
+#if I_PY > 0
+              // Read from left channel
+              HTYPE read_horizontal =
+                  read_channel_intel(hori_right[I_PX * (PY - 1) + I_PY - 1]);
+
+              // Populate elements within boundary, leaving the rest
+              // uninitialized/dummy values
+#if HALO_Y > 1
+              #pragma unroll
+              for (int w = 0; w < HALO_Y; ++w) {
+                res[W - HALO_Y + w] = read_horizontal[w];
+              }
+#else
+              res[W - 1] = read_horizontal;
+#endif
+#endif
+            }
+          } else if (oob_right) {
+            if (t > 0 && !on_corner) {
+#if I_PY < PY - 1
+              // Read from right channel
+              HTYPE read_horizontal =
+                  read_channel_intel(hori_left[I_PX * (PY - 1) + I_PY]);
+
+              // Populate elements within boundary, leaving the rest
+              // uninitialized/dummy values
+#if HALO_Y > 1
+              #pragma unroll
+              for (int w = 0; w < HALO_Y; ++w) {
+                res[w] = read_horizontal[w];
+              }
+#else
+              res[0] = read_horizontal;
+#endif
+#endif
+            }
+          }
+        } // !valid_read
+        write_channel_intel(read_stream[I_PX * PY + I_PY], res);
       }
     }
   }
@@ -82,78 +92,121 @@ __kernel void Read${suffix}(__global volatile const VTYPE memory[],
 
 __kernel void Stencil${suffix}(const int timesteps) {
   for (int t = 0; t < timesteps + 1; ++t) {
-    DTYPE buffer[(2 * HALO_X) * (Y_LOCAL + 2 * HALO_Y) + 1];
+    DTYPE buffer[(2 * HALO_X) * (Y_LOCAL + 2 * W) + W];
     for (int i = 0; i < X_LOCAL + 2 * HALO_X; ++i) {
-      for (int j = 0; j < Y_LOCAL + 2 * HALO_Y; ++j) {
+      for (int j = 0; j < (Y_LOCAL / W) + 2; ++j) {
         // Shift buffer
         #pragma unroll
-        for (int b = 0; b < 2 * (Y_LOCAL + 2 * HALO_Y); ++b) {
-          buffer[b] = buffer[b + 1];
+        for (int b = 0; b < (2 * HALO_X) * (Y_LOCAL + 2 * W); ++b) {
+          buffer[b] = buffer[b + W];
         }
         // Read into front
-        DTYPE read = read_channel_intel(read_stream[I_PX * PY + I_PY]);
-        buffer[2 * (Y_LOCAL + 2 * HALO_Y)] = read;
+        VTYPE read = read_channel_intel(read_stream[I_PX * PY + I_PY]);
+        #pragma unroll
+        for (int w = 0; w < W; ++w) {
+          buffer[(2 * HALO_X) * (Y_LOCAL + 2 * W) + w] = read[w];
+        }
         // If in bounds, compute and output
-        if (i >= 2 * HALO_X && j >= HALO_Y && j < Y_LOCAL + HALO_Y) {
-          DTYPE res;
-          if (t > 0) {
-            res = 0.25 * (buffer[2 * (Y_LOCAL + 2 * HALO_Y)] +
-                          buffer[Y_LOCAL + 2 * HALO_Y - 1] +
-                          buffer[Y_LOCAL + 2 * HALO_Y + 1] + buffer[0]);
-          } else {
-            // Just forward value on the first artifical timestep
-            res = buffer[Y_LOCAL + 2 * HALO_Y]; 
+        if (i >= 2 * HALO_X && j >= 1 && j < (Y_LOCAL / W) + 1) {
+          VTYPE res;
+          #pragma unroll
+          for (int w = 0; w < W; ++w) {
+            if (
+#if I_PX == 0
+                (i < 3 * HALO_X) ||
+#endif
+#if I_PX == PX - 1
+                (i >= X_LOCAL + HALO_X) ||
+#endif
+#if I_PY == 0
+                (j * W + w < W + HALO_Y) ||
+#endif
+#if I_PY == PY - 1
+                (j * W + w >= W + Y_LOCAL - HALO_Y) ||
+#endif
+                t == 0) {
+              // Just forward value if on the boundary, or if on the first
+              // artifical timestep
+              res[w] = buffer[Y_LOCAL + 2 * W + w];
+            } else {
+              res[w] = 0.25 * (buffer[2 * (Y_LOCAL + 2 * W) + w] +  // South
+                               buffer[Y_LOCAL + 2 * W + w - 1] +    // West
+                               buffer[Y_LOCAL + 2 * W + w + 1] +    // East
+                               buffer[w]);                          // North
+            }
           }
-          write_channel_intel(write_stream[I_PX*PY + I_PY], res);
+          write_channel_intel(write_stream[I_PX * PY + I_PY], res);
         }
       }
     }
   }
 }
 
-__kernel void Write${suffix}(__global volatile DTYPE memory[],
+__kernel void Write${suffix}(__global volatile VTYPE memory[],
                              const int timesteps) {
   // Extra timestep to write first halos before starting computation
   for (int t = 0; t < timesteps + 1; ++t) {
     // Extra artifical timestep shifts the offset
-    int offset = (t % 2 == 0) ? 0 : X_LOCAL * Y_LOCAL;
+    int offset = (t % 2 == 0) ? 0 : X_LOCAL * (Y_LOCAL / W);
     for (int i = 0; i < X_LOCAL; ++i) {
-      for (int j = 0; j < Y_LOCAL; ++j) {
-        DTYPE read = read_channel_intel(write_stream[I_PX*PY + I_PY]);
+      for (int j = 0; j < (Y_LOCAL / W); ++j) {
+        VTYPE read = read_channel_intel(write_stream[I_PX * PY + I_PY]);
 #if I_PX > 0
         if (i < HALO_X) {
-          if (t < timesteps) {
+          if (t < timesteps) { // Don't communicate on last timestep
             // Write to channel above
-            write_channel_intel(vert_up[(I_PX - 1)*PY + I_PY], read);
+            write_channel_intel(vert_up[(I_PX - 1) * PY + I_PY], read);
           }
         }
 #endif
-#if I_PX < PX - 1 
+#if I_PX < PX - 1
         if (i >= X_LOCAL - HALO_X) {
-          if (t < timesteps) {
+          if (t < timesteps) { // Don't communicate on last timestep
             // Write channel below
-            write_channel_intel(vert_down[I_PX*PY + I_PY], read);
+            write_channel_intel(vert_down[I_PX * PY + I_PY], read);
           }
         }
 #endif
-#if I_PY > 0 
-        if (j < HALO_Y) {
-          if (t < timesteps) {
+#if I_PY > 0
+        if (j < 1) {
+          if (t < timesteps) { // Don't communicate on last timestep
+            // Extract relevant values
+#if HALO_Y > 1
+            HTYPE write_horizontal = -1000;
+            #pragma unroll
+            for (int w = 0; w < HALO_Y; ++w) {
+              write_horizontal[w] = read[w];
+            }
+#else
+            HTYPE write_horizontal = read[0];
+#endif
             // Write to left channel
-            write_channel_intel(hori_left[I_PX*(PY - 1) + I_PY - 1], read);
+            write_channel_intel(hori_left[I_PX * (PY - 1) + I_PY - 1],
+                                write_horizontal);
           }
         }
 #endif
-#if I_PY < PY - 1 
-        if (j >= Y_LOCAL - HALO_Y) {
+#if I_PY < PY - 1
+        if (j >= (Y_LOCAL / W) - 1) {
           if (t < timesteps) {
+            // Extract relevant values
+#if HALO_Y > 1
+            HTYPE write_horizontal = -1000;
+            #pragma unroll
+            for (int w = 0; w < HALO_Y; ++w) {
+              write_horizontal[w] = read[W - HALO_Y + w];
+            }
+#else
+            HTYPE write_horizontal = read[W - 1];
+#endif
             // Write to right channel
-            write_channel_intel(hori_right[I_PX*(PY - 1) + I_PY], read);
+            write_channel_intel(hori_right[I_PX * (PY - 1) + I_PY],
+                                write_horizontal);
           }
         }
 #endif
         if (t > 0) {
-          memory[offset + i*Y_LOCAL + j] = read;
+          memory[offset + i * (Y_LOCAL / W) + j] = read;
         }
       }
     }

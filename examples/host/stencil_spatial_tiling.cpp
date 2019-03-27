@@ -23,14 +23,12 @@ using AlignedVec_t =
 void Reference(AlignedVec_t &domain, const int timesteps) {
   AlignedVec_t buffer(domain);
   for (int t = 0; t < timesteps; ++t) {
-    for (int i = 0; i < kX; ++i) {
-      for (int j = 0; j < kY; ++j) {
-        const auto left = (i > 0) ? domain[(i - 1) * kY + j] : kBoundary;
-        const auto right = (i < kX - 1) ? domain[(i + 1) * kY + j] : kBoundary;
-        const auto top = (j > 0) ? domain[i * kY + j - 1] : kBoundary;
-        const auto bottom = (j < kY - 1) ? domain[i * kY + j + 1] : kBoundary;
+    for (int i = 1; i < kX - 1; ++i) {
+      for (int j = 1; j < kY - 1; ++j) {
         buffer[i * kY + j] =
-            static_cast<Data_t>(0.25) * (left + right + top + bottom);
+            static_cast<Data_t>(0.25) *
+            (domain[(i - 1) * kY + j] + domain[(i + 1) * kY + j] +
+             domain[i * kY + j - 1] + domain[i * kY + j + 1]);
       }
     }
     domain.swap(buffer);
@@ -93,6 +91,15 @@ int main(int argc, char **argv) {
   std::cout << "Initializing host memory...\n" << std::flush;
   // Set center to 0
   AlignedVec_t reference(kX * kY, 0);
+  // Set boundaries to 1
+  for (int i = 0; i < kY; ++i) {
+    reference[i] = 1;
+    reference[kY * (kX - 1) + i] = 1;
+  }
+  for (int i = 0; i < kX; ++i) {
+    reference[i * kY] = 1;
+    reference[i * kY + kY - 1] = 1;
+  }
   auto host_buffers = SplitMemory(reference);
 
   // Create OpenCL kernels
@@ -166,6 +173,15 @@ int main(int argc, char **argv) {
   Reference(reference, timesteps);
 
   const auto result = CombineMemory(host_buffers);
+
+  // std::cout << "\n";
+  // for (int i = 0; i < kX; ++i) {
+  //   for (int j = 0; j < kY; ++j) {
+  //     std::cout << result[i * kY + j] << " ";
+  //   }
+  //   std::cout << "\n";
+  // }
+  // std::cout << "\n";
 
   // Compare result
   for (int i = 0; i < kX; ++i) {
