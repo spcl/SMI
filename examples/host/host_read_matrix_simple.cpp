@@ -58,8 +58,7 @@ int main(int argc, char *argv[])
                 exit(-1);
         }
 
-    cout << "Performing send/receive test with "<<n<<" integers"<<endl;
-
+    cout << "Performing read matrix test with size "<<n<<" x " << m << " ("<<(n*m*sizeof(float))/1024.0/1024.0<< " MB) "<<endl;
     cl::Platform  platform;
     cl::Device device;
     cl::Context context;
