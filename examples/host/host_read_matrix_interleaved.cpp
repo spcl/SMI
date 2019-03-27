@@ -75,10 +75,10 @@ int main(int argc, char *argv[])
     //create memory buffers
     posix_memalign ((void **)&matrix, IntelFPGAOCLUtils::AOCL_ALIGNMENT, n*m*sizeof(float));
     size_t elem_per_module=n*m/4;
-    cl::Buffer input_A_0(context, CL_MEM_READ_ONLY, elem_per_module*sizeof(float));
-    cl::Buffer input_A_1(context, CL_MEM_READ_ONLY, elem_per_module*sizeof(float));
-    cl::Buffer input_A_2(context, CL_MEM_READ_ONLY, elem_per_module*sizeof(float));
-    cl::Buffer input_A_3(context, CL_MEM_READ_ONLY, elem_per_module*sizeof(float));
+    cl::Buffer input_A_0(context, CL_MEM_READ_ONLY|CL_CHANNEL_1_INTELFPGA, elem_per_module*sizeof(float));
+    cl::Buffer input_A_1(context, CL_MEM_READ_ONLY|CL_CHANNEL_2_INTELFPGA, elem_per_module*sizeof(float));
+    cl::Buffer input_A_2(context, CL_MEM_READ_ONLY|CL_CHANNEL_3_INTELFPGA, elem_per_module*sizeof(float));
+    cl::Buffer input_A_3(context, CL_MEM_READ_ONLY|CL_CHANNEL_4_INTELFPGA, elem_per_module*sizeof(float));
     cl::Buffer sum(context,CL_MEM_WRITE_ONLY,sizeof(float));
     generate_float_matrix(matrix,n,m);
 
@@ -131,4 +131,7 @@ int main(int argc, char *argv[])
         cout << "ERROR! "<< real_res << " != " << res<< endl;
 
     cout << "Time elapsed (usecs): "<<end-start<<endl;
+    double data_bytes=(n*m)*sizeof(float);
+    double mem_bandw=((double)data_bytes/((end-start)/1000000.0))/(1024*1024*1024); //GB/s
+    cout << "Memory Bandwidth (GB/s): "<<mem_bandw<<endl;
 }

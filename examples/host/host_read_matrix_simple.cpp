@@ -110,4 +110,7 @@ int main(int argc, char *argv[])
         cout << "ERROR!"<<endl;
 
     cout << "Time elapsed (usecs): "<<end-start<<endl;
+    double data_bytes=(n*m)*sizeof(float);
+    double mem_bandw=((double)data_bytes/((end-start)/1000000.0))/(1024*1024*1024); //GB/s
+    cout << "Memory Bandwidth (GB/s): "<<mem_bandw<<endl;
 }
