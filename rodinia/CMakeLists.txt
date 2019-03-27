@@ -3,7 +3,17 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 add_definitions(-DALTERA -DNO_INTERLEAVE)
 
 # All targets related to each kernel 
-function(opencl_target KERNEL_FOLDER_NAME KERNEL_FILE HOST_FILES)
+function(add_opencl_executable KERNEL_FOLDER_NAME HOST_FILES)
+  set(KERNEL_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/${KERNEL_FOLDER_NAME})
+  string(REPLACE " " ";" HOST_FILES "${HOST_FILES}")
+  string(REGEX REPLACE "([^;]+)" "${KERNEL_FOLDER}/\\1"
+         HOST_FILES "${HOST_FILES}")
+  add_executable(${KERNEL_FOLDER_NAME}.exe ${HOST_FILES})
+  target_link_libraries(${KERNEL_FOLDER_NAME}.exe ${IntelFPGAOpenCL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} m)
+  target_include_directories(${KERNEL_FOLDER_NAME}.exe PRIVATE ${KERNEL_FOLDER} ${KERNEL_FOLDER}/util)
+endfunction()
+
+function(add_opencl_kernel KERNEL_FOLDER_NAME KERNEL_FILE)
   set(KERNEL_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/${KERNEL_FOLDER_NAME})
   get_filename_component(KERNEL_NAME ${KERNEL_FILE} NAME_WE)
   set(AOC_COMMAND
@@ -29,13 +39,10 @@ function(opencl_target KERNEL_FOLDER_NAME KERNEL_FILE HOST_FILES)
   add_custom_target(build_rodinia_${KERNEL_NAME}_hardware
     COMMAND ${IntelFPGAOpenCL_AOC} 
     -report ${AOC_COMMAND} -o ${KERNEL_NAME}_hardware.aocx)
-  string(REPLACE " " ";" HOST_FILES "${HOST_FILES}")
-  string(REGEX REPLACE "([^;]+)" "${KERNEL_FOLDER}/\\1"
-         HOST_FILES "${HOST_FILES}")
-  add_executable(${KERNEL_FOLDER_NAME}.exe ${HOST_FILES})
-  target_link_libraries(${KERNEL_FOLDER_NAME}.exe ${IntelFPGAOpenCL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} m)
-  target_include_directories(${KERNEL_FOLDER_NAME}.exe PRIVATE ${KERNEL_FOLDER} ${KERNEL_FOLDER}/util)
 endfunction()
 
-opencl_target("srad" "kernel/srad_kernel_v5.cl" "main.c util/graphics/graphics.c util/graphics/resize.c kernel/kernel_gpu_opencl_wrapper.c util/opencl/opencl.c")
-opencl_target("pathfinder" "pathfinder_kernel_v5.cl" "main.cpp OpenCL.cpp")
+add_opencl_executable("srad" "main.c util/graphics/graphics.c util/graphics/resize.c kernel/kernel_gpu_opencl_wrapper.c util/opencl/opencl.c")
+add_opencl_kernel("srad" "kernel/srad_kernel_v5.cl")
+add_opencl_executable("pathfinder" "main.cpp OpenCL.cpp")
+add_opencl_kernel("pathfinder" "pathfinder_kernel_v5.cl")
+add_opencl_kernel("pathfinder" "pathfinder_kernel_v3.cl")
