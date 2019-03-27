@@ -17,7 +17,7 @@ void generate_float_matrix(float *A,int N,int M)
     for(int i=0;i<N;i++)
     {
         for(int j=0;j<M;j++)
-           A[i*M+j] = i;
+           A[i*M+j] =/* i;*/ i*M+j;
     }
 }
 
@@ -25,16 +25,16 @@ int main(int argc, char *argv[])
 {
 
     //command line argument parsing
-    if(argc<7)
+    if(argc<9)
     {
         cerr << "Read Matrix " <<endl;
-        cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <length>  -m <length> "<<endl;
+        cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <length>  -m <length> -r <memory modules 2/4>"<<endl;
         exit(-1);
     }
-    int n,m;
+    int n,m, ram_modules;
     int c;
     std::string program_path;
-    while ((c = getopt (argc, argv, "n:b:m:")) != -1)
+    while ((c = getopt (argc, argv, "n:b:m:r:")) != -1)
         switch (c)
         {
             case 'n':
@@ -49,6 +49,16 @@ int main(int argc, char *argv[])
                     exit(-1);
                 }
                 break;
+            }
+            case 'r':
+            {
+               ram_modules=atoi(optarg);
+               if(ram_modules !=2 && ram_modules != 4)
+               {
+                   cerr << "r must be 2 or 4"<<endl;
+                   exit(-1);
+               }
+               break;
             }
             case 'b':
                 program_path=std::string(optarg);
@@ -74,38 +84,61 @@ int main(int argc, char *argv[])
     float res;
     //create memory buffers
     posix_memalign ((void **)&matrix, IntelFPGAOCLUtils::AOCL_ALIGNMENT, n*m*sizeof(float));
-    size_t elem_per_module=n*m/4;
+    size_t elem_per_module=n*m/ram_modules;
+    cl::Buffer input_A_2,input_A_3;
     cl::Buffer input_A_0(context, CL_MEM_READ_ONLY|CL_CHANNEL_1_INTELFPGA, elem_per_module*sizeof(float));
     cl::Buffer input_A_1(context, CL_MEM_READ_ONLY|CL_CHANNEL_2_INTELFPGA, elem_per_module*sizeof(float));
-    cl::Buffer input_A_2(context, CL_MEM_READ_ONLY|CL_CHANNEL_3_INTELFPGA, elem_per_module*sizeof(float));
-    cl::Buffer input_A_3(context, CL_MEM_READ_ONLY|CL_CHANNEL_4_INTELFPGA, elem_per_module*sizeof(float));
+
+    if(ram_modules==4)
+    {
+        input_A_2 = cl::Buffer(context, CL_MEM_READ_ONLY|CL_CHANNEL_3_INTELFPGA, elem_per_module*sizeof(float));
+        input_A_3 = cl::Buffer(context, CL_MEM_READ_ONLY|CL_CHANNEL_4_INTELFPGA, elem_per_module*sizeof(float));
+    }
     cl::Buffer sum(context,CL_MEM_WRITE_ONLY,sizeof(float));
     generate_float_matrix(matrix,n,m);
 
 
     const int loop_it=((int)(m))/64;   //W must be a divisor of M
     size_t offset=0;
+    size_t increment=64/ram_modules*sizeof(float);
     for(int i=0;i<n;i++)
     {
         for(int j=0;j<loop_it;j++)
         {
             //write to the different banks
-            queues[0].enqueueWriteBuffer(input_A_0, CL_FALSE,offset, 16*sizeof(float),&(matrix[i*m+j*64]));
-            queues[0].enqueueWriteBuffer(input_A_1, CL_FALSE,offset, 16*sizeof(float),&(matrix[i*m+j*64+16]));
-            queues[0].enqueueWriteBuffer(input_A_2, CL_FALSE,offset, 16*sizeof(float),&(matrix[i*m+j*64+32]));
-            queues[0].enqueueWriteBuffer(input_A_3, CL_FALSE,offset, 16*sizeof(float),&(matrix[i*m+j*64+48]));
-            offset+=16*sizeof(float);
-            queues[0].finish();
+            queues[0].enqueueWriteBuffer(input_A_0, CL_FALSE,offset, (64/ram_modules)*sizeof(float),&(matrix[i*m+j*64]));
+            if(ram_modules==4)
+            {
+                queues[0].enqueueWriteBuffer(input_A_1, CL_FALSE,offset, (64/ram_modules)*sizeof(float),&(matrix[i*m+j*64+16]));
+                queues[0].enqueueWriteBuffer(input_A_2, CL_FALSE,offset, (64/ram_modules)*sizeof(float),&(matrix[i*m+j*64+32]));
+                queues[0].enqueueWriteBuffer(input_A_3, CL_FALSE,offset, (64/ram_modules)*sizeof(float),&(matrix[i*m+j*64+48]));
+            }
+            else
+                queues[0].enqueueWriteBuffer(input_A_1, CL_FALSE,offset, (64/ram_modules)*sizeof(float),&(matrix[i*m+j*64+32]));
+
+            offset+=increment;
         }
     }
+    queues[0].finish();
         //args for the apps
-    kernels[0].setArg(0,sizeof(cl_mem),&input_A_0);
-    kernels[0].setArg(1,sizeof(cl_mem),&input_A_1);
-    kernels[0].setArg(2,sizeof(cl_mem),&input_A_2);
-    kernels[0].setArg(3,sizeof(cl_mem),&input_A_3);
-    kernels[0].setArg(4,sizeof(int),&n);
-    kernels[0].setArg(5,sizeof(int),&m);
-    kernels[0].setArg(6,sizeof(int),&m);
+    if(ram_modules==4)
+    {
+        kernels[0].setArg(0,sizeof(cl_mem),&input_A_0);
+        kernels[0].setArg(1,sizeof(cl_mem),&input_A_1);
+        kernels[0].setArg(2,sizeof(cl_mem),&input_A_2);
+        kernels[0].setArg(3,sizeof(cl_mem),&input_A_3);
+        kernels[0].setArg(4,sizeof(int),&n);
+        kernels[0].setArg(5,sizeof(int),&m);
+        kernels[0].setArg(6,sizeof(int),&m);
+    }
+    else
+    {
+        kernels[0].setArg(0,sizeof(cl_mem),&input_A_0);
+        kernels[0].setArg(1,sizeof(cl_mem),&input_A_1);
+        kernels[0].setArg(2,sizeof(int),&n);
+        kernels[0].setArg(3,sizeof(int),&m);
+        kernels[0].setArg(4,sizeof(int),&m);
+    }
     kernels[1].setArg(0,sizeof(cl_mem),&sum);
     kernels[1].setArg(1,sizeof(int),&n);
     kernels[1].setArg(2,sizeof(int),&m);
