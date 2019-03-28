@@ -101,6 +101,7 @@ int main(int argc, char *argv[])
     const int loop_it=((int)(m))/64;   //W must be a divisor of M
     size_t offset=0;
     size_t increment=64/ram_modules*sizeof(float);
+    timestamp_t transf_start=current_time_usecs();
     for(int i=0;i<n;i++)
     {
         for(int j=0;j<loop_it;j++)
@@ -120,6 +121,8 @@ int main(int argc, char *argv[])
         }
     }
     queues[0].finish();
+    timestamp_t transf_time=current_time_usecs()-transf_start;
+
         //args for the apps
     if(ram_modules==4)
     {
@@ -163,6 +166,7 @@ int main(int argc, char *argv[])
     else
         cout << "ERROR! "<< real_res << " != " << res<< endl;
 
+    cout << "Transferring time (usecs): "<<transf_time <<endl;
     cout << "Time elapsed (usecs): "<<end-start<<endl;
     double data_bytes=(n*m)*sizeof(float);
     double mem_bandw=((double)data_bytes/((end-start)/1000000.0))/(1024*1024*1024); //GB/s
