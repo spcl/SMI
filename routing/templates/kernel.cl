@@ -1,4 +1,4 @@
-{% macro cks(channel, channel_count, tag_count, target_index, tags_per_channel) -%}
+{% macro cks(channel, rank_count, channel_count, tag_count, target_index, tags_per_channel) -%}
 __kernel void CK_S_{{ channel.index }}(__global volatile char *restrict rt)
 {
     char external_routing_table[256];
@@ -66,7 +66,7 @@ __kernel void CK_S_{{ channel.index }}(__global volatile char *restrict rt)
 }
 {%- endmacro %}
 
-{% macro ckr(channel, channel_count, tag_count, target_index, tags_per_channel) -%}
+{% macro ckr(channel, rank_count, channel_count, tag_count, target_index, tags_per_channel) -%}
 __kernel void CK_R_{{ channel.index }}(__global volatile char *restrict rt)
 {
     char external_routing_table[256];

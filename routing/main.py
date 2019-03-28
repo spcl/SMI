@@ -49,7 +49,7 @@ def build(connection_list, output_folder, tag_count):
     for fpga in ctx.fpgas:
         channels = fpga.channels
         with open(os.path.join(output_folder, "{}-routing.kernel.cl".format(fpga.key())), "w") as f:
-            f.write(generate_kernels(channels, CHANNELS_PER_FPGA, tag_count))
+            f.write(generate_kernels(ctx.fpgas, channels, CHANNELS_PER_FPGA, tag_count))
 
     with open(os.path.join(output_folder, "hostfile"), "w") as f:
         write_nodefile(ctx.fpgas, f)
