@@ -112,11 +112,14 @@ int main(int argc, char **argv) {
   std::vector<hlslib::ocl::Kernel> kernels;
   std::vector<hlslib::ocl::Buffer<Data_t, hlslib::ocl::Access::readWrite>>
       device_buffers;
+  std::array<hlslib::ocl::MemoryBank, 4> banks = {
+      hlslib::ocl::MemoryBank::bank0, hlslib::ocl::MemoryBank::bank1,
+      hlslib::ocl::MemoryBank::bank2, hlslib::ocl::MemoryBank::bank3};
   for (int i = 0; i < kPX; ++i) {
     for (int j = 0; j < kPY; ++j) {
       auto device_buffer =
           context.MakeBuffer<Data_t, hlslib::ocl::Access::readWrite>(
-              2 * kXLocal * kYLocal);
+              banks[(i * kPY + j) % banks.size()], 2 * kXLocal * kYLocal);
       const std::string suffix("_" + std::to_string(i) + "_" +
                                std::to_string(j));
       kernels.emplace_back(
