@@ -7,6 +7,7 @@ from codegen import generate_kernels
 from common import Channel, write_nodefile, CHANNELS_PER_FPGA
 from routing import create_routing_context
 from table import serialize_to_array, cks_routing_table, ckr_routing_table
+from tag import assign_tags
 
 
 def prepare_directory(path):
@@ -33,9 +34,9 @@ def build(connection_list, output_folder, tag_count):
     prepare_directory(output_folder)
 
     print("Number of FPGAs: {}".format(len(ctx.fpgas)))
-    print("Number of connected channels: {}".format(len(ctx.graph.nodes)))
 
     for fpga in ctx.fpgas:
+        assign_tags(fpga, tag_count)
         for channel in fpga.channels:
             print(channel)
 

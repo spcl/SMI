@@ -19,6 +19,7 @@ class Channel:
     def __init__(self, fpga: "FPGA", index: int):
         self.fpga = fpga
         self.index = index
+        self.tags = []
 
     def target_index(self, target: int) -> int:
         return target_index(self.index, target)

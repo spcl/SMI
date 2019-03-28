@@ -1,4 +1,4 @@
-{% macro cks(channel, rank_count, channel_count, tag_count, target_index, tags_per_channel) -%}
+{% macro cks(channel, rank_count, channel_count, target_index) -%}
 __kernel void CK_S_{{ channel.index }}(__global volatile char *restrict rt)
 {
     char external_routing_table[256];
@@ -7,8 +7,8 @@ __kernel void CK_S_{{ channel.index }}(__global volatile char *restrict rt)
         external_routing_table[i] = rt[i];
     }
 
-    // number of CK_S - 1 + CK_R + number of app channels per CK
-    const char num_sender = {{ channel_count + tags_per_channel }};
+    // number of CK_S - 1 + CK_R + {{ channel.tags|length }} tags
+    const char num_sender = {{ channel_count + channel.tags|length }};
     char sender_id = 0;
     SMI_NetworkMessage message;
 
@@ -19,7 +19,7 @@ __kernel void CK_S_{{ channel.index }}(__global volatile char *restrict rt)
         {
             {% for ck_s in channel.neighbours() %}
             case {{ loop.index0 }}:
-                // receive from CK_S
+                // receive from CK_S_{{ ck_s }}
                 message = read_channel_nb_intel(channels_interconnect_ck_s[{{ (channel_count - 1) * channel.index + loop.index0 }}], &valid);
                 break;
             {% endfor %}
@@ -27,10 +27,10 @@ __kernel void CK_S_{{ channel.index }}(__global volatile char *restrict rt)
                 // receive from CK_R_{{ channel.index }}
                 message = read_channel_nb_intel(channels_interconnect_ck_r_to_ck_s[{{ channel.index }}], &valid);
                 break;
-            {% for app in range(tags_per_channel) %}
-            case {{ channel_count + app }}:
-                // receive from app channel
-                message = read_channel_nb_intel(channels_to_ck_s[{{ channel.index + app * channel_count }}], &valid);
+            {% for tag in channel.tags %}
+            case {{ channel_count + loop.index0 }}:
+                // receive from app channel with tag {{ tag }}
+                message = read_channel_nb_intel(channels_to_ck_s[{{ tag }}], &valid);
                 break;
             {% endfor %}
         }
@@ -50,7 +50,7 @@ __kernel void CK_S_{{ channel.index }}(__global volatile char *restrict rt)
                     break;
                 {% for ck_s in channel.neighbours() %}
                 case {{ 2 + loop.index0 }}:
-                    // send to CK_S
+                    // send to CK_S_{{ ck_s }}
                     write_channel_intel(channels_interconnect_ck_s[{{ (channel_count - 1) * ck_s + target_index(ck_s, channel.index) }}], message);
                     break;
                 {% endfor %}
@@ -66,7 +66,7 @@ __kernel void CK_S_{{ channel.index }}(__global volatile char *restrict rt)
 }
 {%- endmacro %}
 
-{% macro ckr(channel, rank_count, channel_count, tag_count, target_index, tags_per_channel) -%}
+{% macro ckr(channel, rank_count, channel_count, target_index) -%}
 __kernel void CK_R_{{ channel.index }}(__global volatile char *restrict rt)
 {
     char external_routing_table[256];
@@ -91,12 +91,12 @@ __kernel void CK_R_{{ channel.index }}(__global volatile char *restrict rt)
                 break;
             {% for ck_r in channel.neighbours() %}
             case {{ loop.index0 + 1 }}:
-                // receive from CK_R
+                // receive from CK_R_{{ ck_r }}
                 message = read_channel_nb_intel(channels_interconnect_ck_r[{{ (channel_count - 1) * channel.index + loop.index0 }}], &valid);
                 break;
             {% endfor %}
             case {{ channel_count }}:
-                // receive from CK_S
+                // receive from CK_S_{{ channel.index }}
                 message = read_channel_nb_intel(channels_interconnect_ck_s_to_ck_r[{{ channel.index }}], &valid);
                 break;
         }
@@ -112,19 +112,19 @@ __kernel void CK_R_{{ channel.index }}(__global volatile char *restrict rt)
             switch (dest)
             {
                 case 0:
-                    // send to CK_S
+                    // send to CK_S_{{ channel.index }}
                     write_channel_intel(channels_interconnect_ck_r_to_ck_s[{{ channel.index }}], message);
                     break;
                 {% for ck_r in channel.neighbours() %}
                 case {{ loop.index0 + 1 }}:
-                    // send to CK_R
+                    // send to CK_R_{{ ck_r }}
                     write_channel_intel(channels_interconnect_ck_r[{{ (channel_count - 1) * ck_r + target_index(ck_r, channel.index) }}], &valid);
                     break;
                 {% endfor %}
-                {% for app in range(tags_per_channel) %}
-                case {{ channel_count + app }}:
-                    // send to app channel
-                    write_channel_intel(channels_from_ck_r[internal_receiver_rt[{{ channel.index + app * channel_count }}]], &valid);
+                {% for tag in channel.tags %}
+                case {{ channel_count + loop.index0 }}:
+                    // send to app channel with tag {{ tag }}
+                    write_channel_intel(channels_from_ck_r[internal_receiver_rt[{{ tag }}]], &valid);
                     break;
                 {% endfor %}
             }
