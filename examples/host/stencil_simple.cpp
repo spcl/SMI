@@ -111,13 +111,16 @@ int main(int argc, char **argv) {
   Reference(reference, timesteps);
 
   // Compare result
-  for (int i = 0; i < kH; ++i) {
-    for (int j = 0; j < kW; ++j) {
-      auto diff = std::abs(host_buffer[i * kW + j] - reference[i * kW + j]);
-      if (diff > 1e-4 * reference[i * kW + j]) {
-        std::cerr << "Mismatch found at (" << i << ", " << j
-                  << "): " << host_buffer[i * kW + j] << " (should be "
-                  << reference[i * kW + j] << ").\n";
+  const Data_t average =
+      std::accumulate(reference.begin(), reference.end(), 0.0) /
+      reference.size();
+  for (int i = 0; i < kX; ++i) {
+    for (int j = 0; j < kY; ++j) {
+      const auto res = result[i * kY + j];
+      const auto ref = reference[i * kY + j];
+      if (std::abs(ref - res) >= 1e-4 * average) {
+        std::cerr << "Mismatch found at (" << i << ", " << j << "): " << res
+                  << " (should be " << ref << ").\n";
         return 3;
       }
     }

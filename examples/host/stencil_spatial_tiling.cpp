@@ -1,5 +1,6 @@
 #include <cmath>
 #include <iostream>
+#include <numeric>
 #include <vector>
 #include "hlslib/intel/OpenCL.h"
 #include "stencil.h"
@@ -187,13 +188,16 @@ int main(int argc, char **argv) {
   // std::cout << "\n";
 
   // Compare result
+  const Data_t average =
+      std::accumulate(reference.begin(), reference.end(), 0.0) /
+      reference.size();
   for (int i = 0; i < kX; ++i) {
     for (int j = 0; j < kY; ++j) {
-      auto diff = std::abs(result[i * kY + j] - reference[i * kY + j]);
-      if (diff > 1e-4 * reference[i * kY + j]) {
-        std::cerr << "Mismatch found at (" << i << ", " << j
-                  << "): " << result[i * kY + j] << " (should be "
-                  << reference[i * kY + j] << ").\n";
+      const auto res = result[i * kY + j];
+      const auto ref = reference[i * kY + j];
+      if (std::abs(ref - res) >= 1e-4 * average) {
+        std::cerr << "Mismatch found at (" << i << ", " << j << "): " << res
+                  << " (should be " << ref << ").\n";
         return 3;
       }
     }
