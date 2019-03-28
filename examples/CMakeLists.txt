@@ -5,23 +5,37 @@ set(SMI_DATATYPE float CACHE STRING "Data type of computations.")
 set(SMI_VECTORIZATION_WIDTH 16 CACHE STRING "Width for exploiting vector parallelism.")
 set(SMI_STENCIL_NUM_PROCS_X 2 CACHE STRING "Number of processes in X dimension.")
 set(SMI_STENCIL_NUM_PROCS_Y 2 CACHE STRING "Number of processes in Y dimension.")
+math(EXPR SMI_STENCIL_NUM_PROCS "${SMI_STENCIL_NUM_PROCS_X} * ${SMI_STENCIL_NUM_PROCS_Y}")
 
 configure_file(include/stencil.h.in stencil.h)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-find_package(PythonInterp)
+find_package(PythonInterp 3)
+
+if(SMI_DATATYPE STREQUAL "float")
+  set(SMI_COMM_DATATYPE "SMI_FLOAT")
+else()
+  message(FATAL_ERROR "Unsupported data type \"${SMI_DATATYPE}\".")
+endif()
 
 # All targets related to each kernel 
-function(opencl_target KERNEL_NAME USE_CODEGEN)
+function(opencl_target KERNEL_NAME USE_CODEGEN NUM_TAGS)
   if(USE_CODEGEN)
-    add_custom_target(generate_${KERNEL_NAME} ALL
+    add_custom_target(generate_${KERNEL_NAME}
       COMMAND ${PYTHON_EXECUTABLE}
       ${CMAKE_CURRENT_SOURCE_DIR}/kernels/${KERNEL_NAME}.py 
-      ${SMI_STENCIL_NUM_PROCS_X} ${SMI_STENCIL_NUM_PROCS_Y}
+      ${SMI_STENCIL_NUM_PROCS_X} ${SMI_STENCIL_NUM_PROCS_Y} ${NUM_TAGS}
       ${CMAKE_CURRENT_SOURCE_DIR}/kernels ${CMAKE_CURRENT_BINARY_DIR})
     set(KERNEL_FILE ${CMAKE_CURRENT_BINARY_DIR}/${KERNEL_NAME}.cl)
+    if(NUM_TAGS GREATER 0)
+      add_custom_target(generate_${KERNEL_NAME}_routing
+          COMMAND ${PYTHON_EXECUTABLE}
+          ${CMAKE_SOURCE_DIR}/routing/main.py build ${SMI_ROUTING_FILE}
+          ${KERNEL_NAME} ${NUM_TAGS})
+      add_dependencies(generate_${KERNEL_NAME} generate_${KERNEL_NAME}_routing)
+    endif()
   else()
     set(KERNEL_FILE ${CMAKE_CURRENT_SOURCE_DIR}/kernels/${KERNEL_NAME}.cl)
   endif()
@@ -65,7 +79,8 @@ function(opencl_target KERNEL_NAME USE_CODEGEN)
   configure_file(build.sh.in build_${KERNEL_NAME}.sh)
 endfunction()
 
-opencl_target("stencil_simple" OFF)
+opencl_target("stencil_simple" OFF 0)
 if(PythonInterp_FOUND)
-  opencl_target("stencil_spatial_tiling" ON)
+  opencl_target("stencil_spatial_tiling" ON 0)
+  opencl_target("stencil_smi" ON ${SMI_STENCIL_NUM_PROCS})
 endif()
