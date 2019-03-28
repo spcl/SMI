@@ -2,6 +2,7 @@ import re
 from typing import List
 
 import networkx
+from networkx import Graph
 
 from common import COST_INTRA_FPGA, COST_INTER_FPGA, Channel, FPGA, RoutingContext
 
@@ -17,7 +18,7 @@ fpga-0014:acl0:ch0 - fpga-0014:acl1:ch0
 def create_routing_context(stream):
     graph = networkx.Graph()
     fpgas = load_inter_fpga_connections(graph, stream)
-    add_intra_fpga_connections(graph)
+    add_intra_fpga_connections(graph, fpgas)
     routes = shortest_paths(graph)
     fpgas = create_ranks_for_fpgas(fpgas)
     return RoutingContext(graph, routes, fpgas)
@@ -47,11 +48,12 @@ def load_inter_fpga_connections(graph, stream) -> List[FPGA]:
     return list(fpgas.values())
 
 
-def add_intra_fpga_connections(graph):
-    for a in graph.nodes:
-        for b in graph.nodes:
-            if a is not b and a.fpga == b.fpga:
-                graph.add_edge(a, b, weight=COST_INTRA_FPGA)
+def add_intra_fpga_connections(graph: Graph, fpgas: List[FPGA]):
+    for fpga in fpgas:
+        for a in fpga.channels:
+            for b in fpga.channels:
+                if a is not b:
+                    graph.add_edge(a, b, weight=COST_INTRA_FPGA)
 
 
 def shortest_paths(graph):

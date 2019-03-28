@@ -33,23 +33,22 @@ def build(connection_list, output_folder, tag_count):
     prepare_directory(output_folder)
 
     print("Number of FPGAs: {}".format(len(ctx.fpgas)))
-    print("Number of active channels: {}".format(len(ctx.graph.nodes)))
-
-    for channel in sorted(ctx.graph.nodes, key=lambda c: "{}:{}".format(c.fpga.key(), c.index)):
-        print(channel)
-
-        cks_table = cks_routing_table(ctx.routes, ctx.fpgas, channel)
-        write_table(channel, "cks", cks_table, output_folder)
-        print("CKS: {}".format(cks_table))
-
-        ckr_table = ckr_routing_table(channel, CHANNELS_PER_FPGA, tag_count)
-        write_table(channel, "ckr", ckr_table, output_folder)
-        print("CKR: {}\n".format(ckr_table))
+    print("Number of connected channels: {}".format(len(ctx.graph.nodes)))
 
     for fpga in ctx.fpgas:
-        channels = fpga.channels
+        for channel in fpga.channels:
+            print(channel)
+
+            cks_table = cks_routing_table(ctx.routes, ctx.fpgas, channel)
+            write_table(channel, "cks", cks_table, output_folder)
+            print("CKS: {}".format(cks_table))
+
+            ckr_table = ckr_routing_table(channel, CHANNELS_PER_FPGA, tag_count)
+            write_table(channel, "ckr", ckr_table, output_folder)
+            print("CKR: {}\n".format(ckr_table))
+
         with open(os.path.join(output_folder, "{}-routing.kernel.cl".format(fpga.key())), "w") as f:
-            f.write(generate_kernels(ctx.fpgas, channels, CHANNELS_PER_FPGA, tag_count))
+            f.write(generate_kernels(ctx.fpgas, fpga.channels, CHANNELS_PER_FPGA, tag_count))
 
     with open(os.path.join(output_folder, "hostfile"), "w") as f:
         write_nodefile(ctx.fpgas, f)
