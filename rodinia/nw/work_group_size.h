@@ -2,19 +2,13 @@
 #define WORK_GROUP_SIZE_H_
 
 #ifndef BSIZE
-#ifdef RD_WG_SIZE_0_0
-	#define BSIZE RD_WG_SIZE_0_0
-#elif defined(RD_WG_SIZE_0)
-	#define BSIZE RD_WG_SIZE_0
-#elif defined(RD_WG_SIZE)
-	#define BSIZE RD_WG_SIZE
-#else
-	#define BSIZE 16
-#endif 
-#endif // BSIZE
+  // From Zohouri's PhD thesis, page 37
+	#define BSIZE 4096
+#endif
 
 #ifndef PAR
-	#define PAR 4
+  // From Zohouri's PhD thesis, page 37
+	#define PAR 64
 #endif
 
 #endif 
