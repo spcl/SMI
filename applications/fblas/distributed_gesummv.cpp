@@ -27,7 +27,7 @@ void generate_float_matrix(float *A,int N,int M)
 void generate_float_vector (float *x, int N)
 {
     for(int i=0;i<N;i++)
-        x[i] = i;// static_cast <float> (rand()) / (static_cast <float> (RAND_MAX/1.0));
+        x[i] = 1;// static_cast <float> (rand()) / (static_cast <float> (RAND_MAX/1.0));
 //        x[i]=1  ;
 }
 
@@ -109,6 +109,8 @@ int main(int argc, char *argv[])
     posix_memalign ((void **)&B, IntelFPGAOCLUtils::AOCL_ALIGNMENT, n*n*sizeof(float));
     posix_memalign ((void **)&x, IntelFPGAOCLUtils::AOCL_ALIGNMENT, n*sizeof(float));
     posix_memalign ((void **)&y, IntelFPGAOCLUtils::AOCL_ALIGNMENT, n*sizeof(float));
+    posix_memalign ((void **)&fpga_res_y, IntelFPGAOCLUtils::AOCL_ALIGNMENT, n*sizeof(float));
+
     generate_float_vector(x,n);
     generate_float_matrix(A,n,n);
     generate_float_matrix(B,n,n);
@@ -272,7 +274,6 @@ int main(int argc, char *argv[])
         queues[0].finish();
         queues[0].enqueueWriteBuffer(input_x,CL_TRUE,0,n*sizeof(float),x);
         queues[0].finish();
-        printf("Data copied\n");
 
         //gemv_A
         int one=1;
@@ -280,11 +281,13 @@ int main(int argc, char *argv[])
         float fzero=0,fone=1;
         int x_repetitions=ceil((float)(n)/tile_size);
 
+        printf("Data copied. Alpha: %f\n",alpha);
         kernels[0].setArg(0, sizeof(int),&one);
         kernels[0].setArg(1, sizeof(int),&n);
         kernels[0].setArg(2, sizeof(int),&n);
         kernels[0].setArg(3, sizeof(float),&alpha);
         kernels[0].setArg(4, sizeof(float),&fzero);
+         printf("Data copied. Alpha: %f\n",alpha);
 
 
         //read_matrix_B

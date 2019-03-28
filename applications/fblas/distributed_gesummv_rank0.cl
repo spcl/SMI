@@ -45,12 +45,13 @@ channel TYPE_T CHANNEL_VECTOR_OUT __attribute__((depth(W)));
 channel TYPE_T CHANNEL_RESULT __attribute__((depth(W)));
 
 
-__kernel void KERNEL_NAME(int row_streamed, const int N, const int M, const TYPE_T alpha, const TYPE_T beta)
+__kernel void KERNEL_NAME(int row_streamed, const int N, const int M,  TYPE_T alpha, const TYPE_T beta)
 {
 
     int len_x,tile_x;
     int len_y,tile_y;
     int BlocksX, BlocksY;
+    alpha=1;
     //chose the loop limits
     if(row_streamed == 1)
     {

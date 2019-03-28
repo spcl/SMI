@@ -42,9 +42,9 @@ channel TYPE_T CHANNEL_MATRIX_A __attribute__((depth(W)));
 channel TYPE_T CHANNEL_RESULT __attribute__((depth(W)));
 
 
-__kernel void KERNEL_NAME(int row_streamed, const int N, const int M, const TYPE_T alpha, const TYPE_T beta)
+__kernel void KERNEL_NAME(int row_streamed, const int N, const int M, TYPE_T alpha, const TYPE_T beta)
 {
-
+    alpha=1;
     int len_x,tile_x;
     int len_y,tile_y;
     int BlocksX, BlocksY;
@@ -88,7 +88,7 @@ __kernel void KERNEL_NAME(int row_streamed, const int N, const int M, const TYPE
 
     TYPE_T local_y[MAX_TILE_SIZE];
     TYPE_T local_x[MAX_TILE_SIZE];
-    SMI_Channel chan=SMI_Open_send_channel(M,SMI_FLOAT,1,0);
+    SMI_Channel chan=SMI_Open_send_channel(M,SMI_FLOAT,0,0);
     #pragma max_concurrency 1
     for(int ti=0;ti<BlocksY;ti++)
     {
@@ -125,7 +125,9 @@ __kernel void KERNEL_NAME(int row_streamed, const int N, const int M, const TYPE
                     {
                         #pragma unroll
                         for(int j=0;j<W;j++)
+                        {
                            local_x[jj*W+j]=read_channel_intel(CHANNEL_VECTOR_X);
+                        }
                     }
                     acc_i=0;
                     //read (a block of W elements) of the row of A
@@ -135,11 +137,15 @@ __kernel void KERNEL_NAME(int row_streamed, const int N, const int M, const TYPE
                     TYPE_T local_A[W];
                     #pragma unroll
                     for(int j=0;j<W;j++)
+                    {
                         local_A[j]=read_channel_intel(CHANNEL_MATRIX_A);
+                    }
 
                     #pragma unroll
                     for(int j=0;j<W;j++)
+                    {
                         acc_i+=local_A[j]*local_x[jj*W+j];
+                    }
 
                     #ifdef DOUBLE_PRECISION
                         shift_reg[SHIFT_REG] = shift_reg[0]+alpha*acc_i;
@@ -167,7 +173,9 @@ __kernel void KERNEL_NAME(int row_streamed, const int N, const int M, const TYPE
                 //output y if we reached the end of the matrix
                 //y is output one element at a time
                 if(tj==BlocksX-1)
+                {
                     SMI_Push(&chan,&result);
+                }
             }
         }
     }

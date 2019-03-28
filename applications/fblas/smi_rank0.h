@@ -1,4 +1,5 @@
 #pragma OPENCL EXTENSION cl_intel_channels : enable
+#pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
 #include "../../kernels/communications/channel_helpers.h"
 
@@ -9,7 +10,7 @@
 
 #if defined(EMULATION)
 channel SMI_Network_message io_out_0 __attribute__((depth(16)))
-                    __attribute__((io("emulatedChannel")));
+                    __attribute__((io("emulatedChannel1")));
 channel SMI_Network_message io_out_1 __attribute__((depth(16)))
                     __attribute__((io("emulatedChannel_15_1_to_15_0_1")));
 channel SMI_Network_message io_out_2 __attribute__((depth(16)))
@@ -18,7 +19,7 @@ channel SMI_Network_message io_out_3 __attribute__((depth(16)))
                     __attribute__((io("emulatedChannel_tmp")));
 
 channel SMI_Network_message io_in_0 __attribute__((depth(16)))
-                    __attribute__((io("emulatedChannel_16_1_to_15_1_0")));
+                    __attribute__((io("emulatedChannel")));
 channel SMI_Network_message io_in_1 __attribute__((depth(16)))
                     __attribute__((io("emulatedChannel_15_0_to_15_1_1")));
 channel SMI_Network_message io_in_2 __attribute__((depth(16)))

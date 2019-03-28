@@ -1,5 +1,4 @@
-
-
+#pragma OPENCL EXTENSION cl_khr_fp64 : enable
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 
 #include "../../kernels/communications/channel_helpers.h"
@@ -86,7 +85,6 @@ void SMI_Push_flush(SMI_Channel *chan, void* data, bool immediate)
         SET_HEADER_NUM_ELEMS(chan->net.header,chan->packet_element_id);
         chan->packet_element_id=0;
         write_channel_intel(channels_to_ck_s[chan_idx],chan->net);
-        printf("Push: wrote to %d\n",chan_idx);
     }
 }
 
@@ -99,7 +97,6 @@ void SMI_Push(SMI_Channel *chan, void* data)
 
 __kernel void CK_S_0(__global volatile char *restrict rt, const char numRanks)
 {
-    printf("Ck_S_0 started\n");
     const char ck_id=0;
     //Number of senders to this CK_S is given by the number of application connected to this CK_S
     //and the number of CK_Ss pair
@@ -134,8 +131,6 @@ __kernel void CK_S_0(__global volatile char *restrict rt, const char numRanks)
             break;
             case 4: //appl
                 mess=read_channel_nb_intel(channels_to_ck_s[0],&valid);
-                if(valid)
-                    printf("Received from appl\n");
             break;
 
         }
@@ -152,7 +147,6 @@ __kernel void CK_S_0(__global volatile char *restrict rt, const char numRanks)
             switch(idx)
             {
                 case 0:
-                    printf("Scrivo su I/O");
                     write_channel_intel(io_out_0,mess);
                     break;
                 case 1:
