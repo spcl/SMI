@@ -11,6 +11,6 @@ typedef enum{
     SMI_SEND = 20,
     SMI_RECEIVE = 21,
     SMI_BROADCAST = 22
-}SMI_OperationType;
+}SMI_Operationtype;
 
 #endif

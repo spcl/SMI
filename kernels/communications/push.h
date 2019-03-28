@@ -22,7 +22,7 @@
 
 //TODO: understand where we should put this. Probably a code-generated header with the topology
 extern __constant char internal_sender_rt[2];
-extern channel SMI_NetworkMessage channels_to_ck_s[2];
+extern channel SMI_Network_message channels_to_ck_s[2];
 
 /**
  * @brief SMI_Push push a data elements in the data channel. Data transferring can be delayed
@@ -30,7 +30,7 @@ extern channel SMI_NetworkMessage channels_to_ck_s[2];
  * @param data
  * @param immediate: if true the data is immediately sent, without waiting for the completion of the network packet
  */
-void SMI_PushI(SMI_Channel *chan, void* data, bool immediate)
+void SMI_Push_flush(SMI_Channel *chan, void* data, bool immediate)
 {
     char *conv=(char*)data;
     const char chan_idx=internal_sender_rt[chan->tag];
@@ -50,7 +50,7 @@ void SMI_PushI(SMI_Channel *chan, void* data, bool immediate)
 
 void SMI_Push(SMI_Channel *chan, void* data)
 {
-    SMI_PushI(chan,data,false);
+    SMI_Push_flush(chan,data,false);
 }
 
 

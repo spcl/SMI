@@ -57,42 +57,42 @@
 //****This part should be code-generated****
 
 #if defined(EMULATION)
-channel SMI_NetworkMessage io_out_0 __attribute__((depth(16)))
+channel SMI_Network_message io_out_0 __attribute__((depth(16)))
                     __attribute__((io("emulatedChannel_15_0_to_16_0_0")));
-channel SMI_NetworkMessage io_out_1 __attribute__((depth(16)))
+channel SMI_Network_message io_out_1 __attribute__((depth(16)))
                     __attribute__((io("emulatedChannel_15_0_to_15_1_1")));
-channel SMI_NetworkMessage io_out_2 __attribute__((depth(16)))
+channel SMI_Network_message io_out_2 __attribute__((depth(16)))
                     __attribute__((io("emulatedChannel_tmp")));
-channel SMI_NetworkMessage io_out_3 __attribute__((depth(16)))
+channel SMI_Network_message io_out_3 __attribute__((depth(16)))
                     __attribute__((io("emulatedChannel_tmp")));
 
-channel SMI_NetworkMessage io_in_0 __attribute__((depth(16)))
+channel SMI_Network_message io_in_0 __attribute__((depth(16)))
                     __attribute__((io("emulatedChannel_16_0_to_15_0_0")));
-channel SMI_NetworkMessage io_in_1 __attribute__((depth(16)))
+channel SMI_Network_message io_in_1 __attribute__((depth(16)))
                     __attribute__((io("emulatedChannel_15_1_to_15_0_1")));
 
-channel SMI_NetworkMessage io_in_2 __attribute__((depth(16)))
+channel SMI_Network_message io_in_2 __attribute__((depth(16)))
                     __attribute__((io("emulatedChannel_tmp")));
-channel SMI_NetworkMessage io_in_3 __attribute__((depth(16)))
+channel SMI_Network_message io_in_3 __attribute__((depth(16)))
                     __attribute__((io("emulatedChannel_tmp")));
 
 #else
 
-channel SMI_NetworkMessage io_out_0 __attribute__((depth(16)))
+channel SMI_Network_message io_out_0 __attribute__((depth(16)))
                     __attribute__((io("kernel_output_ch0")));
-channel SMI_NetworkMessage io_out_1 __attribute__((depth(16)))
+channel SMI_Network_message io_out_1 __attribute__((depth(16)))
                     __attribute__((io("kernel_output_ch1")));
-channel SMI_NetworkMessage io_out_2 __attribute__((depth(16)))
+channel SMI_Network_message io_out_2 __attribute__((depth(16)))
                     __attribute__((io("kernel_output_ch2")));
-channel SMI_NetworkMessage io_out_3 __attribute__((depth(16)))
+channel SMI_Network_message io_out_3 __attribute__((depth(16)))
                     __attribute__((io("kernel_output_ch3")));
-channel SMI_NetworkMessage io_in_0 __attribute__((depth(16)))
+channel SMI_Network_message io_in_0 __attribute__((depth(16)))
                     __attribute__((io("kernel_input_ch0")));
-channel SMI_NetworkMessage io_in_1 __attribute__((depth(16)))
+channel SMI_Network_message io_in_1 __attribute__((depth(16)))
                     __attribute__((io("kernel_input_ch1")));
-channel SMI_NetworkMessage io_in_2 __attribute__((depth(16)))
+channel SMI_Network_message io_in_2 __attribute__((depth(16)))
                     __attribute__((io("kernel_input_ch2")));
-channel SMI_NetworkMessage io_in_3 __attribute__((depth(16)))
+channel SMI_Network_message io_in_3 __attribute__((depth(16)))
                     __attribute__((io("kernel_input_ch3")));
 #endif
 
@@ -105,20 +105,20 @@ __constant char internal_sender_rt[2]={0,1};
 __constant char internal_receiver_rt[2]={0,0};
 
 //channels to CK_S 
-channel SMI_NetworkMessage channels_to_ck_s[2] __attribute__((depth(16)));
+channel SMI_Network_message channels_to_ck_s[2] __attribute__((depth(16)));
 
 //channels from CK_R: we don't use them, so we remove otherwise the compiler complains
 //indeed we dind'nt include the pop.h header
-//channel SMI_NetworkMessage channels_from_ck_r[1] __attribute__((depth(16)));
+//channel SMI_Network_message channels_from_ck_r[1] __attribute__((depth(16)));
 
 
 //inteconnection between CK_S and CK_R (some of these are not used in this example)
 __constant char num_qsfp=4;
-channel SMI_NetworkMessage channels_interconnect_ck_s[num_qsfp*(num_qsfp-1)] __attribute__((depth(16)));
-channel SMI_NetworkMessage channels_interconnect_ck_r[num_qsfp*(num_qsfp-1)] __attribute__((depth(16)));
+channel SMI_Network_message channels_interconnect_ck_s[num_qsfp*(num_qsfp-1)] __attribute__((depth(16)));
+channel SMI_Network_message channels_interconnect_ck_r[num_qsfp*(num_qsfp-1)] __attribute__((depth(16)));
 //also we have two channels between each CK_S/CK_R pair
-channel SMI_NetworkMessage channels_interconnect_ck_s_to_ck_r[num_qsfp] __attribute__((depth(16)));
-channel SMI_NetworkMessage channels_interconnect_ck_r_to_ck_s[num_qsfp] __attribute__((depth(16)));
+channel SMI_Network_message channels_interconnect_ck_s_to_ck_r[num_qsfp] __attribute__((depth(16)));
+channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[num_qsfp] __attribute__((depth(16)));
 
 
 
@@ -131,7 +131,7 @@ __kernel void CK_S_0(__global volatile char *restrict rt, const char numRanks)
     const char num_sender=(num_qsfp-1)+1+1; //num_qsfp-1 CK_S, 1 CK_R, 1 application
     char sender_id=0;
     bool valid=false;
-    SMI_NetworkMessage mess;
+    SMI_Network_message mess;
 
     char external_routing_table[256];
     for(int i=0;i<numRanks;i++)
@@ -209,7 +209,7 @@ __kernel void CK_S_1(__global volatile char *restrict rt, const char numRanks)
     const char num_sender=(num_qsfp-1)+1+1; //num_qsfp-1 CK_S, 1 CK_R, 1 application
     char sender_id=0;
     bool valid=false;
-    SMI_NetworkMessage mess;
+    SMI_Network_message mess;
     
     char external_routing_table[256];
     for(int i=0;i<numRanks;i++)
@@ -281,7 +281,7 @@ __kernel void CK_S_2(__global volatile char *restrict rt, const char numRanks)
     const char num_sender=(num_qsfp-1)+1; //num_qsfp-1 CK_S, 1 CK_R
     char sender_id=0;
     bool valid=false;
-    SMI_NetworkMessage mess;
+    SMI_Network_message mess;
 
     char external_routing_table[256];
     for(int i=0;i<numRanks;i++)
@@ -341,7 +341,7 @@ __kernel void CK_S_3(__global volatile char *restrict rt, const char numRanks)
     const char num_sender=(num_qsfp-1)+1;
     char sender_id=0;
     bool valid=false;
-    SMI_NetworkMessage mess;
+    SMI_Network_message mess;
 
     char external_routing_table[256];
     for(int i=0;i<numRanks;i++)
@@ -404,7 +404,7 @@ __kernel void CK_R_0(__global volatile char *rt,const char myRank, const char nu
     const char num_senders=1+(num_qsfp-1)+1; //1 QSFP, num_qsfp-1 CK_Rs, 1 CK_S
     char sender_id=0;
     bool valid=false;
-    SMI_NetworkMessage mess;
+    SMI_Network_message mess;
 
     char external_routing_table[256];
     //load the routing table: in this case is useless
@@ -483,7 +483,7 @@ __kernel void CK_R_1(__global volatile char *rt,const char myRank, const char nu
     const char num_senders=1+(num_qsfp-1)+1; //1 QSFP, 1 CK_R, 1 CK_S
     char sender_id=0;
     bool valid=false;
-    SMI_NetworkMessage mess;
+    SMI_Network_message mess;
 
     char external_routing_table[256];
     //load the routing table: in this case is useless
@@ -562,7 +562,7 @@ __kernel void CK_R_2(__global volatile char *rt,const char myRank, const char nu
     const char num_senders=1+(num_qsfp-1)+1; //1 QSFP, 1 CK_R, 1 CK_S
     char sender_id=0;
     bool valid=false;
-    SMI_NetworkMessage mess;
+    SMI_Network_message mess;
 
     char external_routing_table[256];
     //load the routing table: in this case is useless
@@ -642,7 +642,7 @@ __kernel void CK_R_3(__global volatile char *rt,const char myRank, const char nu
     char sender_id=0;
     bool valid=false;
     const char ck_id=3;
-    SMI_NetworkMessage mess;
+    SMI_Network_message mess;
     const char num_senders=1+(num_qsfp-1)+1; //1 QSFP, 1 CK_R, 1 CK_S
 
     char external_routing_table[256];
@@ -720,7 +720,7 @@ __kernel void CK_R_3(__global volatile char *rt,const char myRank, const char nu
 __kernel void app_0(const int N)
 {
     //Rank 1, TAG 0
-    SMI_Channel chan=SMI_OpenSendChannel(N,SMI_INT,1,0);
+    SMI_Channel chan=SMI_Open_send_channel(N,SMI_INT,1,0);
     for(int i=0;i<N;i++)
     {
         int data=i;
@@ -731,7 +731,7 @@ __kernel void app_0(const int N)
 __kernel void app_1(const int N)
 {
     //Rank 2, TAG 1
-    SMI_Channel chan=SMI_OpenSendChannel(N,SMI_FLOAT,2,1);
+    SMI_Channel chan=SMI_Open_send_channel(N,SMI_FLOAT,2,1);
     const float start=1.1f;
     for(int i=0;i<N;i++)
     {

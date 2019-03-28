@@ -24,6 +24,6 @@ typedef struct __attribute__((packed)) {
     char elems_and_op;    //upper 5 bits contain the number of valid data elements in the packet
                           //lower 3 bit contain the type of operation
 
-}SMI_MessageHeader;
+}SMI_Message_header;
 
 #endif //ifndef HEADER_MESSAGE_H

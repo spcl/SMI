@@ -13,11 +13,11 @@ typedef struct __attribute__((packed)) __attribute__((aligned(32))){
     union{
         struct __attribute__((packed)) __attribute__((aligned(32))){
             char data[28];
-            SMI_MessageHeader header;
+            SMI_Message_header header;
         };
         char padding_[32];
     };
-}SMI_NetworkMessage;
+}SMI_Network_message;
 
 
 #endif //ifndef NETWORK_MESSAGE_H

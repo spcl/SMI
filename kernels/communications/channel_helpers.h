@@ -13,7 +13,7 @@
  * @param tag
  * @return
  */
-SMI_Channel SMI_OpenSendChannel(uint count, SMI_DataType data_type, char destination, char tag)
+SMI_Channel SMI_Open_send_channel(uint count, SMI_Datatype data_type, char destination, char tag)
 {
     SMI_Channel chan;
     //setup channel descriptor
@@ -53,7 +53,7 @@ SMI_Channel SMI_OpenSendChannel(uint count, SMI_DataType data_type, char destina
     return chan;
 }
 
-SMI_Channel SMI_OpenReceiveChannel(uint count, SMI_DataType data_type, char source, char tag)
+SMI_Channel SMI_Open_receive_channel(uint count, SMI_Datatype data_type, char source, char tag)
 {
     SMI_Channel chan;
     //setup channel descriptor

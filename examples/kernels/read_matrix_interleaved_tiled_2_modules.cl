@@ -69,8 +69,10 @@ __kernel void receiver(__global volatile  float *restrict mem, int N, int M)
     float recv[W];
     //float expected=0.0f;
     //int errors=0;
+
     for(int ti=0;ti<BlocksN;ti++)
     {
+        float summ_i=0; //i've done this intermediate accumulation because with 18.0.1 it complains about dependencies
         for(int tj=0;tj<BlocksM;tj++)
         {
             for(int i=0;i<TILE_N;i++)
@@ -90,10 +92,12 @@ __kernel void receiver(__global volatile  float *restrict mem, int N, int M)
                             errors++;
                         }*/
                     }
-                    sum+=acc;
+                    summ_i+=acc;
                 }
             }
         }
+        sum+=summ_i;
     }
-    *mem=sum;
+
+   *mem=sum;
 }

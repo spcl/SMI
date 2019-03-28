@@ -10,6 +10,6 @@ typedef enum{
     SMI_INT = 1,
     SMI_FLOAT = 2,
     SMI_DOUBLE = 3
-}SMI_DataType;
+}SMI_Datatype;
 
 #endif
