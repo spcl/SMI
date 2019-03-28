@@ -2,20 +2,26 @@
 
 // Block size
 #ifndef BSIZE
-#define BSIZE 512
+// From Zohouri PhD thesis, page 40
+#define BSIZE 4096 
 #endif
 
+// Not used in v5
 #ifndef BLOCK_X
-#define BLOCK_X 16
+// #define BLOCK_X 16
+#define BLOCK_X BSIZE
 #endif
 
+// Not used in v5
 #ifndef BLOCK_Y
-#define BLOCK_Y 16
+// #define BLOCK_Y 16
+#define BLOCK_Y BSIZE
 #endif
 
 // Vector size
 #ifndef SSIZE
-#define SSIZE 8
+// From Zohouri PhD thesis, page 40
+#define SSIZE 16
 #endif
 
 // Radius of stencil, e.g 5-point stencil => 1
