@@ -10,7 +10,7 @@ __kernel void CK_S_{{ channel.index }}(__global volatile char *restrict rt)
     // number of CK_S - 1 + CK_R + {{ channel.tags|length }} tags
     const char num_sender = {{ channel_count + channel.tags|length }};
     char sender_id = 0;
-    SMI_NetworkMessage message;
+    SMI_Network_message message;
 
     while(1)
     {
@@ -78,7 +78,7 @@ __kernel void CK_R_{{ channel.index }}(__global volatile char *restrict rt, cons
     // QSFP + number of CK_Rs - 1 + CK_S
     const char num_sender = {{ channel_count + 1 }};
     char sender_id = 0;
-    SMI_NetworkMessage message;
+    SMI_Network_message message;
 
     while(1)
     {
@@ -118,13 +118,13 @@ __kernel void CK_R_{{ channel.index }}(__global volatile char *restrict rt, cons
                 {% for ck_r in channel.neighbours() %}
                 case {{ loop.index0 + 1 }}:
                     // send to CK_R_{{ ck_r }}
-                    write_channel_intel(channels_interconnect_ck_r[{{ (channel_count - 1) * ck_r + target_index(ck_r, channel.index) }}], &valid);
+                    write_channel_intel(channels_interconnect_ck_r[{{ (channel_count - 1) * ck_r + target_index(ck_r, channel.index) }}], message);
                     break;
                 {% endfor %}
                 {% for tag in channel.tags %}
                 case {{ channel_count + loop.index0 }}:
                     // send to app channel with tag {{ tag }}
-                    write_channel_intel(channels_from_ck_r[internal_receiver_rt[{{ tag }}]], &valid);
+                    write_channel_intel(channels_from_ck_r[internal_receiver_rt[{{ tag }}]], message);
                     break;
                 {% endfor %}
             }
