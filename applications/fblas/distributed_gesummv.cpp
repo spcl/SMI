@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
 
     int c;
     int n,m,runs,rank;
-    double alpha,beta;
+    float alpha,beta;
     std::string program_path,program_path_streamed;;
     std::string json_path;
     int fpga;
