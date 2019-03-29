@@ -3,10 +3,19 @@
 {% import 'kernel.cl' as kernel %}
 
 // QSFP channels
+#ifndef SMI_EMULATION_RANK
 {% for channel in channels %}
 channel SMI_Network_message io_out_{{ channel.index }} __attribute__((depth(16))) __attribute__((io("kernel_output_ch{{ channel.index }}")));
 channel SMI_Network_message io_in_{{ channel.index }} __attribute__((depth(16))) __attribute__((io("kernel_input_ch{{ channel.index }}")));
 {% endfor %}
+#else
+#define SMI_EMULATION_RANK_XSTR(s) SMI_EMULATION_RANK_STR(s)
+#define SMI_EMULATION_RANK_STR(s) #s
+{% for channel in channels %}
+channel SMI_Network_message io_out_{{ channel.index }} __attribute__((depth(16))) __attribute__((io("kernel_output_ch{{ channel.index }}_" SMI_EMULATION_RANK_XSTR(SMI_EMULATION_RANK))));
+channel SMI_Network_message io_in_{{ channel.index }} __attribute__((depth(16))) __attribute__((io("kernel_input_ch{{ channel.index }}" SMI_EMULATION_RANK_XSTR(SMI_EMULATION_RANK))));
+{% endfor %}
+#endif
 
 // internal routing tables
 __constant char internal_sender_rt[{{ tag_count }}] = { {{ range(tag_count)|join(", ") }} };
