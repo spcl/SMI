@@ -1,3 +1,5 @@
+#include "smi/channel_helpers.h"
+
 {% import 'kernel.cl' as kernel %}
 
 // QSFP channels
@@ -29,7 +31,6 @@ channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __att
 
 #include "smi/pop.h"
 #include "smi/push.h"
-#include "smi/channel_helpers.h"
 
 {% for channel in channels %}
 {{ kernel.cks(channel, rank_count, channels|length, target_index) }}

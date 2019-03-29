@@ -4,7 +4,7 @@
 
 #ifndef PUSH_H
 #define PUSH_H
-#include "../datatypes/channel_descriptor.h"
+#include "./channel_descriptor.h"
 
 
 /*
@@ -18,11 +18,6 @@
 
 // TODO: probably we will need some sort of Flush, to not wait for a full packet
 // but this should be implemented with a particular Push (otherwise it will create multiple channel write points)
-
-
-//TODO: understand where we should put this. Probably a code-generated header with the topology
-extern __constant char internal_sender_rt[2];
-extern channel SMI_Network_message channels_to_ck_s[2];
 
 /**
  * @brief SMI_Push push a data elements in the data channel. Data transferring can be delayed

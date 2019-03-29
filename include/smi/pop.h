@@ -5,7 +5,7 @@
 #ifndef POP_H
 #define POP_H
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
-#include "../datatypes/channel_descriptor.h"
+#include "./channel_descriptor.h"
 
 
 /*
@@ -16,10 +16,6 @@
  *
  *
  */
-
-//TODO: understand where we should put this. Probably a code-generated header with the topology
-extern __constant char internal_receiver_rt[2];
-extern channel SMI_Network_message channels_from_ck_r[1]; //provisional
 
 /**
  * @brief SMI_Pop: this stalls until data arrives
