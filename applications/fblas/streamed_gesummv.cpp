@@ -9,6 +9,7 @@
 #include <string>
 #include <cblas.h>
 #include <math.h>
+#include <fstream>
 #include "../../include/utils/ocl_utils.hpp"
 #include "../../include/utils/utils.hpp"
 
@@ -53,7 +54,7 @@ void testStreamed(std::string program_path,int n, float alpha, float beta, std::
     std::vector<std::string> kernel_names={"gemv_A","gemv_B", "read_matrix_A", "read_matrix_B", "read_vector_x_A", "read_vector_x_B", "read_vector_y_B", "write_vector"};
     std::vector<cl::Kernel> kernels;
     std::vector<cl::CommandQueue> queues;
-    IntelFPGAOCLUtils::initEnvironment(platform,device,context,program,program_path,kernel_names,kernels,queues);
+    IntelFPGAOCLUtils::initEnvironment(platform,device,0,context,program,program_path,kernel_names,kernels,queues);
     //create data
     posix_memalign ((void **)&fpga_res_y, IntelFPGAOCLUtils::AOCL_ALIGNMENT, n*sizeof(float));
 
