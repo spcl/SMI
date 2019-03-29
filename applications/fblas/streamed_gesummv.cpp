@@ -8,10 +8,9 @@
 #include <iostream>
 #include <string>
 #include <cblas.h>
-#include "../include/fblas_environment.hpp"
-#include "../utils/includes/utils.hpp"
-#include "../utils/includes/test.hpp"
-#include "../utils/includes/data_generators.hpp"
+#include "../../include/utils/ocl_utils.hpp"
+#include "../../include/utils/utils.hpp"
+
 
 using namespace std;
 float *A,*B,*x,*y;
@@ -32,6 +31,15 @@ void generate_float_vector (float *x, int N)
     for(int i=0;i<N;i++)
         x[i] = i;// static_cast <float> (rand()) / (static_cast <float> (RAND_MAX/1.0));
 //        x[i]=1  ;
+}
+
+
+const double flteps = 1e-4;
+
+inline bool test_equals(float result, float expected, float relative_error)
+{
+    //check also that the parameters are numbers
+    return result==result && expected ==expected && ((result==0 && expected ==0) || fabs(result-expected)/fabs(expected) < relative_error);
 }
 
 
