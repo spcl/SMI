@@ -68,8 +68,8 @@ void testStreamed(std::string program_path,int n, float alpha, float beta, std::
     int zero=0;
     float fzero=0;
     float fone=1;
-    int width=16;
-    int tile_size=128;  //attention, change this if necessary
+    int width=64;
+    int tile_size=2048;  //attention, change this if necessary
     std::cout << "Executing streamed version with width: "<<width << "and tile "<<tile_size<<endl;
     int x_repetitions=ceil((float)(n)/tile_size);
 
@@ -142,6 +142,8 @@ void testStreamed(std::string program_path,int n, float alpha, float beta, std::
             queues[i].finish();
 
         asm volatile("": : :"memory");
+        timestamp_t comp_t=current_time_usecs()-comp_start;
+        times.push_back(comp_t);
         comp_start=current_time_usecs();
         queues[0].enqueueReadBuffer(input_output_y,CL_FALSE,0,n*sizeof(float),fpga_res_y);
         queues[0].finish();
