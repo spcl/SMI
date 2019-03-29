@@ -21,41 +21,54 @@
     using FPGA-0014)
 */
 
-#include "smi_bandwidth_rank0.h"
+#include "smi_bandwidth_rank1.h"
 
-__kernel void app_0(const int N)
+
+
+
+
+__kernel void app_0(__global volatile char *mem, const int N)
 {
-    SMI_Channel chan=SMI_Open_send_channel(N,SMI_DOUBLE,1,0);
+    SMI_Channel chan=SMI_Open_receive_channel(N,SMI_DOUBLE,0,0);
     const double start=0.1f;
-
+    char check=1;
     for(int i=0;i<N;i++)
     {
-        double send=start+i;
-        SMI_Push(&chan,&send);
-    }
 
+        double rcvd;
+        SMI_Pop(&chan,&rcvd);
+        check &= (rcvd==(start+i));
+    }
+    *mem=check;
 }
-__kernel void app_1(const int N)
+
+__kernel void app_1(__global volatile char *mem, const int N)
 {
-    SMI_Channel chan=SMI_Open_send_channel(N,SMI_DOUBLE,1,1);
+    SMI_Channel chan=SMI_Open_receive_channel(N,SMI_DOUBLE,0,1);
     const double start=1.1f;
-
+    char check=1;
     for(int i=0;i<N;i++)
     {
-        double send=start+i;
-        SMI_Push(&chan,&send);
-    }
 
+        double rcvd;
+        SMI_Pop(&chan,&rcvd);
+        check &= (rcvd==(start+i));
+    }
+    *mem=check;
 }
-__kernel void app_2(const int N)
-{
-    SMI_Channel chan=SMI_Open_send_channel(N,SMI_DOUBLE,1,2);
-    const double start=2.1f;
 
+__kernel void app_2(__global volatile char *mem, const int N)
+{
+    SMI_Channel chan=SMI_Open_receive_channel(N,SMI_DOUBLE,0,2);
+    const double start=2.1f;
+    char check=1;
     for(int i=0;i<N;i++)
     {
-        double send=start+i;
-        SMI_Push(&chan,&send);
+
+        double rcvd;
+        SMI_Pop(&chan,&rcvd);
+        check &= (rcvd==(start+i));
     }
+    *mem=check;
 
 }

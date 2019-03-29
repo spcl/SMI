@@ -142,12 +142,12 @@ __kernel void CK_S_0(__global volatile char *restrict rt, const char numRanks)
             case 4: //appl
                 mess=read_channel_nb_intel(channels_to_ck_s[0],&valid);
             break;
-            /*case 5: //appl
+            case 5: //appl
                 mess=read_channel_nb_intel(channels_to_ck_s[1],&valid);
             break;
             case 6: //appl
                 mess=read_channel_nb_intel(channels_to_ck_s[2],&valid);
-            break;*/
+            break;
 
 
         }
@@ -383,7 +383,7 @@ __kernel void CK_S_3(__global volatile char *restrict rt, const char numRanks)
 
 
 //This will not do anything
-__kernel void CK_R_0(__global volatile char *rt,const char myRank, const char numRanks)
+__kernel void CK_R_0(__global volatile char *rt,const char myRank)
 {
     const char ck_id=0;
     //The CK_R will receive from i/o, others CK_R and the paired CK_S (for local sends)
@@ -394,7 +394,7 @@ __kernel void CK_R_0(__global volatile char *rt,const char myRank, const char nu
 
     char external_routing_table[256];
     //load the routing table: in this case is useless
-    for(int i=0;i<numRanks;i++)
+    for(int i=0;i<256;i++)
         external_routing_table[i]=rt[i];
 
     /* The CK_R receives:
@@ -463,7 +463,7 @@ __kernel void CK_R_0(__global volatile char *rt,const char myRank, const char nu
 }
 
 //This will not do anything
-__kernel void CK_R_1(__global volatile char *rt,const char myRank, const char numRanks)
+__kernel void CK_R_1(__global volatile char *rt,const char myRank)
 {
     const char ck_id=1;
     const char num_senders=1+(num_qsfp-1)+1; //1 QSFP, 1 CK_R, 1 CK_S
@@ -473,7 +473,7 @@ __kernel void CK_R_1(__global volatile char *rt,const char myRank, const char nu
 
     char external_routing_table[256];
     //load the routing table: in this case is useless
-    for(int i=0;i<numRanks;i++)
+    for(int i=0;i<256;i++)
         external_routing_table[i]=rt[i];
 
     /* The CK_R receives:
@@ -542,7 +542,7 @@ __kernel void CK_R_1(__global volatile char *rt,const char myRank, const char nu
 }
 
 //This will not do anything
-__kernel void CK_R_2(__global volatile char *rt,const char myRank, const char numRanks)
+__kernel void CK_R_2(__global volatile char *rt,const char myRank)
 {
     const char ck_id=2;
     const char num_senders=1+(num_qsfp-1)+1; //1 QSFP, 1 CK_R, 1 CK_S
@@ -552,7 +552,7 @@ __kernel void CK_R_2(__global volatile char *rt,const char myRank, const char nu
 
     char external_routing_table[256];
     //load the routing table: in this case is useless
-    for(int i=0;i<numRanks;i++)
+    for(int i=0;i<256;i++)
         external_routing_table[i]=rt[i];
 
     /* The CK_R receives:
@@ -622,7 +622,7 @@ __kernel void CK_R_2(__global volatile char *rt,const char myRank, const char nu
 
 //This will not do anything
 
-__kernel void CK_R_3(__global volatile char *rt,const char myRank, const char numRanks)
+__kernel void CK_R_3(__global volatile char *rt,const char myRank)
 {
 
     char sender_id=0;
@@ -633,7 +633,7 @@ __kernel void CK_R_3(__global volatile char *rt,const char myRank, const char nu
 
     char external_routing_table[256];
     //load the routing table: in this case is useless
-    for(int i=0;i<numRanks;i++)
+    for(int i=0;i<256;i++)
         external_routing_table[i]=rt[i];
     /* The CK_R receives:
      *  - from the QSFP;

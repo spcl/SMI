@@ -51,7 +51,6 @@ __kernel void KERNEL_NAME(int row_streamed, const int N, const int M,  TYPE_T al
     int len_x,tile_x;
     int len_y,tile_y;
     int BlocksX, BlocksY;
-    alpha=1;
     //chose the loop limits
     if(row_streamed == 1)
     {

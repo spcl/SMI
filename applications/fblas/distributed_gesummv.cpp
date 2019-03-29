@@ -18,6 +18,7 @@
 #include <fstream>
 #include <sstream>
 #include <unistd.h>
+#if 0
 #include <mpi.h>
 
 
@@ -62,7 +63,7 @@ std::string replace(std::string source, const std::string& pattern, const std::s
     return source;
 }
 
-
+#endif
 
 using namespace std;
 float *A,*B,*x,*y;
@@ -96,7 +97,7 @@ inline bool test_equals(float result, float expected, float relative_error)
 
 int main(int argc, char *argv[])
 {
-    CHECK_MPI(MPI_Init(&argc, &argv));
+    //CHECK_MPI(MPI_Init(&argc, &argv));
 
     //command line argument parsing
     if(argc<15)
@@ -148,13 +149,13 @@ int main(int argc, char *argv[])
                 cerr << "Usage: "<< argv[0]<<""<<endl;
                 exit(-1);
         }
-    int rank_count;
+    /*int rank_count;
     CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &rank_count));
 
     int rank;
     CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
     std::cout << "Rank: " << rank << " out of " << rank_count << " ranks" << std::endl;
-
+*/
 
     //set affinity
     cpu_set_t cpuset;
@@ -213,7 +214,7 @@ int main(int argc, char *argv[])
             break;
     }
     IntelFPGAOCLUtils::initEnvironment(platform,device,fpga,context,program,program_path,kernel_names,kernels,queues);
-    int tile_size=2048;
+    int tile_size=128;
     int ranks=2;
     cout << "Executing with tile size " << tile_size<<endl;
     //TODO fix this
@@ -339,16 +340,16 @@ int main(int argc, char *argv[])
         //gemv_A
         int one=1;
         int zero=0;
-        float fzero=0,fone=1;
+        float fzero=0;
         int x_repetitions=ceil((float)(n)/tile_size);
 
-        printf("1: Data copied. Alpha: %f\n",alpha);
+        printf("1: Data copied. Beta: %f\n",beta);
         kernels[0].setArg(0, sizeof(int),&one);
         kernels[0].setArg(1, sizeof(int),&n);
         kernels[0].setArg(2, sizeof(int),&n);
-        kernels[0].setArg(3, sizeof(float),&alpha);
+        kernels[0].setArg(3, sizeof(float),&beta);
         kernels[0].setArg(4, sizeof(float),&fzero);
-        printf("1: Data copied. Alpha: %f\n",alpha);
+        printf("1: Data copied. Beta: %f\n",beta);
 
 
         //read_matrix_B
@@ -382,11 +383,13 @@ int main(int argc, char *argv[])
         kernels[5].setArg(1,sizeof(char),&rank);
         kernels[5].setArg(2,sizeof(char),&ranks);
 
+
+
     }
 
     cout << "Ready to start " <<endl;
     // wait for other nodes
-    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+  //  CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
 
     timestamp_t start=current_time_usecs();
 
@@ -397,8 +400,8 @@ int main(int argc, char *argv[])
 
     timestamp_t end=current_time_usecs();
     // wait for other nodes
-    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-
+    //CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+    sleep(2);
     if(rank ==0)
     {
          queues[0].enqueueReadBuffer(output_y,CL_FALSE,0,n*sizeof(float),fpga_res_y);
@@ -429,5 +432,7 @@ int main(int argc, char *argv[])
 
         cout << "Computation time (usecs): " <<end-start <<endl;
     }
+//    CHECK_MPI(MPI_Finalize());
+
 
 }

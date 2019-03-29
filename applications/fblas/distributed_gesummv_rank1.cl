@@ -44,7 +44,6 @@ channel TYPE_T CHANNEL_RESULT __attribute__((depth(W)));
 
 __kernel void KERNEL_NAME(int row_streamed, const int N, const int M, TYPE_T alpha, const TYPE_T beta)
 {
-    alpha=1;
     int len_x,tile_x;
     int len_y,tile_y;
     int BlocksX, BlocksY;
