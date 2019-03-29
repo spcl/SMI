@@ -67,7 +67,7 @@ __kernel void CK_S_{{ channel.index }}(__global volatile char *restrict rt)
 {%- endmacro %}
 
 {% macro ckr(channel, rank_count, channel_count, target_index) -%}
-__kernel void CK_R_{{ channel.index }}(__global volatile char *restrict rt)
+__kernel void CK_R_{{ channel.index }}(__global volatile char *restrict rt, const char rank)
 {
     char external_routing_table[256];
     for (int i = 0; i < {{ rank_count }}; i++)
@@ -104,7 +104,7 @@ __kernel void CK_R_{{ channel.index }}(__global volatile char *restrict rt)
         if (valid)
         {
             char dest;
-            if (GET_HEADER_DST(message.header) != {{ channel.fpga.rank }})
+            if (GET_HEADER_DST(message.header) != rank)
             {
                 dest = 0;
             }
