@@ -8,6 +8,7 @@
 #include <iostream>
 #include <string>
 #include <cblas.h>
+#include <math.h>
 #include "../../include/utils/ocl_utils.hpp"
 #include "../../include/utils/utils.hpp"
 
