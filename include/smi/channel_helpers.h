@@ -1,6 +1,6 @@
 #ifndef CHANNEL_HELPERS_H
 #define CHANNEL_HELPERS_H
-#include "../datatypes/channel_descriptor.h"
+#include "./channel_descriptor.h"
 /**
     Channel helpers
 */

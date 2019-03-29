@@ -1,0 +1,5 @@
+bitstring
+click
+jinja2
+networkx
+pytest

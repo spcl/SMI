@@ -2,7 +2,7 @@
 
 // Block size
 #ifndef BSIZE
-// From Zohouri PhD thesis, page 40
+// Stratix V parameters from Zohouri PhD thesis, page 40.
 #define BSIZE 4096 
 #endif
 
@@ -20,7 +20,7 @@
 
 // Vector size
 #ifndef SSIZE
-// From Zohouri PhD thesis, page 40
+// Stratix V parameters from Zohouri PhD thesis, page 40.
 #define SSIZE 16
 #endif
 

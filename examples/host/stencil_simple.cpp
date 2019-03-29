@@ -1,12 +1,13 @@
 #include <cmath>
 #include <iostream>
+#include <numeric>
 #include "hlslib/intel/OpenCL.h"
 #include "stencil.h"
 
 // Convert from C to C++
 using Data_t = DTYPE;
-constexpr int kW = X;
-constexpr int kH = Y;
+constexpr int kX = X;
+constexpr int kY = Y;
 constexpr auto kUsage =
     "Usage: ./stencil_simple <[emulator/hardware]> <timesteps>\n";
 
@@ -17,12 +18,12 @@ using AlignedVec_t =
 void Reference(AlignedVec_t &domain, const int timesteps) {
   AlignedVec_t buffer(domain);
   for (int t = 0; t < timesteps; ++t) {
-    for (int i = 1; i < kH - 1; ++i) {
-      for (int j = 1; j < kW - 1; ++j) {
-        buffer[i * kW + j] =
+    for (int i = 1; i < kX - 1; ++i) {
+      for (int j = 1; j < kY - 1; ++j) {
+        buffer[i * kY + j] =
             static_cast<Data_t>(0.25) *
-            (domain[(i - 1) * kW + j] + domain[(i + 1) * kW + j] +
-             domain[i * kW + j - 1] + domain[i * kW + j + 1]);
+            (domain[(i - 1) * kY + j] + domain[(i + 1) * kY + j] +
+             domain[i * kY + j - 1] + domain[i * kY + j + 1]);
       }
     }
     domain.swap(buffer);
@@ -53,15 +54,15 @@ int main(int argc, char **argv) {
 
   std::cout << "Initializing host memory...\n" << std::flush;
   // Set center to 0
-  AlignedVec_t host_buffer(kW * kH, 0);
+  AlignedVec_t host_buffer(kY * kX, 0);
   // Set boundaries to 1
-  for (int i = 0; i < kW; ++i) {
+  for (int i = 0; i < kY; ++i) {
     host_buffer[i] = 1;
-    host_buffer[kW * (kH - 1) + i] = 1;
+    host_buffer[kY * (kX - 1) + i] = 1;
   }
-  for (int i = 0; i < kH; ++i) {
-    host_buffer[i * kW] = 1;
-    host_buffer[i * kW + kW - 1] = 1;
+  for (int i = 0; i < kX; ++i) {
+    host_buffer[i * kY] = 1;
+    host_buffer[i * kY + kY - 1] = 1;
   }
   AlignedVec_t reference(host_buffer);
 
@@ -70,7 +71,7 @@ int main(int argc, char **argv) {
   hlslib::ocl::Context context;
   std::cout << "Allocating device memory...\n" << std::flush;
   auto device_buffer =
-      context.MakeBuffer<Data_t, hlslib::ocl::Access::readWrite>(2 * kW * kH);
+      context.MakeBuffer<Data_t, hlslib::ocl::Access::readWrite>(2 * kY * kX);
   std::cout << "Creating program from binary...\n" << std::flush;
   auto program = context.MakeProgram(kernel_path);
   std::cout << "Creating kernels...\n" << std::flush;
@@ -81,8 +82,8 @@ int main(int argc, char **argv) {
   std::cout << "Copying data to device...\n" << std::flush;
   // Copy to both sections of device memory, so that the boundary conditions
   // are reflected in both
-  device_buffer.CopyFromHost(0, kW * kH, host_buffer.cbegin());
-  device_buffer.CopyFromHost(kW * kH, kW * kH, host_buffer.cbegin());
+  device_buffer.CopyFromHost(0, kY * kX, host_buffer.cbegin());
+  device_buffer.CopyFromHost(kY * kX, kY * kX, host_buffer.cbegin());
 
   // Execute kernel
   std::cout << "Launching kernels...\n" << std::flush;
@@ -103,8 +104,8 @@ int main(int argc, char **argv) {
 
   // Copy back result
   std::cout << "Copying back result...\n" << std::flush;
-  int offset = (timesteps % 2 == 0) ? 0 : kH * kW;
-  device_buffer.CopyToHost(offset, kH * kW, host_buffer.begin());
+  int offset = (timesteps % 2 == 0) ? 0 : kX * kY;
+  device_buffer.CopyToHost(offset, kX * kY, host_buffer.begin());
 
   // Run reference implementation
   std::cout << "Running reference implementation...\n" << std::flush;
@@ -116,7 +117,7 @@ int main(int argc, char **argv) {
       reference.size();
   for (int i = 0; i < kX; ++i) {
     for (int j = 0; j < kY; ++j) {
-      const auto res = result[i * kY + j];
+      const auto res = host_buffer[i * kY + j];
       const auto ref = reference[i * kY + j];
       if (std::abs(ref - res) >= 1e-4 * average) {
         std::cerr << "Mismatch found at (" << i << ", " << j << "): " << res
