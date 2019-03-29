@@ -27,6 +27,9 @@ channel SMI_NetworkMessage channels_interconnect_ck_s_to_ck_r[QSFP_COUNT] __attr
 // connect corresponding CK_R/CK_S pairs
 channel SMI_NetworkMessage channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __attribute__((depth(16)));
 
+#include "smi/pop.h"
+#include "smi/push.h"
+#include "smi/channel_helpers.h"
 
 {% for channel in channels %}
 {{ kernel.cks(channel, rank_count, channels|length, target_index) }}
