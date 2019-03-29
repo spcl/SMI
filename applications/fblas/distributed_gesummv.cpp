@@ -12,6 +12,57 @@
 
 #include "../../include/utils/ocl_utils.hpp"
 #include "../../include/utils/utils.hpp"
+#include <stdio.h>
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <unistd.h>
+#include <mpi.h>
+
+
+void checkMpiCall(int code, const char* location, int line)
+{
+    if (code != MPI_SUCCESS)
+    {
+        char error[256];
+        int length;
+        MPI_Error_string(code, error, &length);
+        std::cerr << "MPI error at " << location << ":" << line << ": " << error << std::endl;
+    }
+}
+
+#define CHECK_MPI(err) checkMpiCall((err), __FILE__, __LINE__);
+
+template <typename DataSize>
+void load_routing_table(int rank, int channel, int ranks, const std::string& routing_directory,
+        const std::string& prefix, DataSize* table)
+{
+    std::stringstream path;
+    path << routing_directory << "/" << prefix << "-rank" << rank << "-channel" << channel;
+
+    std::ifstream file(path.str(), std::ios::binary);
+    if (!file)
+    {
+        std::cerr << "Routing table " << path.str() << " not found" << std::endl;
+        std::exit(1);
+    }
+
+    auto byte_size = ranks * sizeof(DataSize);
+    file.read(table, byte_size);
+}
+
+std::string replace(std::string source, const std::string& pattern, const std::string& replacement)
+{
+    auto pos = source.find(pattern);
+    if (pos != std::string::npos)
+    {
+        return source.substr(0, pos) + replacement + source.substr(pos + pattern.length());
+    }
+    return source;
+}
+
+
 
 using namespace std;
 float *A,*B,*x,*y;
@@ -45,6 +96,7 @@ inline bool test_equals(float result, float expected, float relative_error)
 
 int main(int argc, char *argv[])
 {
+    CHECK_MPI(MPI_Init(&argc, &argv));
 
     //command line argument parsing
     if(argc<15)
@@ -96,6 +148,13 @@ int main(int argc, char *argv[])
                 cerr << "Usage: "<< argv[0]<<""<<endl;
                 exit(-1);
         }
+    int rank_count;
+    CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &rank_count));
+
+    int rank;
+    CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
+    std::cout << "Rank: " << rank << " out of " << rank_count << " ranks" << std::endl;
+
 
     //set affinity
     cpu_set_t cpuset;
@@ -283,13 +342,13 @@ int main(int argc, char *argv[])
         float fzero=0,fone=1;
         int x_repetitions=ceil((float)(n)/tile_size);
 
-        printf("Data copied. Alpha: %f\n",alpha);
+        printf("1: Data copied. Alpha: %f\n",alpha);
         kernels[0].setArg(0, sizeof(int),&one);
         kernels[0].setArg(1, sizeof(int),&n);
         kernels[0].setArg(2, sizeof(int),&n);
         kernels[0].setArg(3, sizeof(float),&alpha);
         kernels[0].setArg(4, sizeof(float),&fzero);
-         printf("Data copied. Alpha: %f\n",alpha);
+        printf("1: Data copied. Alpha: %f\n",alpha);
 
 
         //read_matrix_B
@@ -326,6 +385,8 @@ int main(int argc, char *argv[])
     }
 
     cout << "Ready to start " <<endl;
+    // wait for other nodes
+    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
 
     timestamp_t start=current_time_usecs();
 
@@ -335,8 +396,9 @@ int main(int argc, char *argv[])
         queues[i].finish();
 
     timestamp_t end=current_time_usecs();
-    cout << "Sleeping a bit "<<endl;
-    sleep(1);
+    // wait for other nodes
+    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+
     if(rank ==0)
     {
          queues[0].enqueueReadBuffer(output_y,CL_FALSE,0,n*sizeof(float),fpga_res_y);
