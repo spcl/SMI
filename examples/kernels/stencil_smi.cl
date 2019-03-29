@@ -1,4 +1,5 @@
 #include "stencil.h"
+#include "smi.h"
 
 channel VTYPE read_stream __attribute__((depth((Y/W)/PY)));
 channel VTYPE write_stream __attribute__((depth((Y/W)/PY)));
@@ -10,8 +11,6 @@ channel VTYPE send_top __attribute__((depth((Y/W)/PY)));
 channel VTYPE send_bottom __attribute__((depth((Y/W)/PY)));
 channel HTYPE send_left __attribute__((depth(X/PX)));
 channel HTYPE send_right __attribute__((depth(X/PX)));
-
-${smi_comm_code}
 
 kernel void Read(__global volatile const VTYPE memory[], const int i_px,
                  const int i_py, const int timesteps) {
@@ -92,7 +91,7 @@ kernel void Read(__global volatile const VTYPE memory[], const int i_px,
   }
 }
 
-kernel void Stencil${suffix}(const int timesteps) {
+kernel void Stencil(const int i_px, const int i_py, const int timesteps) {
   for (int t = 0; t < timesteps + 1; ++t) {
     DTYPE buffer[(2 * HALO_X) * (Y_LOCAL + 2 * W) + W];
     for (int i = 0; i < X_LOCAL + 2 * HALO_X; ++i) {
@@ -135,8 +134,8 @@ kernel void Stencil${suffix}(const int timesteps) {
   }
 }
 
-kernel void Write${suffix}(__global volatile VTYPE memory[],
-                           const int timesteps) {
+kernel void Write(__global volatile VTYPE memory[], const int i_px,
+                  const int i_py, const int timesteps) {
   // Extra timestep to write first halos before starting computation
   for (int t = 0; t < timesteps + 1; ++t) {
     // Extra artifical timestep shifts the offset
@@ -172,7 +171,6 @@ kernel void Write${suffix}(__global volatile VTYPE memory[],
             write_channel_intel(send_left, write_horizontal);
           }
         }
-#endif
         if (i_py < PY - 1 && j >= (Y_LOCAL / W) - 1) {
           if (t < timesteps) {
             // Extract relevant values
@@ -239,7 +237,7 @@ kernel void ConvertReceiveTop(const int rank) {
         SMI_Pop(&from_network, &val);
         vec[w] = val;
       }
-      write_channel_intel(receive_top, val);
+      write_channel_intel(receive_top, vec);
     }
   }
 }
@@ -256,7 +254,7 @@ kernel void ConvertReceiveBottom(const int rank) {
         SMI_Pop(&from_network, &val);
         vec[w] = val;
       }
-      write_channel_intel(receive_bottom, val);
+      write_channel_intel(receive_bottom, vec);
     }
   }
 }
@@ -269,7 +267,7 @@ kernel void ConvertSendLeft(const int rank) {
     SMI_Channel to_network =
         SMI_Open_send_channel(X_LOCAL, SMI_TYPE, rank - 1, 3);
     for (int i = 0; i < X_LOCAL; ++i) {
-      DTYPE val = read_channel_intel(write_left);
+      DTYPE val = read_channel_intel(send_left);
       SMI_Push(&to_network, &val);
     }
   }
@@ -283,7 +281,7 @@ kernel void ConvertSendRight(const int rank) {
     SMI_Channel to_network =
         SMI_Open_send_channel(X_LOCAL, SMI_TYPE, rank + 1, 1);
     for (int i = 0; i < X_LOCAL; ++i) {
-      DTYPE val = read_channel_intel(write_right);
+      DTYPE val = read_channel_intel(send_right);
       SMI_Push(&to_network, &val);
     }
   }
