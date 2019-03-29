@@ -59,11 +59,27 @@ function(opencl_target KERNEL_NAME USE_CODEGEN NUM_TAGS)
     COMMAND ${IntelFPGAOpenCL_AOC} 
     ${AOC_COMMAND} 
     -rtl -report)
-  add_custom_target(build_${KERNEL_NAME}_emulator
-    COMMAND ${IntelFPGAOpenCL_AOC} 
-    ${AOC_COMMAND} -march=emulator
-    -emulator-channel-depth-model=strict
-    -o ${KERNEL_NAME}_emulator.aocx)
+  if(NUM_TAGS EQUAL 0)
+    add_custom_target(build_${KERNEL_NAME}_emulator
+      COMMAND ${IntelFPGAOpenCL_AOC} 
+      ${AOC_COMMAND} -march=emulator
+      -emulator-channel-depth-model=strict
+      -o ${KERNEL_NAME}_emulator.aocx)
+  else()
+    # To emulate an MPI-like setup, we need to generate a separate emulation
+    # kernel for each rank
+    add_custom_target(build_${KERNEL_NAME}_emulator)
+    math(EXPR LOOP_END "${NUM_TAGS} - 1")
+    foreach(SMI_EMULATION_RANK RANGE 0 ${LOOP_END})
+      add_custom_target(build_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}
+        COMMAND ${IntelFPGAOpenCL_AOC} 
+        ${AOC_COMMAND} -march=emulator
+        -DSMI_EMULATION_RANK=${SMI_EMULATION_RANK}
+        -emulator-channel-depth-model=strict
+        -o ${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}.aocx)
+      add_dependencies(build_${KERNEL_NAME}_emulator build_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK})
+    endforeach()
+  endif()
   add_custom_target(build_${KERNEL_NAME}_hardware
     COMMAND ${IntelFPGAOpenCL_AOC} 
     ${AOC_COMMAND} -o ${KERNEL_NAME}_hardware.aocx)
