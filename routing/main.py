@@ -33,20 +33,20 @@ def build(connection_list, output_folder, tag_count):
 
     prepare_directory(output_folder)
 
-    print("Number of FPGAs: {}".format(len(ctx.fpgas)))
+    # print("Number of FPGAs: {}".format(len(ctx.fpgas)))
 
     for fpga in ctx.fpgas:
         assign_tags(fpga, tag_count)
         for channel in fpga.channels:
-            print(channel)
+            # print(channel)
 
             cks_table = cks_routing_table(ctx.routes, ctx.fpgas, channel)
             write_table(channel, "cks", cks_table, output_folder)
-            print("CKS: {}".format(cks_table))
+            # print("CKS: {}".format(cks_table))
 
             ckr_table = ckr_routing_table(channel, CHANNELS_PER_FPGA, tag_count)
             write_table(channel, "ckr", ckr_table, output_folder)
-            print("CKR: {}\n".format(ckr_table))
+            # print("CKR: {}\n".format(ckr_table))
 
     with open(os.path.join(output_folder, "kernel.cl"), "w") as f:
         f.write(generate_kernels(ctx.fpgas, ctx.fpgas[0].channels, CHANNELS_PER_FPGA, tag_count))
