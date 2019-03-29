@@ -12,7 +12,7 @@
 
 #define W 32
 #define CHANNEL_VECTOR_X_A channel_x_A
-#define CHANNEL_VECTOR_Y_A channel_vect_out_B
+#define CHANNEL_VECTOR_Y_A channel_vect_y_A
 #define CHANNEL_VECTOR_OUT channel_vect_out_y
 #define CHANNEL_MATRIX_A channel_matrix_A
 #define CHANNEL_VECTOR_X_B channel_x_B
