@@ -357,13 +357,17 @@ int main(int argc, char *argv[])
     //Program startup
     for(int i=0;i<runs;i++)
     {
-        cl::Event events[6];
+        cl::Event events[6]; //this defination must stay here
         // wait for other nodes
         #if defined(MPI)
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
         #endif
 
-
+        //ATTENTION: If you are executing on the same host
+        //since the PCIe is shared that could be problems in taking times
+        //This mini sleep should resolve
+        if(rank==0)
+            usleep(10000);
         //Start computation
         for(int i=0;i<num_kernels-2;i++)
             queues[i].enqueueTask(kernels[i],nullptr,&events[i]);
@@ -394,6 +398,7 @@ int main(int argc, char *argv[])
                 max_end=end;
         }
          times.push_back((double)((max_end-min_start)/1000.0f));
+
 
     }
     //Program ends

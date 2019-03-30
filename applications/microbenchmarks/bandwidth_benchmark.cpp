@@ -12,6 +12,10 @@
 #include <unistd.h>
 #include "../../include/utils/ocl_utils.hpp"
 #include "../../include/utils/utils.hpp"
+#define MPI
+#if defined(MPI)
+#include "../../include/utils/smi_utils.hpp"
+#endif
 
 //#define CHECK
 using namespace std;
@@ -59,7 +63,16 @@ int main(int argc, char *argv[])
                 exit(-1);
         }
 
-    cout << "Performing send/receive test with "<<n<<" integers"<<endl;
+    cout << "Performing send/receive test with "<<n<<" elements"<<endl;
+    #if defined(MPI)
+    int rank_count;
+    CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &rank_count));
+    CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
+    fpga = rank % 2; // in this case is ok, pay attention
+    std::cout << "Rank: " << rank << " out of " << rank_count << " ranks" << std::endl;
+    program_path = replace(program_path, "<rank>", std::to_string(rank));
+    std::cerr << "Program: " << program_path << std::endl;
+    #endif
 
     cl::Platform  platform;
     cl::Device device;
@@ -177,24 +190,54 @@ int main(int argc, char *argv[])
 
     }
 
+    const int num_kernels=kernel_names.size();
+    queues[num_kernels-1].enqueueTask(kernels[num_kernels-1]);
+    queues[num_kernels-2].enqueueTask(kernels[num_kernels-2]);
+    queues[num_kernels-3].enqueueTask(kernels[num_kernels-3]);
+    queues[num_kernels-4].enqueueTask(kernels[num_kernels-4]);
 
 
+    cl::Event events[]; //this defination must stay here
+    // wait for other nodes
+    #if defined(MPI)
+    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+    #endif
+
+    //ATTENTION: If you are executing on the same host
+    //since the PCIe is shared that could be problems in taking times
+    //This mini sleep should resolve
+    if(rank==0)
+        usleep(10000);
 
     timestamp_t start=current_time_usecs();
-    for(int i=0;i<kernel_names.size();i++)
-        queues[i].enqueueTask(kernels[i]);
-
-    queues[0].finish();
-    queues[1].finish();
-    queues[2].finish();
-
+    for(int i=0;i<3;i++)
+        queues[i].enqueueTask(kernels[i],,nullptr,&events[i]););
+    
+    for(int i=0;i<3;i++)
+        queues[i].finish();
 
     timestamp_t end=current_time_usecs();
 
-    std::cout << "Sleeping a bit to ensure CK have finished their job"<<std::endl;
-    sleep(1);
+    #if defined(MPI)
+    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+    #else
+    sleep(2);
+    #endif
     if(rank==1)
     {
+        ulong min_start=4294967295, max_end=0;
+        ulong end, start;
+        for(int i=0;i<num_kernels-3;i++)
+        {
+            events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
+            events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
+            if(i==0)
+                min_start=start;
+            if(start<min_start)
+                min_start=start;
+            if(end>max_end)
+                max_end=end;
+        }
         queues[0].enqueueReadBuffer(check1,CL_TRUE,0,1,&res1);
         queues[0].enqueueReadBuffer(check2,CL_TRUE,0,1,&res2);
         queues[0].enqueueReadBuffer(check3,CL_TRUE,0,1,&res3);
@@ -204,8 +247,11 @@ int main(int argc, char *argv[])
         else
            cout << "RANK 1 ERROR!"<< (int)res1 << " " << (int)res2 << " " <<(int)res3<<endl;
 
-        cout << "Time elapsed (usecs): "<<end-start<<endl;
+        cout << "Time elapsed (usecs): "<<(double)((max_end-min_start)/1000.0f)<<endl;
     }
 
+    #if defined(MPI)
+    CHECK_MPI(MPI_Finalize());
+    #endif
 
 }
