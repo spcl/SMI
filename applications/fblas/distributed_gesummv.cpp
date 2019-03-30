@@ -105,8 +105,7 @@ int main(int argc, char *argv[])
     #if defined(MPI)
     int rank_count;
     CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &rank_count));
-    int rank;
-    int fpga = rank % 2; // in this case is ok, pay attention
+    fpga = rank % 2; // in this case is ok, pay attention
     CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
     std::cout << "Rank: " << rank << " out of " << rank_count << " ranks" << std::endl;
     program_path = replace(program_path, "<rank>", std::to_string(rank));
@@ -352,7 +351,7 @@ int main(int argc, char *argv[])
     CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
     #endif
 
-    timestamp_t start=current_time_usecs();
+    timestamp_t startt=current_time_usecs();
     cl::Event events[6];
 
 
@@ -365,7 +364,7 @@ int main(int argc, char *argv[])
             queues[i].finish();
     }
     //Program ends
-    timestamp_t end=current_time_usecs();
+    timestamp_t endt=current_time_usecs();
     // wait for other nodes
     #if defined(MPI)
     CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
@@ -418,7 +417,7 @@ int main(int argc, char *argv[])
         else
             std::cout <<"ERROR!!!" <<std::endl;
 
-        cout << "Computation time (usecs): " <<(double)(end-start)/runs <<endl;
+        cout << "Computation time (usecs): " <<(double)(endt-startt)/runs <<endl;
         cout << "Computation time with rpof: "<< (double)((max_end-min_start)/1000.0f)<<endl;
     }
     #if defined(MPI)
