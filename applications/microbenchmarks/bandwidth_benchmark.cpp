@@ -210,7 +210,7 @@ int main(int argc, char *argv[])
     //ATTENTION: If you are executing on the same host
     //since the PCIe is shared that could be problems in taking times
     //This mini sleep should resolve
-    if(rank==0)
+    if(rank==1)
         usleep(10000);
 
     timestamp_t start=current_time_usecs();
