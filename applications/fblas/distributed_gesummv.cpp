@@ -343,7 +343,7 @@ int main(int argc, char *argv[])
     }
 
     cout << "Ready to start " <<endl;
-    std::vector<double> &times;
+    std::vector<double> times;
 
     //start the CK_S/CK_R
     const int num_kernels=kernel_names.size();
