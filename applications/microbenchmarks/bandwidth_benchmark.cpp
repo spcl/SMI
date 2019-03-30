@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
     fpga = rank % 2; // in this case is ok, pay attention
     std::cout << "Rank: " << rank << " out of " << rank_count << " ranks" << std::endl;
     program_path = replace(program_path, "<rank>", std::to_string(rank));
-    std::cerr << "Program: " << program_path << std::endl;
+    std::cout << "Program: " << program_path << std::endl;
     #endif
 
     cl::Platform  platform;
