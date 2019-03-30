@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
     int n;
     int c;
     std::string program_path;
-    char rank;
+    int rank;
     int fpga;
     while ((c = getopt (argc, argv, "n:b:r:f:")) != -1)
         switch (c)
@@ -197,7 +197,7 @@ int main(int argc, char *argv[])
     queues[num_kernels-4].enqueueTask(kernels[num_kernels-4]);
 
 
-    cl::Event events[]; //this defination must stay here
+    cl::Event events[3]; //this defination must stay here
     // wait for other nodes
     #if defined(MPI)
     CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
 
     timestamp_t start=current_time_usecs();
     for(int i=0;i<3;i++)
-        queues[i].enqueueTask(kernels[i],,nullptr,&events[i]););
+        queues[i].enqueueTask(kernels[i],,nullptr,&events[i]);
     
     for(int i=0;i<3;i++)
         queues[i].finish();
