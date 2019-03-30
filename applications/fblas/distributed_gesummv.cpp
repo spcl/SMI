@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
     std::vector<cl::CommandQueue> queues;
     std::vector<std::string> kernel_names;
 
-
+    //create kernels
     switch(rank)
     {
         case 0:
@@ -172,7 +172,9 @@ int main(int argc, char *argv[])
     IntelFPGAOCLUtils::initEnvironment(platform,device,fpga,context,program,program_path,kernel_names,kernels,queues);
     int tile_size=2048;
     cout << "Executing with tile size " << tile_size<<endl;
-    //TODO fix this
+
+
+    //Copy data
     cl::Buffer input_x(context, CL_MEM_READ_ONLY|CL_CHANNEL_3_INTELFPGA, n *sizeof(float));
     cl::Buffer output_y(context, CL_MEM_READ_WRITE|CL_CHANNEL_4_INTELFPGA, n * sizeof(float));
     size_t elem_per_module=n*n/2;
@@ -341,6 +343,8 @@ int main(int argc, char *argv[])
     }
 
     cout << "Ready to start " <<endl;
+    std::vector<double> &times;
+
     //start the CK_S/CK_R
     const int num_kernels=kernel_names.size();
     queues[num_kernels-1].enqueueTask(kernels[num_kernels-1]);
@@ -358,43 +362,49 @@ int main(int argc, char *argv[])
         #if defined(MPI)
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
         #endif
+
+
+        //Start computation
         for(int i=0;i<num_kernels-2;i++)
             queues[i].enqueueTask(kernels[i],nullptr,&events[i]);
         for(int i=0;i<kernel_names.size()-2;i++)
             queues[i].finish();
+
+        //wait
         #if defined(MPI)
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
         #else
         sleep(2);
         #endif
 
+        //take times
+        //compute execution time using OpenCL profiling
+        ulong min_start=4294967295, max_end=0;
+        ulong end;
+        ulong start;
+        for(int i=0;i<num_kernels-2;i++)
+        {
+            events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
+            events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
+            if(i==0)
+                min_start=start;
+            if(start<min_start)
+                min_start=start;
+            if(end>max_end)
+                max_end=end;
+        }
+         times.push_back((double)((max_end-min_start)/1000.0f));
+
     }
     //Program ends
     timestamp_t endt=current_time_usecs();
-    // wait for other nodes
    
 
-    //compute execution time using OpenCL profiling
-    ulong min_start=4294967295, max_end=0;
-    ulong end;
-    ulong start;
-    for(int i=0;i<num_kernels-2;i++)
-    {
-        events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
-        events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
-        if(i==0)
-            min_start=start;
-        if(start<min_start)
-            min_start=start;
-        if(end>max_end)
-            max_end=end;
-    }
-
-
+    
     if(rank ==0)
     {
          queues[0].enqueueReadBuffer(output_y,CL_FALSE,0,n*sizeof(float),fpga_res_y);
-        //check
+        //check: we can do this since no-one overwrites the input data
         timestamp_t comp_start=current_time_usecs();
         cblas_sgemv(CblasRowMajor,CblasNoTrans,n,n,beta,B,n,x,1,0,y,1);
         cblas_sgemv(CblasRowMajor,CblasNoTrans,n,n,alpha,A,n,x,1,1,y,1);
@@ -419,8 +429,34 @@ int main(int argc, char *argv[])
         else
             std::cout <<"ERROR!!!" <<std::endl;
 
-        cout << "Computation time (usecs): " <<(double)(endt-startt)/runs <<endl;
-        cout << "Computation time with rpof: "<< (double)((max_end-min_start)/1000.0f)/runs<<endl;
+       //print times
+         //compute the average and standard deviation of times
+        double mean=0;
+        for(auto t:times)
+            mean+=t;
+        mean/=runs;
+        //report the mean in usecs
+
+        double stddev=0;
+        for(auto t:times)
+            stddev+=((t-mean)*(t-mean));
+        stddev=sqrt(stddev/runs);
+        double conf_interval_99=2.58*stddev/sqrt(runs);
+        
+        cout << "Computation time (usec): " << mean << " (sttdev: " << stddev<<")"<<endl;
+        cout << "Conf interval 99: "<<conf_interval_99<<endl;
+        cout << " Conf interval 99 within " <<(conf_interval_99/mean)*100<<"% from mean" <<endl;
+
+        //save the info into output file
+        ofstream fout("distributed_output.dat");
+        fout << "#N = "<<n<<", Runs = "<<runs<<endl;
+        fout << "#Average Computation time (usecs): "<<mean<<endl;
+        fout << "#Standard deviation (usecs): "<<stddev<<endl;
+        fout << "#Confidence interval 99%: +- "<<conf_interval_99<<endl;
+        fout << "#Execution times (usecs):"<<endl;
+        for(auto t:times)
+            fout << t << endl;
+        fout.close();
     }
     #if defined(MPI)
     CHECK_MPI(MPI_Finalize());
