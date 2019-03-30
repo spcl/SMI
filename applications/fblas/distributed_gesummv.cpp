@@ -105,8 +105,8 @@ int main(int argc, char *argv[])
     #if defined(MPI)
     int rank_count;
     CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &rank_count));
-    fpga = rank % 2; // in this case is ok, pay attention
     CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
+    fpga = rank % 2; // in this case is ok, pay attention
     std::cout << "Rank: " << rank << " out of " << rank_count << " ranks" << std::endl;
     program_path = replace(program_path, "<rank>", std::to_string(rank));
     std::cerr << "Program: " << program_path << std::endl;
@@ -346,10 +346,6 @@ int main(int argc, char *argv[])
     queues[num_kernels-1].enqueueTask(kernels[num_kernels-1]);
     queues[num_kernels-2].enqueueTask(kernels[num_kernels-2]);
 
-    // wait for other nodes
-    #if defined(MPI)
-    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-    #endif
 
     timestamp_t startt=current_time_usecs();
     cl::Event events[6];
@@ -358,25 +354,31 @@ int main(int argc, char *argv[])
     //Program startup
     for(int i=0;i<runs;i++)
     {
+        // wait for other nodes
+        #if defined(MPI)
+        CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+        #endif
         for(int i=0;i<num_kernels-2;i++)
             queues[i].enqueueTask(kernels[i],nullptr,&events[i]);
         for(int i=0;i<kernel_names.size()-2;i++)
             queues[i].finish();
+        #if defined(MPI)
+        CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+        #else
+        sleep(2);
+        #endif
+
     }
     //Program ends
     timestamp_t endt=current_time_usecs();
     // wait for other nodes
-    #if defined(MPI)
-    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-    #else
-    sleep(2);
-    #endif
+   
 
-      //compute execution time using OpenCL profiling
+    //compute execution time using OpenCL profiling
     ulong min_start=4294967295, max_end=0;
     ulong end;
     ulong start;
-    for(int i=0;i<kernel_names.size();i++)
+    for(int i=0;i<num_kernels-2;i++)
     {
         events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
         events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
@@ -418,7 +420,7 @@ int main(int argc, char *argv[])
             std::cout <<"ERROR!!!" <<std::endl;
 
         cout << "Computation time (usecs): " <<(double)(endt-startt)/runs <<endl;
-        cout << "Computation time with rpof: "<< (double)((max_end-min_start)/1000.0f)<<endl;
+        cout << "Computation time with rpof: "<< (double)((max_end-min_start)/1000.0f)/runs<<endl;
     }
     #if defined(MPI)
     CHECK_MPI(MPI_Finalize());
