@@ -22,39 +22,47 @@
 */
 
 #include "smi_bandwidth_rank0.h"
+#define FLOAT
+#if defined (FLOAT)
+    #define TYPE_T float
+    #define SMI_TYPE_T SMI_FLOAT
+#else
+    #define TYPE_T double
+    #define SMI_TYPE_T SMI_DOUBLE
+#endif
 
 __kernel void app_0(const int N)
 {
-    SMI_Channel chan=SMI_Open_send_channel(N,SMI_DOUBLE,1,0);
-    const double start=0.1f;
+    SMI_Channel chan=SMI_Open_send_channel(N,SMI_TYPE_T,1,0);
+    const TYPE_T start=0.1f;
 
     for(int i=0;i<N;i++)
     {
-        double send=start+i;
+        TYPE_T send=start+i;
         SMI_Push(&chan,&send);
     }
 
 }
 __kernel void app_1(const int N)
 {
-    SMI_Channel chan=SMI_Open_send_channel(N,SMI_DOUBLE,1,1);
-    const double start=1.1f;
+    SMI_Channel chan=SMI_Open_send_channel(N,SMI_TYPE_T,1,1);
+    const TYPE_T start=1.1f;
 
     for(int i=0;i<N;i++)
     {
-        double send=start+i;
+        TYPE_T send=start+i;
         SMI_Push(&chan,&send);
     }
 
 }
 __kernel void app_2(const int N)
 {
-    SMI_Channel chan=SMI_Open_send_channel(N,SMI_DOUBLE,1,2);
-    const double start=2.1f;
+    SMI_Channel chan=SMI_Open_send_channel(N,SMI_TYPE_T,1,2);
+    const TYPE_T start=2.1f;
 
     for(int i=0;i<N;i++)
     {
-        double send=start+i;
+        TYPE_T send=start+i;
         SMI_Push(&chan,&send);
     }
 
