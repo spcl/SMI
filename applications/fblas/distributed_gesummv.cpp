@@ -352,12 +352,12 @@ int main(int argc, char *argv[])
 
 
     timestamp_t startt=current_time_usecs();
-    cl::Event events[6];
 
 
     //Program startup
     for(int i=0;i<runs;i++)
     {
+        cl::Event events[6];
         // wait for other nodes
         #if defined(MPI)
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
@@ -445,7 +445,7 @@ int main(int argc, char *argv[])
         
         cout << "Computation time (usec): " << mean << " (sttdev: " << stddev<<")"<<endl;
         cout << "Conf interval 99: "<<conf_interval_99<<endl;
-        cout << " Conf interval 99 within " <<(conf_interval_99/mean)*100<<"% from mean" <<endl;
+        cout << "Conf interval 99 within " <<(conf_interval_99/mean)*100<<"% from mean" <<endl;
 
         //save the info into output file
         ofstream fout("distributed_output.dat");
