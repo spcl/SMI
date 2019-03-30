@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
 
     timestamp_t start=current_time_usecs();
     for(int i=0;i<3;i++)
-        queues[i].enqueueTask(kernels[i],,nullptr,&events[i]);
+        queues[i].enqueueTask(kernels[i],nullptr,&events[i]);
     
     for(int i=0;i<3;i++)
         queues[i].finish();
