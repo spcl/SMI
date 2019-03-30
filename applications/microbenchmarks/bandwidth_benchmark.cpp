@@ -22,6 +22,10 @@ using namespace std;
 int main(int argc, char *argv[])
 {
 
+    #if defined(MPI)
+    CHECK_MPI(MPI_Init(&argc, &argv));
+    #endif
+
     //command line argument parsing
     if(argc<9)
     {
