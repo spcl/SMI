@@ -126,6 +126,7 @@ void testStreamed(std::string program_path,int n, float alpha, float beta, std::
 
     for(int i=0;i<runs;i++)
     {
+        cl::Event events[8];
         timestamp_t comp_start=current_time_usecs();
         queues[0].enqueueWriteBuffer(input_A,CL_FALSE,0,n*n*sizeof(float),A);
         queues[0].enqueueWriteBuffer(input_B,CL_FALSE,0,n*n*sizeof(float),B);
@@ -137,12 +138,30 @@ void testStreamed(std::string program_path,int n, float alpha, float beta, std::
         comp_start=current_time_usecs();
         asm volatile("": : :"memory");
         for(int i=0;i<kernel_names.size();i++)
-            queues[i].enqueueTask(kernels[i]);
+            queues[i].enqueueTask(kernels[i],nullptr,&events[i]);
         for(int i=0;i<kernel_names.size();i++)
             queues[i].finish();
 
         asm volatile("": : :"memory");
         timestamp_t comp_t=current_time_usecs()-comp_start;
+
+         //compute execution time using OpenCL profiling
+        ulong min_start=4294967295, max_end=0;
+        ulong end;
+        ulong start;
+        for(int i=0;i<num_kernels;i++)
+        {
+            events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
+            events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
+            if(i==0)
+                min_start=start;
+            if(start<min_start)
+                min_start=start;
+            if(end>max_end)
+                max_end=end;
+        }
+        //times.push_back((double)((max_end-min_start)/1000.0f));
+        printf("Execution time with wt: %ld Execution with prof: %f\n",comp_t,(double)((max_end-min_start)/1000.0f));
         times.push_back(comp_t);
         comp_start=current_time_usecs();
         queues[0].enqueueReadBuffer(input_output_y,CL_FALSE,0,n*sizeof(float),fpga_res_y);
