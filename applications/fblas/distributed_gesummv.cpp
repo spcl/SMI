@@ -12,63 +12,15 @@
 
 #include "../../include/utils/ocl_utils.hpp"
 #include "../../include/utils/utils.hpp"
-#include <stdio.h>
-#include <string>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <unistd.h>
-#if 0
-#include <mpi.h>
-
-
-void checkMpiCall(int code, const char* location, int line)
-{
-    if (code != MPI_SUCCESS)
-    {
-        char error[256];
-        int length;
-        MPI_Error_string(code, error, &length);
-        std::cerr << "MPI error at " << location << ":" << line << ": " << error << std::endl;
-    }
-}
-
-#define CHECK_MPI(err) checkMpiCall((err), __FILE__, __LINE__);
-
-template <typename DataSize>
-void load_routing_table(int rank, int channel, int ranks, const std::string& routing_directory,
-        const std::string& prefix, DataSize* table)
-{
-    std::stringstream path;
-    path << routing_directory << "/" << prefix << "-rank" << rank << "-channel" << channel;
-
-    std::ifstream file(path.str(), std::ios::binary);
-    if (!file)
-    {
-        std::cerr << "Routing table " << path.str() << " not found" << std::endl;
-        std::exit(1);
-    }
-
-    auto byte_size = ranks * sizeof(DataSize);
-    file.read(table, byte_size);
-}
-
-std::string replace(std::string source, const std::string& pattern, const std::string& replacement)
-{
-    auto pos = source.find(pattern);
-    if (pos != std::string::npos)
-    {
-        return source.substr(0, pos) + replacement + source.substr(pos + pattern.length());
-    }
-    return source;
-}
-
+#define MPI
+#if defined(MPI)
+#include "../../include/utils/smi_utils.hpp"
 #endif
+
 
 using namespace std;
 float *A,*B,*x,*y;
 float *fpga_res_y;
-//#define BLOCKING
 void generate_float_matrix(float *A,int N,int M)
 {
     for(int i=0;i<N;i++)
@@ -97,8 +49,9 @@ inline bool test_equals(float result, float expected, float relative_error)
 
 int main(int argc, char *argv[])
 {
-    //CHECK_MPI(MPI_Init(&argc, &argv));
-
+    #if defined(MPI)
+    CHECK_MPI(MPI_Init(&argc, &argv));
+    #endif
     //command line argument parsing
     if(argc<15)
     {
@@ -149,13 +102,17 @@ int main(int argc, char *argv[])
                 cerr << "Usage: "<< argv[0]<<""<<endl;
                 exit(-1);
         }
-    /*int rank_count;
+    #if defined(MPI)
+    int rank_count;
     CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &rank_count));
-
     int rank;
+    int fpga = rank % 2; // in this case is ok, pay attention
     CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
     std::cout << "Rank: " << rank << " out of " << rank_count << " ranks" << std::endl;
-*/
+    program_path = replace(program_path, "<rank>", std::to_string(rank));
+    std::cerr << "Program: " << program_path << std::endl;
+    #endif
+
 
     //set affinity
     cpu_set_t cpuset;
@@ -214,8 +171,7 @@ int main(int argc, char *argv[])
             break;
     }
     IntelFPGAOCLUtils::initEnvironment(platform,device,fpga,context,program,program_path,kernel_names,kernels,queues);
-    int tile_size=128;
-    int ranks=2;
+    int tile_size=2048;
     cout << "Executing with tile size " << tile_size<<endl;
     //TODO fix this
     cl::Buffer input_x(context, CL_MEM_READ_ONLY|CL_CHANNEL_3_INTELFPGA, n *sizeof(float));
@@ -301,12 +257,12 @@ int main(int argc, char *argv[])
         //set Arguments for CKS
         //args for the CK_Ss
         kernels[6].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
-        kernels[6].setArg(1,sizeof(char),&ranks);
+        kernels[6].setArg(1,sizeof(char),&rank_count);
 
         //args for the CK_Rs
         kernels[7].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
         kernels[7].setArg(1,sizeof(char),&rank);
-        kernels[7].setArg(2,sizeof(char),&ranks);
+        kernels[7].setArg(2,sizeof(char),&rank_count);
     }
     else
     {
@@ -343,13 +299,11 @@ int main(int argc, char *argv[])
         float fzero=0;
         int x_repetitions=ceil((float)(n)/tile_size);
 
-        printf("1: Data copied. Beta: %f\n",beta);
         kernels[0].setArg(0, sizeof(int),&one);
         kernels[0].setArg(1, sizeof(int),&n);
         kernels[0].setArg(2, sizeof(int),&n);
         kernels[0].setArg(3, sizeof(float),&beta);
         kernels[0].setArg(4, sizeof(float),&fzero);
-        printf("1: Data copied. Beta: %f\n",beta);
 
 
         //read_matrix_B
@@ -376,32 +330,66 @@ int main(int argc, char *argv[])
         //set Arguments for CKS
         //args for the CK_Ss
         kernels[4].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
-        kernels[4].setArg(1,sizeof(char),&ranks);
+        kernels[4].setArg(1,sizeof(char),&rank_count);
 
         //args for the CK_Rs
         kernels[5].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
         kernels[5].setArg(1,sizeof(char),&rank);
-        kernels[5].setArg(2,sizeof(char),&ranks);
+        kernels[5].setArg(2,sizeof(char),&rank_count);
 
 
 
     }
 
     cout << "Ready to start " <<endl;
+    //start the CK_S/CK_R
+    const int num_kernels=kernel_names.size();
+    queues[num_kernels-1].enqueueTask(kernels[num_kernels-1]);
+    queues[num_kernels-2].enqueueTask(kernels[num_kernels-2]);
+
     // wait for other nodes
-  //  CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+    #if defined(MPI)
+    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+    #endif
 
     timestamp_t start=current_time_usecs();
+    cl::Event events[6];
 
-    for(int i=0;i<kernel_names.size();i++)
-        queues[i].enqueueTask(kernels[i]);
-    for(int i=0;i<kernel_names.size()-2;i++)
-        queues[i].finish();
 
+    //Program startup
+    for(int i=0;i<runs;i++)
+    {
+        for(int i=0;i<num_kernels-2;i++)
+            queues[i].enqueueTask(kernels[i],nullptr,&events[i]);
+        for(int i=0;i<kernel_names.size()-2;i++)
+            queues[i].finish();
+    }
+    //Program ends
     timestamp_t end=current_time_usecs();
     // wait for other nodes
-    //CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+    #if defined(MPI)
+    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+    #else
     sleep(2);
+    #endif
+
+      //compute execution time using OpenCL profiling
+    ulong min_start=4294967295, max_end=0;
+    ulong end;
+    ulong start;
+    for(int i=0;i<kernel_names.size();i++)
+    {
+        events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
+        events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
+        if(i==0)
+            min_start=start;
+        if(start<min_start)
+            min_start=start;
+        if(end>max_end)
+            max_end=end;
+    }
+
+
     if(rank ==0)
     {
          queues[0].enqueueReadBuffer(output_y,CL_FALSE,0,n*sizeof(float),fpga_res_y);
@@ -430,9 +418,11 @@ int main(int argc, char *argv[])
         else
             std::cout <<"ERROR!!!" <<std::endl;
 
-        cout << "Computation time (usecs): " <<end-start <<endl;
+        cout << "Computation time (usecs): " <<(double)(end-start)/runs <<endl;
+        cout << "Computation time with rpof: "<< (double)((max_end-min_start)/1000.0f)<<endl;
     }
-//    CHECK_MPI(MPI_Finalize());
-
+    #if defined(MPI)
+    CHECK_MPI(MPI_Finalize());
+    #endif
 
 }

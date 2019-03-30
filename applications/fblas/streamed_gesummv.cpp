@@ -149,7 +149,7 @@ void testStreamed(std::string program_path,int n, float alpha, float beta, std::
         ulong min_start=4294967295, max_end=0;
         ulong end;
         ulong start;
-        for(int i=0;i<num_kernels;i++)
+        for(int i=0;i<kernel_names.size();i++)
         {
             events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
             events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
@@ -160,9 +160,7 @@ void testStreamed(std::string program_path,int n, float alpha, float beta, std::
             if(end>max_end)
                 max_end=end;
         }
-        //times.push_back((double)((max_end-min_start)/1000.0f));
-        printf("Execution time with wt: %ld Execution with prof: %f\n",comp_t,(double)((max_end-min_start)/1000.0f));
-        times.push_back(comp_t);
+        times.push_back((double)((max_end-min_start)/1000.0f));
         comp_start=current_time_usecs();
         queues[0].enqueueReadBuffer(input_output_y,CL_FALSE,0,n*sizeof(float),fpga_res_y);
         queues[0].finish();
