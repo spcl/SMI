@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include "../../include/utils/ocl_utils.hpp"
 #include "../../include/utils/utils.hpp"
-//#define MPI
+#define MPI
 #if defined(MPI)
 #include "../../include/utils/smi_utils.hpp"
 #endif
@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
     queues[num_kernels-4].enqueueTask(kernels[num_kernels-4]);
 
 
-    cl::Event events[3]; //this defination must stay here
+    cl::Event events[1]; //this defination must stay here
     // wait for other nodes
     #if defined(MPI)
     CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
@@ -192,7 +192,7 @@ int main(int argc, char *argv[])
     //ATTENTION: If you are executing on the same host
     //since the PCIe is shared that could be problems in taking times
     //This mini sleep should resolve
-    if(rank==1)
+    if(rank==0)
         usleep(10000);
 
     timestamp_t start=current_time_usecs();
@@ -209,7 +209,7 @@ int main(int argc, char *argv[])
     #else
     sleep(1);
     #endif
-    if(rank==1)
+    if(rank==0)
     {
         ulong min_start=4294967295, max_end=0;
         ulong end, start;
@@ -224,8 +224,9 @@ int main(int argc, char *argv[])
             if(end>max_end)
                 max_end=end;
         }
-
-        cout << "Time elapsed (usecs): "<<(double)((max_end-min_start)/1000.0f)<<endl;
+        double time= (double)((max_end-min_start)/1000.0f);
+        cout << "Time elapsed (usecs): "<<time <<endl;
+        cout << "Latency (usecs): " << time/(2*n)<<endl;
     }
 
     #if defined(MPI)
