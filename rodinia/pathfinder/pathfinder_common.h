@@ -1,7 +1,7 @@
 #ifndef BSIZE
-	#define BSIZE 256
+	#define BSIZE 32768 
 #endif
 
 #ifndef SSIZE
-	#define SSIZE 16
+	#define SSIZE 32
 #endif
