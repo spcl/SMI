@@ -49,7 +49,7 @@ def build(connection_list, output_folder, tag_count):
             # print("CKR: {}\n".format(ckr_table))
 
     with open(os.path.join(output_folder, "smi.h"), "w") as f:
-        f.write(generate_kernels(ctx.fpgas, ctx.fpgas[0].channels, CHANNELS_PER_FPGA, tag_count))
+        f.write(generate_kernels(ctx.fpgas, ctx.graph, ctx.fpgas[0].channels, CHANNELS_PER_FPGA, tag_count))
 
     with open(os.path.join(output_folder, "hostfile"), "w") as f:
         write_nodefile(ctx.fpgas, f)
