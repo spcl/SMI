@@ -94,7 +94,7 @@ function(opencl_target KERNEL_NAME USE_CODEGEN NUM_TAGS)
     add_dependencies(build_${KERNEL_NAME}_hardware generate_${KERNEL_NAME}_routing)
   endif()
   add_executable(${KERNEL_NAME}.exe ${CMAKE_CURRENT_SOURCE_DIR}/host/${KERNEL_NAME}.cpp)
-  target_link_libraries(${KERNEL_NAME}.exe ${IntelFPGAOpenCL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+  target_link_libraries(${KERNEL_NAME}.exe ${SMI_LIBS})
   # Run targets don't work anymore when we need to pass arguments
   # add_custom_target(run_${KERNEL_NAME}_hardware COMMAND ${CMAKE_CURRENT_BINARY_DIR}/${KERNEL_NAME}.exe hardware)
   # add_custom_target(run_${KERNEL_NAME}_emulator COMMAND CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=1 ${CMAKE_CURRENT_BINARY_DIR}/${KERNEL_NAME}.exe emulator)
