@@ -2,6 +2,8 @@
 
 {% import 'kernel.cl' as kernel %}
 
+#define RANK_COUNT {{ fpgas|length }}
+
 // QSFP channels
 #ifndef SMI_EMULATION_RANK
 {% for channel in channels %}
@@ -44,6 +46,6 @@ channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __att
 #include "smi/push.h"
 
 {% for channel in channels %}
-{{ kernel.cks(channel, fpgas|length, channels|length, target_index) }}
-{{ kernel.ckr(channel, fpgas|length, channels|length, target_index) }}
+{{ kernel.cks(channel, channels|length, target_index) }}
+{{ kernel.ckr(channel, channels|length, target_index) }}
 {% endfor %}
