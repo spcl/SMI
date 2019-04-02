@@ -14,8 +14,8 @@ channel SMI_Network_message io_in_{{ channel.index }} __attribute__((depth(16)))
 {% for fpga in fpgas %}
 #if SMI_EMULATION_RANK == {{ fpga.rank }}
     {% for channel in range(channels_per_fpga) %}
-channel SMI_Network_message io_out_{{ channel }} __attribute__((depth(16))) __attribute__((io("kernel_output_{{ channel_name(fpga.channels[channel], true) }}")));
-channel SMI_Network_message io_in_{{ channel }} __attribute__((depth(16))) __attribute__((io("kernel_input_{{ channel_name(fpga.channels[channel], false) }}")));
+channel SMI_Network_message io_out_{{ channel }} __attribute__((depth(16))) __attribute__((io("kernel_{{ channel_name(fpga.channels[channel], true) }}")));
+channel SMI_Network_message io_in_{{ channel }} __attribute__((depth(16))) __attribute__((io("kernel_{{ channel_name(fpga.channels[channel], false) }}")));
     {% endfor %}
 #endif
 {% endfor %}
