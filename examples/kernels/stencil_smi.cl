@@ -49,11 +49,13 @@ kernel void Read(__global volatile const VTYPE memory[], const int i_px,
             if (i_px > 0 && t > 0 && !on_corner) {
               // Read from channel above
               res = read_channel_intel(receive_top);
+              // printf("(%i, %i): (%i, %i, %i): read above %f, %f\n", i_px, i_py, t, i, j, res[0], res[1]);
             }
           } else if (oob_bottom) {
             if (i_px < PX - 1 && t > 0 && !on_corner) {
               // Read from channel below
               res = read_channel_intel(receive_bottom);
+              // printf("(%i, %i): (%i, %i, %i): read below %f, %f\n", i_px, i_py, t, i, j, res[0], res[1]);
             }
           } else if (oob_left) {
             if (i_py > 0 && t > 0 && !on_corner) {
@@ -69,6 +71,7 @@ kernel void Read(__global volatile const VTYPE memory[], const int i_px,
               }
 #else
               res[W - 1] = read_horizontal;
+              // printf("(%i, %i): (%i, %i, %i): read left %f\n", i_px, i_py, t, i, j, res[W - 1]);
 #endif
             }
           } else if (oob_right) {
@@ -85,10 +88,12 @@ kernel void Read(__global volatile const VTYPE memory[], const int i_px,
               }
 #else
               res[0] = read_horizontal;
+              // printf("(%i, %i): (%i, %i, %i): read right %f\n", i_px, i_py, t, i, j, res[0]);
 #endif
             }
           }
         } // !valid_read
+        // printf("(%i, %i): (%i, %i, %i): %f, %f\n", i_px, i_py, t, i, j, res[0], res[1]);
         write_channel_intel(read_stream, res);
       }
     }
@@ -129,6 +134,11 @@ kernel void Stencil(const int i_px, const int i_py, const int timesteps) {
                                buffer[Y_LOCAL + 2 * W + w - 1] +    // West
                                buffer[Y_LOCAL + 2 * W + w + 1] +    // East
                                buffer[w]);                          // North
+              // printf(
+              //     "(%i, %i): (%i, %i, %i): 0.25 * (%f + %f + %f + %f) = %f\n",
+              //     i_px, i_py, t, i, j, buffer[2 * (Y_LOCAL + 2 * W) + w],
+              //     buffer[Y_LOCAL + 2 * W + w - 1],
+              //     buffer[Y_LOCAL + 2 * W + w + 1], buffer[w], res[w]);
             }
           }
           write_channel_intel(write_stream, res);
@@ -150,12 +160,14 @@ kernel void Write(__global volatile VTYPE memory[], const int i_px,
         if (i_px > 0 && i < HALO_X) {
           if (t < timesteps) { // Don't communicate on last timestep
             // Write to channel above
+            // printf("(%i, %i): (%i, %i, %i): write above %f, %f\n", i_px, i_py, t, i, j, read[0], read[1]);
             write_channel_intel(send_top, read);
           }
         }
         if (i_px < PX - 1 && i >= X_LOCAL - HALO_X) {
           if (t < timesteps) { // Don't communicate on last timestep
             // Write channel below
+            // printf("(%i, %i): (%i, %i, %i): write below %f, %f\n", i_px, i_py, t, i, j, read[0], read[1]);
             write_channel_intel(send_bottom, read);
           }
         }
@@ -172,6 +184,7 @@ kernel void Write(__global volatile VTYPE memory[], const int i_px,
             HTYPE write_horizontal = read[0];
 #endif
             // Write to left channel
+            // printf("(%i, %i): (%i, %i, %i): write left %f, %f\n", i_px, i_py, t, i, j, read[0], read[1]);
             write_channel_intel(send_left, write_horizontal);
           }
         }
@@ -188,6 +201,7 @@ kernel void Write(__global volatile VTYPE memory[], const int i_px,
             HTYPE write_horizontal = read[W - 1];
 #endif
             // Write to right channel
+            // printf("(%i, %i): (%i, %i, %i): write right %f, %f\n", i_px, i_py, t, i, j, read[0], read[1]);
             write_channel_intel(send_right, write_horizontal);
           }
         }
