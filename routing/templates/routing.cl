@@ -47,5 +47,5 @@ channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __att
 
 {% for channel in channels %}
 {{ kernel.cks(channel, channels|length, target_index) }}
-{{ kernel.ckr(channel, channels|length, target_index) }}
+{{ kernel.ckr(channel, channels|length, target_index, tag_count) }}
 {% endfor %}
