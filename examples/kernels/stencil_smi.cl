@@ -26,7 +26,6 @@ kernel void Read(__global volatile const VTYPE memory[], const int i_px,
     for (int i = 0; i < X_LOCAL + 2 * HALO_X; ++i) {
       // +1 for each boundary
       for (int j = 0; j < (Y_LOCAL / W) + 2; ++j) {
-        printf("(%i, %i): Read started (%i, %i, %i)\n", i_px, i_py, t, i, j);
         VTYPE res = -1000;
         // oob: out of bounds with respect to the local domain, i.e., not
         // necessarily the global domain.
@@ -100,7 +99,6 @@ kernel void Stencil(const int i_px, const int i_py, const int timesteps) {
   for (int t = 0; t < timesteps + 1; ++t) {
     DTYPE buffer[(2 * HALO_X) * (Y_LOCAL + 2 * W) + W];
     for (int i = 0; i < X_LOCAL + 2 * HALO_X; ++i) {
-      // printf("(%i, %i): Stencil started %i, %i\n", i_px, i_py, t, i);
       for (int j = 0; j < (Y_LOCAL / W) + 2; ++j) {
         // Shift buffer
         #pragma unroll
@@ -136,7 +134,6 @@ kernel void Stencil(const int i_px, const int i_py, const int timesteps) {
           write_channel_intel(write_stream, res);
         }
       }
-      // printf("(%i, %i): Stencil ended %i, %i\n", i_px, i_py, t, i);
     }
   }
 }
@@ -148,7 +145,6 @@ kernel void Write(__global volatile VTYPE memory[], const int i_px,
     // Extra artifical timestep shifts the offset
     int offset = (t % 2 == 0) ? 0 : X_LOCAL * (Y_LOCAL / W);
     for (int i = 0; i < X_LOCAL; ++i) {
-      // printf("(%i, %i): Write started %i, %i\n", i_px, i_py, t, i);
       for (int j = 0; j < (Y_LOCAL / W); ++j) {
         VTYPE read = read_channel_intel(write_stream);
         if (i_px > 0 && i < HALO_X) {
@@ -199,7 +195,6 @@ kernel void Write(__global volatile VTYPE memory[], const int i_px,
           memory[offset + i * (Y_LOCAL / W) + j] = read;
         }
       }
-      // printf("(%i, %i): Write ended %i, %i\n", i_px, i_py, t, i);
     }
   }
 }
@@ -214,7 +209,6 @@ kernel void ConvertReceiveLeft(const int i_px, const int i_py) {
     for (int i = 0; i < X_LOCAL; ++i) {
       DTYPE val; 
       SMI_Pop(&from_network, &val);
-      printf("(%i, %i): ReceiveLeft %f\n", i_px, i_py, val);
       write_channel_intel(receive_left, val);
     }
   }
@@ -230,7 +224,6 @@ kernel void ConvertReceiveRight(const int i_px, const int i_py) {
     for (int i = 0; i < X_LOCAL; ++i) {
       DTYPE val; 
       SMI_Pop(&from_network, &val);
-      printf("(%i, %i): ReceiveRight %f\n", i_px, i_py, val);
       write_channel_intel(receive_right, val);
     }
   }
@@ -280,7 +273,6 @@ kernel void ConvertSendLeft(const int i_px, const int i_py) {
     for (int i = 0; i < X_LOCAL; ++i) {
       DTYPE val = read_channel_intel(send_left);
       SMI_Push(&to_network, &val);
-      printf("(%i, %i): SendLeft\n", i_px, i_py);
     }
   }
 }
@@ -295,7 +287,6 @@ kernel void ConvertSendRight(const int i_px, const int i_py) {
     for (int i = 0; i < X_LOCAL; ++i) {
       DTYPE val = read_channel_intel(send_right);
       SMI_Push(&to_network, &val);
-      printf("(%i, %i): SendRight\n", i_px, i_py);
     }
   }
 }

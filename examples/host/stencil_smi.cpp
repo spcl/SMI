@@ -130,16 +130,6 @@ int main(int argc, char **argv) {
                            &routing_tables_ckr[i][0]);
     LoadRoutingTable<char>(mpi_rank, i, mpi_size, "stencil_smi_routing", "cks",
                            &routing_tables_cks[i][0]);
-    std::stringstream ss;
-    ss << "Rank " << mpi_rank << " channel " << i << ":\nCK_R: ";
-    for (int j = 0; j < 4; ++j) {
-      ss << int(routing_tables_ckr[i][j]) << " ";
-    }
-    ss << "\nCK_S: ";
-    for (int j = 0; j < mpi_size; ++j) {
-      ss << int(routing_tables_cks[i][j]) << " ";
-    }
-    std::cout << ss.str() << "\n" << std::flush;
   }
 
   std::vector<AlignedVec_t> host_buffers;
