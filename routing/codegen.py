@@ -29,8 +29,7 @@ def channel_name(src: Channel, out: bool, graph: Graph) -> str:
             remote_channel = to
 
     if remote_channel:
-        remote_channel = "r{}c{}".format(remote_channel.fpga.rank,
-                                         remote_channel.index)
+        remote_channel = "r{}c{}".format(remote_channel.fpga.rank, remote_channel.index)
     else:
         remote_channel = "unconnected"
 
