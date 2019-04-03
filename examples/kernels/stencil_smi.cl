@@ -233,15 +233,17 @@ kernel void ConvertReceiveTop(const int i_px, const int i_py) {
   while (1) {
     SMI_Channel from_network =
         SMI_Open_receive_channel(Y_LOCAL, SMI_TYPE, (i_px - 1) * PY + i_py, 2);
+    VTYPE vec;
     #pragma loop_coalesce
     for (int i = 0; i < Y_LOCAL / W; ++i) {
-      VTYPE vec;
       for (int w = 0; w < W; ++w) {
         DTYPE val;
         SMI_Pop(&from_network, &val);
         vec[w] = val;
+        if (w == W - 1) {
+          write_channel_intel(receive_top, vec);
+        }
       }
-      write_channel_intel(receive_top, vec);
     }
   }
 }
@@ -250,15 +252,17 @@ kernel void ConvertReceiveBottom(const int i_px, const int i_py) {
   while (1) {
     SMI_Channel from_network =
         SMI_Open_receive_channel(Y_LOCAL, SMI_TYPE, (i_px + 1) * PY + i_py, 0);
+    VTYPE vec;
     #pragma loop_coalesce
     for (int i = 0; i < Y_LOCAL / W; ++i) {
-      VTYPE vec;
       for (int w = 0; w < W; ++w) {
         DTYPE val;
         SMI_Pop(&from_network, &val);
         vec[w] = val;
+        if (w == W - 1) {
+          write_channel_intel(receive_bottom, vec);
+        }
       }
-      write_channel_intel(receive_bottom, vec);
     }
   }
 }
@@ -294,11 +298,14 @@ kernel void ConvertSendRight(const int i_px, const int i_py) {
 kernel void ConvertSendTop(const int i_px, const int i_py) {
   while (1) {
     SMI_Channel to_network =
-        SMI_Open_receive_channel(Y_LOCAL, SMI_TYPE, (i_px - 1) * PY + i_py, 0);
+        SMI_Open_send_channel(Y_LOCAL, SMI_TYPE, (i_px - 1) * PY + i_py, 0);
+    VTYPE vec;
     #pragma loop_coalesce
     for (int i = 0; i < Y_LOCAL / W; ++i) {
-      VTYPE vec = read_channel_intel(send_top);
       for (int w = 0; w < W; ++w) {
+        if (w == 0) {
+          vec = read_channel_intel(send_top);
+        }
         DTYPE val = vec[w];
         SMI_Push(&to_network, &val);
       }
@@ -309,11 +316,14 @@ kernel void ConvertSendTop(const int i_px, const int i_py) {
 kernel void ConvertSendBottom(const int i_px, const int i_py) {
   while (1) {
     SMI_Channel to_network =
-        SMI_Open_receive_channel(Y_LOCAL, SMI_TYPE, (i_px + 1) * PY + i_py, 2);
+        SMI_Open_send_channel(Y_LOCAL, SMI_TYPE, (i_px + 1) * PY + i_py, 2);
+    VTYPE vec;
     #pragma loop_coalesce
     for (int i = 0; i < Y_LOCAL / W; ++i) {
-      VTYPE vec = read_channel_intel(send_bottom);
       for (int w = 0; w < W; ++w) {
+        if (w == 0) {
+          vec = read_channel_intel(send_bottom);
+        }
         DTYPE val = vec[w];
         SMI_Push(&to_network, &val);
       }
