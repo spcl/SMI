@@ -2,9 +2,9 @@
 
 channel VTYPE read_stream[PX*PY] __attribute__((depth((Y/W)/PY)));
 channel VTYPE write_stream[PX*PY] __attribute__((depth((Y/W)/PY)));
-channel VTYPE vert_up[PX*(PY - 1)] __attribute__((depth((Y/W)/PY)));
-channel VTYPE vert_down[PX*(PY - 1)] __attribute__((depth((Y/W)/PY)));
-channel HTYPE hori_left[(PX - 1)*PY] __attribute__((depth(X/PX)));
-channel HTYPE hori_right[(PX - 1)*PY] __attribute__((depth(X/PX)));
+channel VTYPE vert_up[(PX - 1)*PY] __attribute__((depth((Y/W)/PY)));
+channel VTYPE vert_down[(PX - 1)*PY] __attribute__((depth((Y/W)/PY)));
+channel HTYPE hori_left[PX*(PY - 1)] __attribute__((depth(X/PX)));
+channel HTYPE hori_right[PX*(PY - 1)] __attribute__((depth(X/PX)));
 
 ${code}

@@ -21,7 +21,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 find_package(PythonInterp 3)
 
 # All targets related to each kernel 
-function(opencl_target KERNEL_NAME USE_CODEGEN NUM_TAGS)
+function(opencl_target KERNEL_NAME USE_CODEGEN NUM_RANKS NUM_TAGS)
   if(USE_CODEGEN)
     add_custom_target(generate_${KERNEL_NAME}
       COMMAND ${PYTHON_EXECUTABLE}
@@ -32,7 +32,7 @@ function(opencl_target KERNEL_NAME USE_CODEGEN NUM_TAGS)
   else()
     set(KERNEL_FILE ${CMAKE_CURRENT_SOURCE_DIR}/kernels/${KERNEL_NAME}.cl)
   endif()
-  if(NUM_TAGS GREATER 0)
+  if(NUM_RANKS GREATER 1)
     add_custom_target(generate_${KERNEL_NAME}_routing
         COMMAND ${PYTHON_EXECUTABLE}
         ${CMAKE_SOURCE_DIR}/routing/main.py build ${SMI_ROUTING_FILE}
@@ -59,7 +59,7 @@ function(opencl_target KERNEL_NAME USE_CODEGEN NUM_TAGS)
     COMMAND ${IntelFPGAOpenCL_AOC} 
     ${AOC_COMMAND} 
     -rtl -report)
-  if(NUM_TAGS EQUAL 0)
+  if(NUM_RANKS EQUAL 1)
     add_custom_target(build_${KERNEL_NAME}_emulator
       COMMAND ${IntelFPGAOpenCL_AOC} 
       ${AOC_COMMAND} -march=emulator
@@ -69,7 +69,7 @@ function(opencl_target KERNEL_NAME USE_CODEGEN NUM_TAGS)
     # To emulate an MPI-like setup, we need to generate a separate emulation
     # kernel for each rank
     add_custom_target(build_${KERNEL_NAME}_emulator)
-    math(EXPR LOOP_END "${NUM_TAGS} - 1")
+    math(EXPR LOOP_END "${NUM_RANKS} - 1")
     foreach(SMI_EMULATION_RANK RANGE 0 ${LOOP_END})
       add_custom_target(build_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}
         COMMAND ${IntelFPGAOpenCL_AOC} 
@@ -77,8 +77,11 @@ function(opencl_target KERNEL_NAME USE_CODEGEN NUM_TAGS)
         -DSMI_EMULATION_RANK=${SMI_EMULATION_RANK}
         -emulator-channel-depth-model=strict
         -o ${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}.aocx)
-      add_dependencies(build_${KERNEL_NAME}_emulator build_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK})
+      add_dependencies(build_${KERNEL_NAME}_emulator
+                       build_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK})
     endforeach()
+    add_dependencies(build_${KERNEL_NAME}_emulator
+                     generate_${KERNEL_NAME}_routing)
   endif()
   add_custom_target(build_${KERNEL_NAME}_hardware
     COMMAND ${IntelFPGAOpenCL_AOC} 
@@ -88,13 +91,13 @@ function(opencl_target KERNEL_NAME USE_CODEGEN NUM_TAGS)
     add_dependencies(build_${KERNEL_NAME}_emulator generate_${KERNEL_NAME})
     add_dependencies(build_${KERNEL_NAME}_hardware generate_${KERNEL_NAME})
   endif()
-  if(NUM_TAGS GREATER 0)
+  if(NUM_RANKS GREATER 1)
     add_dependencies(build_${KERNEL_NAME}_report generate_${KERNEL_NAME}_routing)
     add_dependencies(build_${KERNEL_NAME}_emulator generate_${KERNEL_NAME}_routing)
     add_dependencies(build_${KERNEL_NAME}_hardware generate_${KERNEL_NAME}_routing)
   endif()
   add_executable(${KERNEL_NAME}.exe ${CMAKE_CURRENT_SOURCE_DIR}/host/${KERNEL_NAME}.cpp)
-  target_link_libraries(${KERNEL_NAME}.exe ${IntelFPGAOpenCL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+  target_link_libraries(${KERNEL_NAME}.exe ${SMI_LIBS})
   # Run targets don't work anymore when we need to pass arguments
   # add_custom_target(run_${KERNEL_NAME}_hardware COMMAND ${CMAKE_CURRENT_BINARY_DIR}/${KERNEL_NAME}.exe hardware)
   # add_custom_target(run_${KERNEL_NAME}_emulator COMMAND CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=1 ${CMAKE_CURRENT_BINARY_DIR}/${KERNEL_NAME}.exe emulator)
@@ -103,8 +106,8 @@ function(opencl_target KERNEL_NAME USE_CODEGEN NUM_TAGS)
   configure_file(build.sh.in build_${KERNEL_NAME}.sh)
 endfunction()
 
-opencl_target("stencil_simple" OFF 0)
+opencl_target("stencil_simple" OFF 1 0)
 if(PythonInterp_FOUND)
-  opencl_target("stencil_spatial_tiling" ON 0)
-  opencl_target("stencil_smi" OFF ${SMI_STENCIL_NUM_PROCS})
+  opencl_target("stencil_spatial_tiling" ON 1 0)
+  opencl_target("stencil_smi" OFF ${SMI_STENCIL_NUM_PROCS} 4)
 endif()

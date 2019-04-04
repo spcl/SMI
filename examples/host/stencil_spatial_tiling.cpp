@@ -15,7 +15,7 @@ constexpr int kPY = PY;
 constexpr int kXLocal = kX / kPX;
 constexpr int kYLocal = kY / kPY;
 constexpr auto kUsage =
-    "Usage: ./stencil_spatial_tiling <[emulator/hardware]>\n";
+    "Usage: ./stencil_spatial_tiling <[emulator/hardware]> <num timesteps>\n";
 
 using AlignedVec_t =
     std::vector<Data_t, hlslib::ocl::AlignedAllocator<Data_t, 64>>;

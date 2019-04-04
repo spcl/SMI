@@ -2,6 +2,8 @@
 
 {% import 'kernel.cl' as kernel %}
 
+#define RANK_COUNT {{ fpgas|length }}
+
 // QSFP channels
 #ifndef SMI_EMULATION_RANK
 {% for channel in channels %}
@@ -9,11 +11,13 @@ channel SMI_Network_message io_out_{{ channel.index }} __attribute__((depth(16))
 channel SMI_Network_message io_in_{{ channel.index }} __attribute__((depth(16))) __attribute__((io("kernel_input_ch{{ channel.index }}")));
 {% endfor %}
 #else
-#define SMI_EMULATION_RANK_XSTR(s) SMI_EMULATION_RANK_STR(s)
-#define SMI_EMULATION_RANK_STR(s) #s
-{% for channel in channels %}
-channel SMI_Network_message io_out_{{ channel.index }} __attribute__((depth(16))) __attribute__((io("kernel_output_ch{{ channel.index }}_" SMI_EMULATION_RANK_XSTR(SMI_EMULATION_RANK))));
-channel SMI_Network_message io_in_{{ channel.index }} __attribute__((depth(16))) __attribute__((io("kernel_input_ch{{ channel.index }}" SMI_EMULATION_RANK_XSTR(SMI_EMULATION_RANK))));
+{% for fpga in fpgas %}
+#if SMI_EMULATION_RANK == {{ fpga.rank }}
+    {% for channel in range(channels_per_fpga) %}
+channel SMI_Network_message io_out_{{ channel }} __attribute__((depth(16))) __attribute__((io("emulated_channel_{{ channel_name(fpga.channels[channel], true) }}")));
+channel SMI_Network_message io_in_{{ channel }} __attribute__((depth(16))) __attribute__((io("emulated_channel_{{ channel_name(fpga.channels[channel], false) }}")));
+    {% endfor %}
+#endif
 {% endfor %}
 #endif
 
@@ -42,6 +46,6 @@ channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __att
 #include "smi/push.h"
 
 {% for channel in channels %}
-{{ kernel.cks(channel, rank_count, channels|length, target_index) }}
-{{ kernel.ckr(channel, rank_count, channels|length, target_index) }}
+{{ kernel.cks(channel, channels|length, target_index) }}
+{{ kernel.ckr(channel, channels|length, target_index, tag_count) }}
 {% endfor %}
