@@ -1,7 +1,7 @@
 {% macro cks(channel, channel_count, target_index) -%}
 __kernel void CK_S_{{ channel.index }}(__global volatile char *restrict rt)
 {
-    char external_routing_table[256];
+    char external_routing_table[RANK_COUNT];
     for (int i = 0; i < RANK_COUNT; i++)
     {
         external_routing_table[i] = rt[i];
@@ -69,7 +69,7 @@ __kernel void CK_S_{{ channel.index }}(__global volatile char *restrict rt)
 {% macro ckr(channel, channel_count, target_index, tag_count) -%}
 __kernel void CK_R_{{ channel.index }}(__global volatile char *restrict rt, const char rank)
 {
-    char external_routing_table[256];
+    char external_routing_table[{{ tag_count }} /* tag count */];
     for (int i = 0; i < {{ tag_count }} /* tag count */; i++)
     {
         external_routing_table[i] = rt[i];
