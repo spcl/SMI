@@ -4,7 +4,7 @@ from typing import List
 import networkx
 from networkx import Graph
 
-from common import COST_INTRA_FPGA, COST_INTER_FPGA, Channel, FPGA, RoutingContext
+from common import COST_INTRA_FPGA, COST_INTER_FPGA, FPGA, RoutingContext
 
 """
 Each CK_R/CK_S separate QSFP
@@ -43,7 +43,7 @@ def load_inter_fpga_connections(graph, stream) -> List[FPGA]:
         line = line.strip()
         if line:
             src, dst = [parse_channel(l.strip()) for l in line.split("<->")]
-            graph.add_edge(src, dst, weight=COST_INTER_FPGA)
+            graph.add_edge(src, dst, weight=COST_INTER_FPGA, label="{}-{}".format(src, dst))
 
     return list(fpgas.values())
 
