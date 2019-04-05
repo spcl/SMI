@@ -5,6 +5,7 @@ set(SMI_DATATYPE float CACHE STRING "Data type of computations.")
 set(SMI_VECTORIZATION_WIDTH 16 CACHE STRING "Width for exploiting vector parallelism.")
 set(SMI_STENCIL_NUM_PROCS_X 2 CACHE STRING "Number of processes in X dimension.")
 set(SMI_STENCIL_NUM_PROCS_Y 2 CACHE STRING "Number of processes in Y dimension.")
+set(SMI_STENCIL_NUM_MEMORY_BANKS 4 CACHE STRING "Number of memory banks per device.")
 math(EXPR SMI_STENCIL_NUM_PROCS "${SMI_STENCIL_NUM_PROCS_X} * ${SMI_STENCIL_NUM_PROCS_Y}")
 
 if(SMI_DATATYPE STREQUAL "float")
@@ -53,6 +54,7 @@ function(opencl_target KERNEL_NAME USE_CODEGEN NUM_RANKS NUM_TAGS)
     -cl-fast-relaxed-math
     -cl-single-precision-constant
     -no-interleaving=default
+    -fmax=${SMI_FMAX}
     -board=${SMI_TARGET_BOARD}
     ${KERNEL_FILE})
   add_custom_target(build_${KERNEL_NAME}_report
