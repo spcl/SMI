@@ -94,8 +94,12 @@ int main(int argc, char *argv[])
             //we don't need to start all CK_S/CK_R if we don't use them
             kernel_names.push_back("CK_S_0");
             kernel_names.push_back("CK_S_1");
+            kernel_names.push_back("CK_S_2");
+            kernel_names.push_back("CK_S_3");
             kernel_names.push_back("CK_R_0");
             kernel_names.push_back("CK_R_1");
+            kernel_names.push_back("CK_R_2");
+            kernel_names.push_back("CK_R_3");
             break;
         case 1:
                 cout << "Starting rank 1 on FPGA "<<fpga<<endl;
@@ -103,8 +107,12 @@ int main(int argc, char *argv[])
                 kernel_names.push_back("app_2");
                 kernel_names.push_back("CK_S_0");
                 kernel_names.push_back("CK_S_1");
+                kernel_names.push_back("CK_S_2");
+                kernel_names.push_back("CK_S_3");
                 kernel_names.push_back("CK_R_0");
                 kernel_names.push_back("CK_R_1");
+                kernel_names.push_back("CK_R_2");
+                kernel_names.push_back("CK_R_3");
 
         break;
 
@@ -118,31 +126,49 @@ int main(int argc, char *argv[])
     char tags=2;
     cl::Buffer routing_table_ck_s_0(context,CL_MEM_READ_ONLY,ranks);
     cl::Buffer routing_table_ck_s_1(context,CL_MEM_READ_ONLY,ranks);
+    cl::Buffer routing_table_ck_s_2(context,CL_MEM_READ_ONLY,ranks);
+    cl::Buffer routing_table_ck_s_3(context,CL_MEM_READ_ONLY,ranks);
     cl::Buffer routing_table_ck_r_0(context,CL_MEM_READ_ONLY,tags);
     cl::Buffer routing_table_ck_r_1(context,CL_MEM_READ_ONLY,tags);
+    cl::Buffer routing_table_ck_r_2(context,CL_MEM_READ_ONLY,tags);
+    cl::Buffer routing_table_ck_r_3(context,CL_MEM_READ_ONLY,tags);
     if(rank==0)
     {
         //senders routing tables
         char rt_s_0[2]={1,0};
-        char rt_s_1[2]={1,2};
+        char rt_s_1[2]={1,2};   //Use 2 in rt_s_1 to send using QSFP0, use 4 to send with QSFP3
+        char rt_s_2[2]={100,100}; //useless
+        char rt_s_3[2]={1,0};   //if it receives something for rank 1 it send it in I/0
         queues[0].enqueueWriteBuffer(routing_table_ck_s_0, CL_TRUE,0,ranks,rt_s_0);
         queues[0].enqueueWriteBuffer(routing_table_ck_s_1, CL_TRUE,0,ranks,rt_s_1);
+        queues[0].enqueueWriteBuffer(routing_table_ck_s_2, CL_TRUE,0,ranks,rt_s_2);
+        queues[0].enqueueWriteBuffer(routing_table_ck_s_3, CL_TRUE,0,ranks,rt_s_3);
         //receivers routing tables: these are meaningless
         char rt_r_0[2]={100,100}; //the first doesn't do anything
-        char rt_r_1[2]={100,100};   //the second is attached to the ck_r (channel has TAG 1)
+        char rt_r_1[2]={100,100};   //
+        char rt_r_2[2]={100,100};
+        char rt_r_3[2]={100,100};
         queues[0].enqueueWriteBuffer(routing_table_ck_r_0, CL_TRUE,0,tags,rt_r_0);
         queues[0].enqueueWriteBuffer(routing_table_ck_r_1, CL_TRUE,0,tags,rt_r_1);
+        queues[0].enqueueWriteBuffer(routing_table_ck_r_2, CL_TRUE,0,tags,rt_r_2);
+        queues[0].enqueueWriteBuffer(routing_table_ck_r_3, CL_TRUE,0,tags,rt_r_3);
         //args for the apps
         kernels[0].setArg(0,sizeof(int),&n);
         //args for the CK_Ss
         kernels[1].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
         kernels[2].setArg(0,sizeof(cl_mem),&routing_table_ck_s_1);
+        kernels[3].setArg(0,sizeof(cl_mem),&routing_table_ck_s_2);
+        kernels[4].setArg(0,sizeof(cl_mem),&routing_table_ck_s_3);
 
         //args for the CK_Rs
-        kernels[3].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
-        kernels[3].setArg(1,sizeof(char),&rank);
-        kernels[4].setArg(0,sizeof(cl_mem),&routing_table_ck_r_1);
-        kernels[4].setArg(1,sizeof(char),&rank);
+        kernels[5].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
+        kernels[5].setArg(1,sizeof(char),&rank);
+        kernels[6].setArg(0,sizeof(cl_mem),&routing_table_ck_r_1);
+        kernels[6].setArg(1,sizeof(char),&rank);
+        kernels[7].setArg(0,sizeof(cl_mem),&routing_table_ck_r_2);
+        kernels[7].setArg(1,sizeof(char),&rank);
+        kernels[8].setArg(0,sizeof(cl_mem),&routing_table_ck_r_3);
+        kernels[8].setArg(1,sizeof(char),&rank);
 
     }
     if(rank==1)
@@ -150,13 +176,21 @@ int main(int argc, char *argv[])
         //sender routing tables are meaningless
         char rt_s_0[2]={0,0};
         char rt_s_1[2]={100,100};
+        char rt_s_2[2]={100,100};
+        char rt_s_3[2]={100,100};
         queues[0].enqueueWriteBuffer(routing_table_ck_s_0, CL_TRUE,0,ranks,rt_s_0);
         queues[0].enqueueWriteBuffer(routing_table_ck_s_1, CL_TRUE,0,ranks,rt_s_1);
+        queues[0].enqueueWriteBuffer(routing_table_ck_s_2, CL_TRUE,0,ranks,rt_s_2);
+        queues[0].enqueueWriteBuffer(routing_table_ck_s_3, CL_TRUE,0,ranks,rt_s_3);
         //receivers routing tables
-        char rt_r_0[2]={4,1}; //the first  is connect to application endpoint (TAG=0)
+        char rt_r_0[2]={4,1}; //TAG 0 -> attached application, TAG 1 -> CK_R_1
         char rt_r_1[2]={100,4};
+        char rt_r_2[2]={100,4};
+        char rt_r_3[2]={100,2};//TAG 1-> CK_R_1
         queues[0].enqueueWriteBuffer(routing_table_ck_r_0, CL_TRUE,0,tags,rt_r_0);
         queues[0].enqueueWriteBuffer(routing_table_ck_r_1, CL_TRUE,0,tags,rt_r_1);
+        queues[0].enqueueWriteBuffer(routing_table_ck_r_2, CL_TRUE,0,tags,rt_r_2);
+        queues[0].enqueueWriteBuffer(routing_table_ck_r_3, CL_TRUE,0,tags,rt_r_3);
 
         //args for the apps
         kernels[0].setArg(0,sizeof(int),&n);
@@ -165,20 +199,24 @@ int main(int argc, char *argv[])
         //args for the CK_Ss
         kernels[2].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
         kernels[3].setArg(0,sizeof(cl_mem),&routing_table_ck_s_1);
+        kernels[4].setArg(0,sizeof(cl_mem),&routing_table_ck_s_2);
+        kernels[5].setArg(0,sizeof(cl_mem),&routing_table_ck_s_3);
 
         //args for the CK_Rs
-        kernels[4].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
-        kernels[4].setArg(1,sizeof(char),&rank);
-        kernels[5].setArg(0,sizeof(cl_mem),&routing_table_ck_r_1);
-        kernels[5].setArg(1,sizeof(char),&rank);
+        kernels[6].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
+        kernels[6].setArg(1,sizeof(char),&rank);
+        kernels[7].setArg(0,sizeof(cl_mem),&routing_table_ck_r_1);
+        kernels[7].setArg(1,sizeof(char),&rank);
+        kernels[8].setArg(0,sizeof(cl_mem),&routing_table_ck_r_2);
+        kernels[8].setArg(1,sizeof(char),&rank);
+        kernels[9].setArg(0,sizeof(cl_mem),&routing_table_ck_r_3);
+        kernels[9].setArg(1,sizeof(char),&rank);
 
     }
 
     const int num_kernels=kernel_names.size();
-    queues[num_kernels-1].enqueueTask(kernels[num_kernels-1]);
-    queues[num_kernels-2].enqueueTask(kernels[num_kernels-2]);
-    queues[num_kernels-3].enqueueTask(kernels[num_kernels-3]);
-    queues[num_kernels-4].enqueueTask(kernels[num_kernels-4]);
+    for(int i=num_kernels-1;i>=num_kernels-8;i--)
+        queues[i].enqueueTask(kernels[i]);
 
 
     cl::Event events[1]; //this defination must stay here
@@ -194,10 +232,10 @@ int main(int argc, char *argv[])
         usleep(10000);
 
     timestamp_t start=current_time_usecs();
-    for(int i=0;i<kernel_names.size()-4;i++)
+    for(int i=0;i<kernel_names.size()-8;i++)
         queues[i].enqueueTask(kernels[i],nullptr,&events[i]);
 
-    for(int i=0;i<kernel_names.size()-4;i++)
+    for(int i=0;i<kernel_names.size()-8;i++)
         queues[i].finish();
 
     timestamp_t end=current_time_usecs();
@@ -211,7 +249,7 @@ int main(int argc, char *argv[])
     {
         ulong min_start=4294967295, max_end=0;
         ulong end, start;
-        for(int i=0;i<num_kernels-3;i++)
+        for(int i=0;i<1;i++)
         {
             events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
             events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
