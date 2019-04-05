@@ -58,6 +58,7 @@ SMI_BChannel SMI_Open_bcast_channel(uint count, SMI_Datatype data_type, char roo
     SET_HEADER_DST(chan.net.header,0);
     //SET_HEADER_SRC(chan.net.header,my_rank);
     SET_HEADER_TAG(chan.net.header,0);        //used by destination
+    SET_HEADER_NUM_ELEMS(chan.net.header,0);    //at the beginning no data
     chan.processed_elements=0;
     chan.packet_element_id=0;
     return chan;
@@ -74,8 +75,7 @@ void SMI_Bcast(SMI_BChannel *chan, void* data)
     const char chan_idx_out=internal_sender_rt[chan->tag_out];  //This should be properly code generated, good luck
     if(chan->my_rank==chan->root_rank)//I'm the root
     {
-        write_channel_intel(channels_to_ck_s[0],chan->net);
-        /*#pragma unroll
+        #pragma unroll
         for(int jj=0;jj<chan->size_of_type;jj++) //copy the data
             chan->net.data[chan->packet_element_id*chan->size_of_type+jj]=conv[jj];
         chan->processed_elements++;
@@ -94,18 +94,18 @@ void SMI_Bcast(SMI_BChannel *chan, void* data)
                 }
             }
             chan->packet_element_id=0;
-        }*/
+        }
     }
     else //I have to receive
     {
-        chan->net=read_channel_intel(channels_from_ck_r[0]);
+        //chan->net=read_channel_intel(channels_from_ck_r[0]);
         //in this case we have to copy the data into the target variable
-       /* if(chan->packet_element_id==0)
+        if(chan->packet_element_id==0)
         {
             const char chan_idx=internal_receiver_rt[chan->tag_in];
             chan->net=read_channel_intel(channels_from_ck_r[chan_idx]);
         }
-        char * ptr=chan->net.data+(chan->packet_element_id)*chan->size_of_type;
+        /*char * ptr=chan->net.data+(chan->packet_element_id)*chan->size_of_type;
         chan->packet_element_id++;                       //first increment and then use it: otherwise compiler detects Fmax problems
         //TODO: this prevents HyperFlex (try with a constant and you'll see)
         //I had to put this check, because otherwise II goes to 2
@@ -120,7 +120,7 @@ void SMI_Bcast(SMI_BChannel *chan, void* data)
             *(float *)data= *(float*)(ptr);
         if(chan->data_type==SMI_DOUBLE)
             *(double *)data= *(double*)(ptr);
-        */
+*/
     }
 }
 
