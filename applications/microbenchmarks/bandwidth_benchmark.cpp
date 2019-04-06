@@ -272,6 +272,7 @@ int main(int argc, char *argv[])
         cout << "Average bandwidth (Gbit/s): " <<  (data_sent_KB*8/(mean/1000000.0))/(1024*1024) << endl;
 
         //save the info into output file
+        
         ofstream fout("bandwidth.dat");
         fout << "#Sent (KB) = "<<data_sent_KB<<", Runs = "<<runs<<endl;
         fout << "#Average Computation time (usecs): "<<mean<<endl;
