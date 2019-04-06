@@ -13,6 +13,7 @@
 #define DTYPE ${SMI_DATATYPE} 
 #define SMI_TYPE ${SMI_COMM_DATATYPE}
 #define W ${SMI_VECTORIZATION_WIDTH}
+#define B 4 // Number of memory banks 
 #if W > 1
 #define VTYPE ${SMI_DATATYPE}${SMI_VECTORIZATION_WIDTH} 
 #else
