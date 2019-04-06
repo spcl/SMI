@@ -10,6 +10,7 @@
 #include <iostream>
 #include <fstream>
 #include <unistd.h>
+#include <cmath>
 #include "../../include/utils/ocl_utils.hpp"
 #include "../../include/utils/utils.hpp"
 #define MPI
