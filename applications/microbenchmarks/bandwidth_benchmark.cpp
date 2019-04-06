@@ -223,7 +223,7 @@ int main(int argc, char *argv[])
         {
             ulong min_start=4294967295, max_end=0;
             ulong end, start;
-            for(int i=0;i<num_kernels-3;i++)
+            for(int i=0;i<num_kernels-4;i++)
             {
                 events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
                 events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
