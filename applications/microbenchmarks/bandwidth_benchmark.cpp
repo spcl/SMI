@@ -27,18 +27,18 @@ int main(int argc, char *argv[])
     #endif
 
     //command line argument parsing
-    if(argc<9)
+    if(argc<7)
     {
         cerr << "Send/Receiver tester " <<endl;
-        cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <length> -r <rank 0/1> -f <fpga> "<<endl;
+        cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <length> -r <num runs> "<<endl;
         exit(-1);
     }
     int n;
     int c;
     std::string program_path;
-    int rank;
+    int runs;
     int fpga;
-    while ((c = getopt (argc, argv, "n:b:r:f:")) != -1)
+    while ((c = getopt (argc, argv, "n:b:r")) != -1)
         switch (c)
         {
             case 'n':
@@ -51,17 +51,8 @@ int main(int argc, char *argv[])
                 fpga=atoi(optarg);
                 break;
             case 'r':
-                {
-                    rank=atoi(optarg);
-                    if(rank!=0 && rank!=1 && rank!=2)
-                    {
-                        cerr << "Error: rank may be 0-2"<<endl;
-                        exit(-1);
-                    }
-
-                    break;
-                }
-
+                runs=atoi(optarg);
+                break;
             default:
                 cerr << "Usage: "<< argv[0]<<"-b <binary file> -n <length>"<<endl;
                 exit(-1);
@@ -70,13 +61,16 @@ int main(int argc, char *argv[])
     cout << "Performing send/receive test with "<<n<<" elements"<<endl;
     #if defined(MPI)
     int rank_count;
+    int rank;
     CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &rank_count));
     CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
-    fpga = rank % 2; // in this case is ok, pay attention
+   // fpga = rank % 2; // in this case is ok, pay attention
+    fpga=0; //executed on 15 and 16
     std::cout << "Rank: " << rank << " out of " << rank_count << " ranks" << std::endl;
     program_path = replace(program_path, "<rank>", std::to_string(rank));
     std::cout << "Program: " << program_path << std::endl;
     #endif
+    
 
     cl::Platform  platform;
     cl::Device device;
@@ -199,49 +193,58 @@ int main(int argc, char *argv[])
     queues[num_kernels-2].enqueueTask(kernels[num_kernels-2]);
     queues[num_kernels-3].enqueueTask(kernels[num_kernels-3]);
     queues[num_kernels-4].enqueueTask(kernels[num_kernels-4]);
+    std::vector<double> times;
+    //Program startup
+    for(int i=0;i<runs;i++)
+    {
+        cl::Event events[3]; //this defination must stay here
+        // wait for other nodes
+        #if defined(MPI)
+        CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+        #endif
+
+        //ATTENTION: If you are executing on the same host
+        //since the PCIe is shared that could be problems in taking times
+        //This mini sleep should resolve
+        //if(rank==1)
+        //    usleep(10000);
+
+        for(int i=0;i<3;i++)
+            queues[i].enqueueTask(kernels[i],nullptr,&events[i]);
+        
+        for(int i=0;i<3;i++)
+            queues[i].finish();
 
 
-    cl::Event events[3]; //this defination must stay here
-    // wait for other nodes
-    #if defined(MPI)
-    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-    #endif
+        #if defined(MPI)
+        CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+        #else
+        sleep(2);
+        #endif
+        if(rank==1)
+        {
+            ulong min_start=4294967295, max_end=0;
+            ulong end, start;
+            for(int i=0;i<num_kernels-3;i++)
+            {
+                events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
+                events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
+                if(i==0)
+                    min_start=start;
+                if(start<min_start)
+                    min_start=start;
+                if(end>max_end)
+                    max_end=end;
+            }
+            times.push_back((double)((max_end-min_start)/1000.0f));
+        }
 
-    //ATTENTION: If you are executing on the same host
-    //since the PCIe is shared that could be problems in taking times
-    //This mini sleep should resolve
-    if(rank==1)
-        usleep(10000);
 
-    timestamp_t start=current_time_usecs();
-    for(int i=0;i<3;i++)
-        queues[i].enqueueTask(kernels[i],nullptr,&events[i]);
-    
-    for(int i=0;i<3;i++)
-        queues[i].finish();
-
-    timestamp_t end=current_time_usecs();
-
-    #if defined(MPI)
-    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-    #else
-    sleep(2);
-    #endif
+        
+    }
     if(rank==1)
     {
-        ulong min_start=4294967295, max_end=0;
-        ulong end, start;
-        for(int i=0;i<num_kernels-3;i++)
-        {
-            events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
-            events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
-            if(i==0)
-                min_start=start;
-            if(start<min_start)
-                min_start=start;
-            if(end>max_end)
-                max_end=end;
-        }
+       //check
         queues[0].enqueueReadBuffer(check1,CL_TRUE,0,1,&res1);
         queues[0].enqueueReadBuffer(check2,CL_TRUE,0,1,&res2);
         queues[0].enqueueReadBuffer(check3,CL_TRUE,0,1,&res3);
@@ -251,9 +254,37 @@ int main(int argc, char *argv[])
         else
            cout << "RANK 1 ERROR!"<< (int)res1 << " " << (int)res2 << " " <<(int)res3<<endl;
 
-        cout << "Time elapsed (usecs): "<<(double)((max_end-min_start)/1000.0f)<<endl;
-    }
+        double mean=0;
+        for(auto t:times)
+            mean+=t;
+        mean/=runs;
+        //report the mean in usecs
 
+        double stddev=0;
+        for(auto t:times)
+            stddev+=((t-mean)*(t-mean));
+        stddev=sqrt(stddev/runs);
+        double conf_interval_99=2.58*stddev/sqrt(runs);
+        
+        double data_sent_KB=(n*32.0)/1024.0;
+        cout << "Computation time (usec): " << mean << " (sttdev: " << stddev<<")"<<endl;
+        cout << "Conf interval 99: "<<conf_interval_99<<endl;
+        cout << "Conf interval 99 within " <<(conf_interval_99/mean)*100<<"% from mean" <<endl;
+        cout << "Sent (KB): " <<data_sent_KB<<endl;
+        cout << "Average bandwidth (Gbit/s): " <<  (data_sent_KB/(mean/1000000.0))/1024 << endl;
+
+        //save the info into output file
+        ofstream fout("distributed_output.dat");
+        fout << "#Sent (KB) = "<<data_sent_KB<<", Runs = "<<runs<<endl;
+        fout << "#Average Computation time (usecs): "<<mean<<endl;
+        fout << "#Standard deviation (usecs): "<<stddev<<endl;
+        fout << "#Confidence interval 99%: +- "<<conf_interval_99<<endl;
+        fout << "#Execution times (usecs):"<<endl;
+        fout << "#Average bandwidth (Gbit/s): " <<  (data_sent_KB/(mean/1000000.0))/1024 << endl;
+        for(auto t:times)
+            fout << t << endl;
+        fout.close();
+    }
     #if defined(MPI)
     CHECK_MPI(MPI_Finalize());
     #endif

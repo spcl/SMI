@@ -18,6 +18,12 @@ With this application use case we want to evaluate two possible implementation o
     The result is streamed using SMI
 
 
+## Comparison with host based 
+
+We can do also a comparison with the host based version. Each of the two ranks performs its own
+GEMV, in memory (so load and save to memory, classical FBLAS style).  Then from rank 1 we copy the vector to rank 0
+and we call the axpy.
+
 ## Technical notes
 Since the compiler do not automatically interleave buffer across multiple memory banks
 we manually interleave it.
