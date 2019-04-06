@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
     std::string program_path;
     int runs;
     int fpga;
-    while ((c = getopt (argc, argv, "n:b:r")) != -1)
+    while ((c = getopt (argc, argv, "n:b:r:")) != -1)
         switch (c)
         {
             case 'n':
@@ -48,9 +48,6 @@ int main(int argc, char *argv[])
             case 'b':
                 program_path=std::string(optarg);
                 break;
-            case 'f':
-                fpga=atoi(optarg);
-                break;
             case 'r':
                 runs=atoi(optarg);
                 break;
@@ -58,6 +55,7 @@ int main(int argc, char *argv[])
                 cerr << "Usage: "<< argv[0]<<"-b <binary file> -n <length>"<<endl;
                 exit(-1);
         }
+        printf("ciao\n");
 
     cout << "Performing send/receive test with "<<n<<" elements"<<endl;
     #if defined(MPI)
