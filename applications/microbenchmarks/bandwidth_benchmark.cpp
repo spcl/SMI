@@ -55,7 +55,6 @@ int main(int argc, char *argv[])
                 cerr << "Usage: "<< argv[0]<<"-b <binary file> -n <length>"<<endl;
                 exit(-1);
         }
-        printf("ciao\n");
 
     cout << "Performing send/receive test with "<<n<<" elements"<<endl;
     #if defined(MPI)
@@ -270,7 +269,7 @@ int main(int argc, char *argv[])
         cout << "Conf interval 99: "<<conf_interval_99<<endl;
         cout << "Conf interval 99 within " <<(conf_interval_99/mean)*100<<"% from mean" <<endl;
         cout << "Sent (KB): " <<data_sent_KB<<endl;
-        cout << "Average bandwidth (Gbit/s): " <<  (data_sent_KB/(mean/1000000.0))/1024 << endl;
+        cout << "Average bandwidth (Gbit/s): " <<  (data_sent_KB*8/(mean/1000000.0))/(1024*1024) << endl;
 
         //save the info into output file
         ofstream fout("distributed_output.dat");
