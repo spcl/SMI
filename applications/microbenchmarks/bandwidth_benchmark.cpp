@@ -11,6 +11,7 @@
 #include <fstream>
 #include <unistd.h>
 #include <cmath>
+#include <sstream>
 #include "../../include/utils/ocl_utils.hpp"
 #include "../../include/utils/utils.hpp"
 #define MPI
@@ -31,19 +32,21 @@ int main(int argc, char *argv[])
     if(argc<7)
     {
         cerr << "Send/Receiver tester " <<endl;
-        cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <length> -r <num runs> "<<endl;
+        cerr << "Usage: "<< argv[0]<<" -b <binary file> -k <KB> -r <num runs> "<<endl;
         exit(-1);
     }
-    int n;
+    int KB;
     int c;
+    int n;
     std::string program_path;
     int runs;
     int fpga;
-    while ((c = getopt (argc, argv, "n:b:r:")) != -1)
+    while ((c = getopt (argc, argv, "k:b:r:")) != -1)
         switch (c)
         {
-            case 'n':
-                n=atoi(optarg);
+            case 'k':
+                KB=atoi(optarg);
+                n=(int)KB*32.768;
                 break;
             case 'b':
                 program_path=std::string(optarg);
@@ -272,8 +275,9 @@ int main(int argc, char *argv[])
         cout << "Average bandwidth (Gbit/s): " <<  (data_sent_KB*8/(mean/1000000.0))/(1024*1024) << endl;
 
         //save the info into output file
-        
-        ofstream fout("bandwidth.dat");
+        std::ostringstream filename;
+        filename << "bandwdith_" << KB << "KB.dat";
+        ofstream fout(filename.str());
         fout << "#Sent (KB) = "<<data_sent_KB<<", Runs = "<<runs<<endl;
         fout << "#Average Computation time (usecs): "<<mean<<endl;
         fout << "#Standard deviation (usecs): "<<stddev<<endl;
