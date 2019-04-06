@@ -7,6 +7,10 @@
 #include "network_message.h"
 /*
  * 101 implementation of BCast
+    Problems:
+        - it works with FLOATS only, because the compiler is not able to handle it more "dynamically"
+        - problem in the pop part, with the reset of packet_od. For the moment being forced at 7 (it's float, there is no flush)
+        - it consumes a lot of resources (dunno)
  *
  */
 
@@ -76,7 +80,7 @@ void SMI_Bcast(SMI_BChannel *chan, void* data)
     if(chan->my_rank==chan->root_rank)//I'm the root
     {
         #pragma unroll
-        for(int jj=0;jj<chan->size_of_type;jj++) //copy the data
+        for(int jj=0;jj<4;jj++) //copy the data
             chan->net.data[chan->packet_element_id*chan->size_of_type+jj]=conv[jj];
         chan->processed_elements++;
         chan->packet_element_id++;
@@ -105,16 +109,17 @@ void SMI_Bcast(SMI_BChannel *chan, void* data)
             const char chan_idx=internal_receiver_rt[chan->tag_in];
             chan->net=read_channel_intel(channels_from_ck_r[chan_idx]);
         }
-        /*char * ptr=chan->net.data+(chan->packet_element_id)*chan->size_of_type;
+       char * ptr=chan->net.data+(chan->packet_element_id)*4;
         chan->packet_element_id++;                       //first increment and then use it: otherwise compiler detects Fmax problems
         //TODO: this prevents HyperFlex (try with a constant and you'll see)
         //I had to put this check, because otherwise II goes to 2
-        if(chan->packet_element_id==GET_HEADER_NUM_ELEMS(chan->net.header))
-            chan->packet_element_id=0;
         //if we reached the number of elements in this packet get the next one from CK_R
+        if(chan->packet_element_id==7)
+            chan->packet_element_id=0;
         chan->processed_elements++;                      //TODO: probably useless
+        *(float *)data= *(float*)(ptr);
         //create data element
-        if(chan->data_type==SMI_INT)
+  /*      if(chan->data_type==SMI_INT)
             *(int *)data= *(int*)(ptr);
         if(chan->data_type==SMI_FLOAT)
             *(float *)data= *(float*)(ptr);

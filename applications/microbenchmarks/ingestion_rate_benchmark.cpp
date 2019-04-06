@@ -232,12 +232,17 @@ int main(int argc, char *argv[])
         usleep(10000);
 
     timestamp_t start=current_time_usecs();
+    /*
+        Normal version
     for(int i=0;i<kernel_names.size()-8;i++)
         queues[i].enqueueTask(kernels[i],nullptr,&events[i]);
 
     for(int i=0;i<kernel_names.size()-8;i++)
         queues[i].finish();
-
+    */
+    //single QSFP version
+    queues[0].enqueueTask(kernels[0],nullptr,&events[0]);
+    queues[0].finish();
     timestamp_t end=current_time_usecs();
 
     #if defined(MPI)

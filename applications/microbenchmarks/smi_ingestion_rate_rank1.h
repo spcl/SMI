@@ -1,5 +1,5 @@
 #include "smi/channel_helpers.h"
-
+#define SINGLE_QSFP
 
 #define RANK_COUNT 2
 // QSFP channels
@@ -128,8 +128,13 @@ __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
     }
 
     // QSFP + number of CK_Rs - 1 + CK_S
-    const char num_sender = 5;
-    char sender_id = 0;
+    #if defined(SINGLE_QSFP)
+        const char num_sender = 1;
+        char sender_id = 1;
+    #else
+        const char num_sender = 5;
+        char sender_id = 0;
+    #endif
     SMI_Network_message message;
     while(1)
     {
@@ -192,10 +197,15 @@ __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
         }
 
         sender_id++;
+        #if defined(SINGLE_QSFP)
+        if(sender_id>=num_sender)
+                sender_id=0;
+        #else
         if (sender_id == num_sender)
         {
             sender_id = 0;
         }
+        #endif
     }
 }
 __kernel void CK_S_1(__global volatile char *restrict rt)

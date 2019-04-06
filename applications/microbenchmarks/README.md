@@ -11,3 +11,7 @@ The purpose is to see what is the ingestion rate.
 Potential bottleneck will be the CK_S/CK_R
 
 
+What we can do is to show how the ingestion rate changes with the number of QSFP used
+the fact that we have two sends here is useless.
+In the code there is a macro (SINGLE_QSFP) and also we disable the second application
+

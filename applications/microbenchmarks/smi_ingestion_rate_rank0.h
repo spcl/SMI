@@ -1,6 +1,6 @@
 #include "smi/channel_helpers.h"
 
-
+#define SINGLE_QSFP
 #define RANK_COUNT 2
 // QSFP channels
 #ifndef EMULATION
@@ -58,7 +58,11 @@ __kernel void CK_S_0(__global volatile char *restrict rt)
 
     // number of CK_S - 1 + CK_R + 1 tags
     const char num_sender = 5;
-    char sender_id = 0;
+    #if defined(SINGLE_QSFP)
+        char sender_id = 3;
+    #else
+        char sender_id = 0;
+    #endif
     SMI_Network_message message;
 
     while(1)
@@ -115,12 +119,16 @@ __kernel void CK_S_0(__global volatile char *restrict rt)
                     break;
             }
         }
-
+        #if !defined(SINGLE_QSFP)
         sender_id++;
         if (sender_id == num_sender)
         {
             sender_id = 0;
         }
+        #else
+            sender_id=4;
+        #endif
+
     }
 }
 __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
@@ -132,8 +140,13 @@ __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
     }
 
     // QSFP + number of CK_Rs - 1 + CK_S
-    const char num_sender = 5;
-    char sender_id = 0;
+    #if defined(SINGLE_QSFP)
+        const char num_sender = 1;
+        char sender_id = 1;
+    #else
+        const char num_sender = 5;
+        char sender_id = 0;
+    #endif
     SMI_Network_message message;
 
     while(1)
@@ -193,10 +206,15 @@ __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
         }
 
         sender_id++;
+        #if defined(SINGLE_QSFP)
+        if(sender_id>=num_sender)
+                sender_id=0;
+        #else
         if (sender_id == num_sender)
         {
             sender_id = 0;
         }
+        #endif
     }
 }
 __kernel void CK_S_1(__global volatile char *restrict rt)
@@ -233,10 +251,12 @@ __kernel void CK_S_1(__global volatile char *restrict rt)
                 // receive from CK_R_1
                 message = read_channel_nb_intel(channels_interconnect_ck_r_to_ck_s[1], &valid);
                 break;
+            #if !defined(SINGLE_QSFP)
             case 4:
                 // receive from app channel with tag 1
                 message = read_channel_nb_intel(channels_to_ck_s[1], &valid);
-                break;
+            break;
+            #endif
         }
 
         if (valid)
