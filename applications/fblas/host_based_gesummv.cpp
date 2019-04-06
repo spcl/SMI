@@ -178,7 +178,7 @@ int main(int argc, char *argv[])
             break;
     }
     IntelFPGAOCLUtils::initEnvironment(platform,device,fpga,context,program,program_path,kernel_names,kernels,queues);
-    int tile_size=128;
+    int tile_size=2048;
     cout << "Executing with tile size " << tile_size<<endl;
 
 

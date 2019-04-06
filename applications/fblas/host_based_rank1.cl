@@ -3,8 +3,8 @@
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 
 #define W 64
-#define TILE_N 128
-#define TILE_M 128
+#define TILE_N 2048
+#define TILE_M 2048
 #define INCX 1
 #define INCY 1
 #define INCW 1
