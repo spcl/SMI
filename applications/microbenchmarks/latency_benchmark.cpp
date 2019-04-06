@@ -134,6 +134,8 @@ int main(int argc, char *argv[])
         queues[0].enqueueWriteBuffer(routing_table_ck_r_1, CL_TRUE,0,tags,rt_r_1);
         //args for the apps
         kernels[0].setArg(0,sizeof(int),&n);
+        kernels[0].setArg(1,sizeof(int),&n);
+
         //args for the CK_Ss
         kernels[1].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
         kernels[1].setArg(1,sizeof(char),&ranks);
@@ -141,10 +143,11 @@ int main(int argc, char *argv[])
         kernels[2].setArg(1,sizeof(char),&ranks);
 
         //args for the CK_Rs
+        char my_rank=0;
         kernels[3].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
-        kernels[3].setArg(1,sizeof(char),&rank);
+        kernels[3].setArg(1,sizeof(char),&my_rank);
         kernels[4].setArg(0,sizeof(cl_mem),&routing_table_ck_r_1);
-        kernels[4].setArg(1,sizeof(char),&rank);
+        kernels[4].setArg(1,sizeof(char),&my_rank);
 
     }
     if(rank==1)
@@ -163,6 +166,8 @@ int main(int argc, char *argv[])
 
         //args for the apps
         kernels[0].setArg(0,sizeof(int),&n);
+        kernels[0].setArg(1,sizeof(int),&n);
+
         //args for the CK_Ss
         kernels[1].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
         kernels[1].setArg(1,sizeof(char),&ranks);
@@ -170,10 +175,11 @@ int main(int argc, char *argv[])
         kernels[2].setArg(1,sizeof(char),&ranks);
 
         //args for the CK_Rs
+        char my_rank=1;
         kernels[3].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
-        kernels[3].setArg(1,sizeof(char),&rank);
+        kernels[3].setArg(1,sizeof(char),&my_rank);
         kernels[4].setArg(0,sizeof(cl_mem),&routing_table_ck_r_1);
-        kernels[4].setArg(1,sizeof(char),&rank);
+        kernels[4].setArg(1,sizeof(char),&my_rank);
 
     }
 
@@ -193,8 +199,8 @@ int main(int argc, char *argv[])
     //ATTENTION: If you are executing on the same host
     //since the PCIe is shared that could be problems in taking times
     //This mini sleep should resolve
-    if(rank==0)
-        usleep(10000);
+    //if(rank==0)
+    //    usleep(10000);
 
     timestamp_t start=current_time_usecs();
     for(int i=0;i<1;i++)
@@ -214,7 +220,7 @@ int main(int argc, char *argv[])
     {
         ulong min_start=4294967295, max_end=0;
         ulong end, start;
-        for(int i=0;i<num_kernels-3;i++)
+        for(int i=0;i<1;i++)
         {
             events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
             events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
