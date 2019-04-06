@@ -352,14 +352,14 @@ int main(int argc, char **argv) {
 
     const auto result = CombineMemory(host_buffers);
 
-    std::cout << "\n";
-    for (int i = 0; i < kX; ++i) {
-      for (int j = 0; j < kY; ++j) {
-        std::cout << result[i * kY + j] << " ";
-      }
-      std::cout << "\n";
-    }
-    std::cout << "\n";
+    // std::cout << "\n";
+    // for (int i = 0; i < kX; ++i) {
+    //   for (int j = 0; j < kY; ++j) {
+    //     std::cout << result[i * kY + j] << " ";
+    //   }
+    //   std::cout << "\n";
+    // }
+    // std::cout << "\n";
 
     // Compare result
     const Data_t average =
