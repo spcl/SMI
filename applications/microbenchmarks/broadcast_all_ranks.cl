@@ -4,11 +4,14 @@
 
 
 
-__kernel void app_0(const int N, char root,char my_rank, char num_ranks)
+__kernel void app(const int N, char root,char my_rank, char num_ranks)
 {
     SMI_BChannel chan= SMI_Open_bcast_channel(N, SMI_FLOAT, root,my_rank,num_ranks);
     for(int i=0;i<N;i++)
     {
-        SMI_Bcast(&chan,&i);
+    	float to_comm=i;
+        SMI_Bcast(&chan,&to_comm);
+        //if(i!=to_comm)
+        //	printf("Rank %d received %d while I was expecting %d\n",my_rank,i,to_comm);
     }
 }
