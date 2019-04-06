@@ -18,6 +18,7 @@ constexpr int kPX = PX;
 constexpr int kPY = PY;
 constexpr int kXLocal = kX / kPX;
 constexpr int kYLocal = kY / kPY;
+constexpr auto kDevicesPerNode = SMI_DEVICES_PER_NODE;
 constexpr auto kUsage =
     "Usage: ./stencil_smi <[emulator/hardware]> <num timesteps>\n";
 
@@ -163,7 +164,7 @@ int main(int argc, char **argv) {
   }
 
   MPIStatus(mpi_rank, "Creating OpenCL context...\n");
-  hlslib::ocl::Context context;
+  hlslib::ocl::Context context(mpi_rank % kDevicesPerNode);
 
   MPIStatus(mpi_rank, "Allocating device memory...\n");
   auto device_buffer =
