@@ -12,6 +12,8 @@
 #include <unistd.h>
 #include "../../include/utils/ocl_utils.hpp"
 #include "../../include/utils/utils.hpp"
+#include <limits.h>
+
 #define MPI
 #if defined(MPI)
 #include "../../include/utils/smi_utils.hpp"
@@ -77,6 +79,9 @@ int main(int argc, char *argv[])
     std::cout << "Rank: " << rank << " out of " << rank_count << " ranks" << std::endl;
     program_path = replace(program_path, "<rank>", std::to_string(rank));
     std::cout << "Program: " << program_path << std::endl;
+    char hostname[HOST_NAME_MAX];
+    gethostname(hostname, HOST_NAME_MAX);
+    printf("Rank %d executing on host: %s\n",rank,hostname);
     #endif
 
     cl::Platform  platform;
