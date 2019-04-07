@@ -1,5 +1,7 @@
 /**
     Bandwidth benchmark
+    Takes in input the number of KB that you want to transfer and 
+    computes the number of number that you have to sent
 
  */
 
@@ -12,6 +14,8 @@
 #include <unistd.h>
 #include <cmath>
 #include <sstream>
+#include <limits.h>
+
 #include "../../include/utils/ocl_utils.hpp"
 #include "../../include/utils/utils.hpp"
 #define MPI
@@ -46,7 +50,7 @@ int main(int argc, char *argv[])
         {
             case 'k':
                 KB=atoi(optarg);
-                n=(int)KB*32.768;
+                n=(int)KB*36.5714; //the payload of each network packet is 28B
                 break;
             case 'b':
                 program_path=std::string(optarg);
@@ -59,7 +63,7 @@ int main(int argc, char *argv[])
                 exit(-1);
         }
 
-    cout << "Performing send/receive test with "<<n<<" elements"<<endl;
+    cout << "Performing send/receive test with "<<n<<" elements to transfer the require payload"<<endl;
     #if defined(MPI)
     int rank_count;
     int rank;
