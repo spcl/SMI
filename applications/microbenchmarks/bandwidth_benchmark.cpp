@@ -271,7 +271,7 @@ int main(int argc, char *argv[])
         stddev=sqrt(stddev/runs);
         double conf_interval_99=2.58*stddev/sqrt(runs);
         
-        double data_sent_KB=(n*32.0)/1024.0;
+        double data_sent_KB=KB;
         cout << "Computation time (usec): " << mean << " (sttdev: " << stddev<<")"<<endl;
         cout << "Conf interval 99: "<<conf_interval_99<<endl;
         cout << "Conf interval 99 within " <<(conf_interval_99/mean)*100<<"% from mean" <<endl;
