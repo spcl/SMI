@@ -366,7 +366,7 @@ int main(int argc, char *argv[])
         if(rank==1)
         {
         	//get the result and send it  to rank 1
-        	queues[0].enqueueReadBuffer(output_y,CL_FALSE,0,n*sizeof(float),fpga_res_y);
+        	queues[0].enqueueReadBuffer(output_y,CL_TRUE,0,n*sizeof(float),fpga_res_y);
         	MPI_Send(fpga_res_y,n,MPI_FLOAT,0,0,MPI_COMM_WORLD);
         }
         if(rank==0)

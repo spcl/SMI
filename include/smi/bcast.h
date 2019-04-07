@@ -13,9 +13,10 @@
         - it consumes a lot of resources (dunno)
  *
  */
-
-typedef struct __attribute__((packed)) __attribute__((aligned(32))){
+//align to 64 to remove aliasing
+typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     SMI_Network_message net;          //buffered network message
+    SMI_Network_message net_2;          //buffered network message
     char tag_out;                    //Output channel for the bcast, used by the root
     char tag_in;                     //Input channel for the bcast. These two must be properly code generated. Good luck
     char root_rank;
@@ -107,9 +108,9 @@ void SMI_Bcast(SMI_BChannel *chan, void* data)
         if(chan->packet_element_id==0)
         {
             const char chan_idx=internal_receiver_rt[chan->tag_in];
-            chan->net=read_channel_intel(channels_from_ck_r[chan_idx]);
+            chan->net_2=read_channel_intel(channels_from_ck_r[chan_idx]);
         }
-       char * ptr=chan->net.data+(chan->packet_element_id)*4;
+       char * ptr=chan->net_2.data+(chan->packet_element_id)*4;
         chan->packet_element_id++;                       //first increment and then use it: otherwise compiler detects Fmax problems
         //TODO: this prevents HyperFlex (try with a constant and you'll see)
         //I had to put this check, because otherwise II goes to 2
