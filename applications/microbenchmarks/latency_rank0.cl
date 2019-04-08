@@ -15,12 +15,13 @@
     We use only one QSFP (e.g. QSFP0 in the case we are
     using FPGA-0014)
 */
+#pragma OPENCL EXTENSION cl_intel_channels : enable
 
 #include "smi_latency.h"
 
 
 
-__kernel void app(const int N)
+__kernel void app(const int N, char dest_rank)
 {
     //SMI_Channel chan_send=SMI_Open_send_channel(N,SMI_INT,1,0);
     //SMI_Channel chan_receive=SMI_Open_receive_channel(N,SMI_INT,1,1);
@@ -29,10 +30,12 @@ __kernel void app(const int N)
         int to_send=i;
         int to_receive;
         //SMI_Push_flush(&chan_send,&to_send,true);
-        SMI_Channel chan_send=SMI_Open_send_channel(1,SMI_INT,1,0);
-        SMI_Channel chan_receive=SMI_Open_receive_channel(1,SMI_INT,1,1);
+        SMI_Channel chan_send=SMI_Open_send_channel(1,SMI_INT,dest_rank,0);
+        SMI_Channel chan_receive=SMI_Open_receive_channel(1,SMI_INT,dest_rank,0);
         SMI_Push(&chan_send,&to_send);
         SMI_Pop(&chan_receive,&to_receive);
+        if(to_receive!=i)
+            printf("Error I was expecting %d instead of %d\n",i,to_receive);
         to_send++;
     }
 }

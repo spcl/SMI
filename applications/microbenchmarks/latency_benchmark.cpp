@@ -79,10 +79,10 @@ int main(int argc, char *argv[])
     fpga = rank % 2; // in this case is ok, pay attention
     //fpga=0; //executed on 15 and 16
     std::cout << "Rank: " << rank << " out of " << rank_count << " ranks, executing on fpga " <<fpga<< std::endl;
-    if(rank==0)
-        program_path = replace(program_path, "<rank>", std::to_string(0));
-    else
-        program_path = replace(program_path, "<rank>", std::to_string(1));
+ //   if(rank==0)
+        program_path = replace(program_path, "<rank>", std::to_string(rank));
+  //  else
+   //     program_path = replace(program_path, "<rank>", std::to_string(1));
 
     std::cout << "Program: " << program_path << std::endl;
     char hostname[HOST_NAME_MAX];
@@ -130,19 +130,17 @@ int main(int argc, char *argv[])
         LoadRoutingTable<char>(rank, i, 1, ROUTING_DIR, "ckr", &routing_tables_ckr[i][0]);
         LoadRoutingTable<char>(rank, i, rank_count, ROUTING_DIR, "cks", &routing_tables_cks[i][0]);
     }
-    routing_tables_ckr[0][0]=4;
-    routing_tables_ckr[0][1]=4;
-    routing_tables_ckr[1][0]=1;
-    routing_tables_ckr[1][1]=1;
-    sleep(rank);
-    std::cout << "Rank: "<< rank<<endl;
-    for(int i=0;i<kChannelsPerRank;i++)
-    {
-        for(int j=0;j<rank_count;j++)
-            printf("ck_s[%d][%d] = %d\n",i,j,routing_tables_cks[i][j]);
-        for(int j=0;j<tags;j++)
-            printf("ck_r[%d][%d] = %d\n",i,j,routing_tables_ckr[i][j]);
-    }
+    //THIS is not an SPMD program (the send/recv tag is different)
+    //so I have to manually adjust it
+//    sleep(rank);
+//    std::cout << "Rank: "<< rank<<endl;
+//    for(int i=0;i<kChannelsPerRank;i++)
+//    {
+//        for(int j=0;j<rank_count;j++)
+//            printf("ck_s[%d][%d] = %d\n",i,j,routing_tables_cks[i][j]);
+//        for(int j=0;j<tags;j++)
+//            printf("ck_r[%d][%d] = %d\n",i,j,routing_tables_ckr[i][j]);
+//    }
 
 
 
@@ -157,6 +155,12 @@ int main(int argc, char *argv[])
     queues[0].enqueueWriteBuffer(routing_table_ck_r_3, CL_TRUE,0,tags,&routing_tables_ckr[3][0]);
 
     kernels[0].setArg(0,sizeof(int),&n);
+    if(rank==0)
+    {
+        char dest=(char)recv_rank;
+        kernels[0].setArg(1,sizeof(char),&dest);
+
+    }
     //args for the CK_Ss
     kernels[1].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
     kernels[2].setArg(0,sizeof(cl_mem),&routing_table_ck_s_1);
