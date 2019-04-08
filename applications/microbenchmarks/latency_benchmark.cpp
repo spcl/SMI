@@ -130,7 +130,10 @@ int main(int argc, char *argv[])
         LoadRoutingTable<char>(rank, i, 1, ROUTING_DIR, "ckr", &routing_tables_ckr[i][0]);
         LoadRoutingTable<char>(rank, i, rank_count, ROUTING_DIR, "cks", &routing_tables_cks[i][0]);
     }
-
+    routing_tables_ckr[0][0]=4;
+    routing_tables_ckr[0][1]=4;
+    routing_tables_ckr[1][0]=1;
+    routing_tables_ckr[1][1]=1;
     sleep(rank);
     std::cout << "Rank: "<< rank<<endl;
     for(int i=0;i<kChannelsPerRank;i++)
