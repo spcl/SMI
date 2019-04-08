@@ -139,9 +139,9 @@ int main(int argc, char *argv[])
     for(int i=0;i<kChannelsPerRank;i++)
     {
         for(int j=0;j<rank_count;j++)
-            printf("ck_s[%d][%d] = %d\n",routing_tables_cks[i][j]);
+            printf("ck_s[%d][%d] = %d\n",i,j,routing_tables_cks[i][j]);
         for(int j=0;j<tags;j++)
-            printf("ck_r[%d][%d] = %d\n",routing_tables_ckr[i][j]);
+            printf("ck_r[%d][%d] = %d\n",i,j,routing_tables_ckr[i][j]);
     }
 
 
