@@ -131,6 +131,18 @@ int main(int argc, char *argv[])
         LoadRoutingTable<char>(rank, i, rank_count, ROUTING_DIR, "cks", &routing_tables_cks[i][0]);
     }
 
+    sleep(rank);
+    std::cout << "Rank: "<< rank<<endl;
+    for(int i=0;i<kChannelsPerRank;i++)
+    {
+        for(int j=0;j<rank_count;j++)
+            std::cout << i<< "," << j<<": ck_s: "<< (int)routing_tables_cks[i][j]<<endl;
+        for(int j=0;j<tags;j++)
+            std::cout << i<< "," << j<<": ck_r: "<< (int)routing_tables_cks[i][j]<<endl;
+    }
+
+
+
     queues[0].enqueueWriteBuffer(routing_table_ck_s_0, CL_TRUE,0,rank_count,&routing_tables_cks[0][0]);
     queues[0].enqueueWriteBuffer(routing_table_ck_s_1, CL_TRUE,0,rank_count,&routing_tables_cks[1][0]);
     queues[0].enqueueWriteBuffer(routing_table_ck_s_2, CL_TRUE,0,rank_count,&routing_tables_cks[2][0]);
