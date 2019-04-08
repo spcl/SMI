@@ -101,28 +101,29 @@ __kernel void CK_S_0(__global volatile char *restrict rt)
         bool valid = false;
         switch (sender_id)
         {
+            #if QSFP_COUNT>1
             case 0:
                 // receive from CK_S_1
                 message = read_channel_nb_intel(channels_interconnect_ck_s[0], &valid);
                 break;
-            #if QSFP_COUNT>1
+            #if QSFP_COUNT>2
             case 1:
                 // receive from CK_S_2
                 message = read_channel_nb_intel(channels_interconnect_ck_s[1], &valid);
                 break;
-            #if QSFP_COUNT>2
+            #if QSFP_COUNT>3
             case 2:
                 // receive from CK_S_3
                 message = read_channel_nb_intel(channels_interconnect_ck_s[2], &valid);
                 break;
-            #if QSFP_COUNT>3
+            #endif
+            #endif
+            #endif
             case 3:
                 // receive from CK_R_0
                 message = read_channel_nb_intel(channels_interconnect_ck_r_to_ck_s[0], &valid);
                 break;
-            #endif
-            #endif
-            #endif
+
             case 4:
                 // receive from app channel with tag 0
                 message = read_channel_nb_intel(channels_to_ck_s[0], &valid);
