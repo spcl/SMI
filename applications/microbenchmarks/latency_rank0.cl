@@ -34,8 +34,8 @@ __kernel void app(const int N, char dest_rank)
         SMI_Channel chan_receive=SMI_Open_receive_channel(1,SMI_INT,dest_rank,0);
         SMI_Push(&chan_send,&to_send);
         SMI_Pop(&chan_receive,&to_receive);
-        if(to_receive!=i)
-            printf("Error I was expecting %d instead of %d\n",i,to_receive);
+        //if(to_receive!=i)
+         //   printf("Error I was expecting %d instead of %d\n",i,to_receive);
         to_send++;
     }
 }
