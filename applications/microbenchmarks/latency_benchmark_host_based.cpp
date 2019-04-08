@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
                 exit(-1);
         }
 
-    cout << "Performing send/receive test with "<<n<<" elements"<<endl;
+    cout << "Performing ping pong test with "<<n<<" elements"<<endl;
     int rank_count;
     int rank;
     CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &rank_count));
@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
         if(rank==0)
         {
             endt=current_time_usecs();
-            times.push_back(endt-startt);
+            times.push_back((endt-startt)/(2*n));
         }
 
 
@@ -147,7 +147,6 @@ int main(int argc, char *argv[])
             stddev+=((t-mean)*(t-mean));
         stddev=sqrt(stddev/runs);
         double conf_interval_99=2.58*stddev/sqrt(runs);
-        double data_sent_KB=KB;
         cout << "Average Latency (usec): " << mean << " (sttdev: " << stddev<<")"<<endl;
         cout << "Conf interval 99: "<<conf_interval_99<<endl;
         cout << "Conf interval 99 within " <<(conf_interval_99/mean)*100<<"% from mean" <<endl;
