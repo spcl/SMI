@@ -79,10 +79,10 @@ int main(int argc, char *argv[])
     fpga = rank % 2; // in this case is ok, pay attention
     //fpga=0; //executed on 15 and 16
     std::cout << "Rank: " << rank << " out of " << rank_count << " ranks, executing on fpga " <<fpga<< std::endl;
- //   if(rank==0)
-        program_path = replace(program_path, "<rank>", std::to_string(rank));
-  //  else
-   //     program_path = replace(program_path, "<rank>", std::to_string(1));
+    if(rank==0)
+        program_path = replace(program_path, "<rank>", std::string("0"));
+    else
+        program_path = replace(program_path, "<rank>", std::string("1"));
 
     std::cout << "Program: " << program_path << std::endl;
     char hostname[HOST_NAME_MAX];
@@ -191,7 +191,7 @@ int main(int argc, char *argv[])
 
 
     //only rank 0 and the recv rank start the app kernels
-    timestamp_t start=current_time_usecs();
+    timestamp_t startt=current_time_usecs();
     //
     if(rank==0 || rank==recv_rank)
     {
@@ -201,8 +201,8 @@ int main(int argc, char *argv[])
         for(int i=0;i<1;i++)
             queues[i].finish();
     }
-    timestamp_t end=current_time_usecs();
-
+    timestamp_t endt=current_time_usecs();
+    std::cout << "Wall clock time (usecs): "<< endt-startt<<std::endl;
     #if defined(MPI)
     CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
     #else
@@ -212,18 +212,9 @@ int main(int argc, char *argv[])
     {
         ulong min_start=4294967295, max_end=0;
         ulong end, start;
-        for(int i=0;i<1;i++)
-        {
-            events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
-            events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
-            if(i==0)
-                min_start=start;
-            if(start<min_start)
-                min_start=start;
-            if(end>max_end)
-                max_end=end;
-        }
-        double time= (double)((max_end-min_start)/1000.0f);
+        events[0].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
+        events[0].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
+        double time= (double)((end-start)/1000.0f);
         cout << "Time elapsed (usecs): "<<time <<endl;
         cout << "Latency (usecs): " << time/(2*n)<<endl;
     }
