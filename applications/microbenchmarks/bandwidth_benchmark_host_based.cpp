@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
 
         //save the info into output file
         std::ostringstream filename;
-        filename << "bandwidth_" << KB << "KB.dat";
+        filename << "host_based_bandwidth_" << KB << "KB.dat";
         ofstream fout(filename.str());
         fout << "#Sent (KB) = "<<data_sent_KB<<", Runs = "<<runs<<endl;
         fout << "#Average Computation time (usecs): "<<mean<<endl;
