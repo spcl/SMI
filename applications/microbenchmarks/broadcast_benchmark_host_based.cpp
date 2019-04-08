@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
                 cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <length>"<<endl;
                 exit(-1);
         }
-
+    KB=n*4/1024;
     cout << "Performing send/receive test with "<<n<<" elements"<<endl;
     int rank_count;
     int rank;
@@ -155,7 +155,8 @@ int main(int argc, char *argv[])
 
         //save the info into output file
         std::ostringstream filename;
-        filename << "host_based_bandwidth_" << KB << "KB.dat";
+        filename << "host_based_broadcast_" << n << ".dat";
+	std::cout << "Saving info into: "<<filename.str()<<std::endl;
         ofstream fout(filename.str());
         fout << "#Sent (KB) = "<<data_sent_KB<<", Runs = "<<runs<<endl;
         fout << "#Average Computation time (usecs): "<<mean<<endl;
