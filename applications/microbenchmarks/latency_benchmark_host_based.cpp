@@ -137,9 +137,32 @@ int main(int argc, char *argv[])
     }
     if(rank==0)
     {
-        timestamp_t time=times[0];
-        cout << "Time elapsed (usecs): "<<time <<endl;
-        cout << "Latency (usecs): " << time/(2*n)<<endl;
+        double mean=0;
+        for(auto t:times)
+            mean+=t;
+        mean/=runs;
+        //report the mean in usecs
+        double stddev=0;
+        for(auto t:times)
+            stddev+=((t-mean)*(t-mean));
+        stddev=sqrt(stddev/runs);
+        double conf_interval_99=2.58*stddev/sqrt(runs);
+        double data_sent_KB=KB;
+        cout << "Average Latency (usec): " << mean << " (sttdev: " << stddev<<")"<<endl;
+        cout << "Conf interval 99: "<<conf_interval_99<<endl;
+        cout << "Conf interval 99 within " <<(conf_interval_99/mean)*100<<"% from mean" <<endl;
+
+        //save the info into output file
+        std::ostringstream filename;
+        filename << "host_based_latency.dat";
+        ofstream fout(filename.str());
+        fout << "#Average Latencey (usecs): "<<mean<<endl;
+        fout << "#Standard deviation (usecs): "<<stddev<<endl;
+        fout << "#Confidence interval 99%: +- "<<conf_interval_99<<endl;
+        fout << "#Execution times (usecs):"<<endl;
+        for(auto t:times)
+            fout << t << endl;
+        fout.close();
     }
 
     CHECK_MPI(MPI_Finalize());
