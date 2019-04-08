@@ -127,8 +127,6 @@ int main(int argc, char *argv[])
         if(rank==0)
         {
             endt=current_time_usecs();
-            std::cout << "Time total: "<<(endt-startt)<<endl;
-            cout << "Latency: "<< (endt-startt)/(2*n)<<endl;
             times.push_back((endt-startt)/(2*n));
         }
 
