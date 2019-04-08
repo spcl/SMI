@@ -84,21 +84,7 @@ int main(int argc, char *argv[])
     cl::Program program;
     std::vector<cl::Kernel> kernels;
     std::vector<cl::CommandQueue> queues;
-    std::vector<std::string> kernel_names;
-
-    switch(rank)
-    {
-        case 0:
-            cout << "Starting rank 0 on FPGA "<<fpga<<endl;
-            kernel_names.push_back("app_0");
-            break;
-        case 1:
-                cout << "Starting rank 1 on FPGA "<<fpga<<endl;
-                kernel_names.push_back("app_0");
-
-        break;
-
-    }
+    std::vector<std::string> kernel_names={"app_0"};
 
     //this is for the case with classi channels
     IntelFPGAOCLUtils::initEnvironment(platform,device,fpga,context,program,program_path,kernel_names, kernels,queues);
@@ -127,7 +113,6 @@ int main(int argc, char *argv[])
             queues[0].finish();
             //get the result and send it  to rank 1
             queues[0].enqueueReadBuffer(mem,CL_TRUE,0,n*sizeof(double),host_data);
-            printf("copio %d %d bytes\n",n,sizeof(double)*n);
             MPI_Send(host_data,n,MPI_DOUBLE,1,0,MPI_COMM_WORLD);
         }
         if(rank==1)
@@ -150,9 +135,6 @@ int main(int argc, char *argv[])
         #endif
        
         
-
-
-        
     }
     if(rank==1)
     {
@@ -163,13 +145,9 @@ int main(int argc, char *argv[])
             mean+=t;
         mean/=runs;
         //report the mean in usecs
- sleep(1);
-        printf("primo\n");
         double stddev=0;
         for(auto t:times)
             stddev+=((t-mean)*(t-mean));
-         sleep(1);
-         printf("secondo\n");
         stddev=sqrt(stddev/runs);
         double conf_interval_99=2.58*stddev/sqrt(runs);
         double data_sent_KB=(n*32.0)/1024.0;
