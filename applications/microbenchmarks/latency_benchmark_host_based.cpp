@@ -127,6 +127,8 @@ int main(int argc, char *argv[])
         if(rank==0)
         {
             endt=current_time_usecs();
+            std::cout << "Time total: "<<(endt-startt)<<endl;
+            cout << "Latency: "<< (endt-startt)/(2*n)<<endl;
             times.push_back((endt-startt)/(2*n));
         }
 
@@ -155,7 +157,7 @@ int main(int argc, char *argv[])
         std::ostringstream filename;
         filename << "host_based_latency.dat";
         ofstream fout(filename.str());
-        fout << "#Average Latencey (usecs): "<<mean<<endl;
+        fout << "#Average Latency (usecs): "<<mean<<endl;
         fout << "#Standard deviation (usecs): "<<stddev<<endl;
         fout << "#Confidence interval 99%: +- "<<conf_interval_99<<endl;
         fout << "#Execution times (usecs):"<<endl;
