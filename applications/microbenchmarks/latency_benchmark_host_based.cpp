@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
         if(rank==0)
         {
             endt=current_time_usecs();
-            times.push_back((endt-startt)/(2*n));
+            times.push_back(((double)(endt-startt))/(2.0*n));
         }
 
 
