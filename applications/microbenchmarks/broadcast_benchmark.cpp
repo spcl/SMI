@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
     char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);
     printf("Rank %d executing on host: %s\n",rank,hostname);
-    
+
     cl::Platform  platform;
     cl::Device device;
     cl::Context context;
@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
     std::vector<std::string> kernel_names;
     kernel_names.push_back("app");
     kernel_names.push_back("CK_S_0");
-    kernel_names.push_back("CK_S_1");   
+    kernel_names.push_back("CK_S_1");
     kernel_names.push_back("CK_S_2");
     kernel_names.push_back("CK_S_3");
     kernel_names.push_back("CK_R_0");
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
 
     //load ck_r
     char routing_tables_ckr[4]; //only one tag
-    char routing_tables_cks[4][rank_count]; //4 ranks 
+    char routing_tables_cks[4][rank_count]; //4 ranks
     for (int i = 0; i < kChannelsPerRank; ++i) {
         LoadRoutingTable<char>(rank, i, 1, ROUTING_DIR, "ckr", &routing_tables_ckr[i]);
         LoadRoutingTable<char>(rank, i, rank_count, ROUTING_DIR, "cks", &routing_tables_cks[i][0]);
@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
     queues[0].enqueueWriteBuffer(routing_table_ck_r_1, CL_TRUE,0,tags,&routing_tables_ckr[1]);
     queues[0].enqueueWriteBuffer(routing_table_ck_r_2, CL_TRUE,0,tags,&routing_tables_ckr[2]);
     queues[0].enqueueWriteBuffer(routing_table_ck_r_3, CL_TRUE,0,tags,&routing_tables_ckr[3]);
-    
+
     kernels[0].setArg(0,sizeof(int),&n);
     kernels[0].setArg(1,sizeof(char),&root);
     kernels[0].setArg(2,sizeof(char),&rank);
@@ -160,7 +160,7 @@ int main(int argc, char *argv[])
     timestamp_t start=current_time_usecs();
     for(int i=0;i<1;i++)
         queues[i].enqueueTask(kernels[i],nullptr,&events[i]);
-    
+
     for(int i=0;i<1;i++)
         queues[i].finish();
 
