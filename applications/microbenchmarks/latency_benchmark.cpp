@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
     #endif
 
     //command line argument parsing
-    if(argc<9)
+    if(argc<7)
     {
         cerr << "Send/Receiver tester " <<endl;
         cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <length> -r <rank on which run the receiver> "<<endl;
