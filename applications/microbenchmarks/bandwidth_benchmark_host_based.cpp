@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
     //create memory buffers
     double *host_data;
     //ATTENTION: declare all the memory here otherwise it hangs
-    cl::Buffer mem(context,CL_MEM_READ_WRITE,n*sizeof(double));
+    cl::Buffer mem(context,CL_MEM_READ_WRITE,max(n,1)*sizeof(double));
     posix_memalign ((void **)&host_data, IntelFPGAOCLUtils::AOCL_ALIGNMENT, n*sizeof(double));
 
     kernels[0].setArg(0,sizeof(cl_mem),&mem);
