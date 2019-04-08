@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
         {
             case 'k':
                 KB=atoi(optarg);
-                n=(int)KB*32.768;
+                n=(int)KB*1024/8;
                 break;
             case 'b':
                 program_path=std::string(optarg);
