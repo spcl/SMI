@@ -5,28 +5,36 @@
 #error "Incompatible number of stencil processes and number of communication ranks."
 #endif
 
-channel VTYPE read_stream __attribute__((depth((Y/W)/PY)));
-channel VTYPE write_stream __attribute__((depth((Y/W)/PY)));
-channel VTYPE receive_top __attribute__((depth((Y/W)/PY)));
-channel VTYPE receive_bottom __attribute__((depth((Y/W)/PY)));
+channel VTYPE read_stream[B] __attribute__((depth((Y/(W*B))/PY)));
+channel VTYPE write_stream[B] __attribute__((depth((Y/(W*B))/PY)));
+channel VTYPE receive_top[B] __attribute__((depth((Y/(W*B))/PY)));
+channel VTYPE receive_bottom[B] __attribute__((depth((Y/(W*B))/PY)));
 channel HTYPE receive_left __attribute__((depth(X/PX)));
 channel HTYPE receive_right __attribute__((depth(X/PX)));
-channel VTYPE send_top __attribute__((depth((Y/W)/PY)));
-channel VTYPE send_bottom __attribute__((depth((Y/W)/PY)));
+channel VTYPE send_top[B] __attribute__((depth((Y/(W*B))/PY)));
+channel VTYPE send_bottom[B] __attribute__((depth((Y/(W*B))/PY)));
 channel HTYPE send_left __attribute__((depth(X/PX)));
 channel HTYPE send_right __attribute__((depth(X/PX)));
 
-kernel void Read(__global volatile const VTYPE memory[], const int i_px,
+kernel void Read(__global volatile const VTYPE *restrict bank0,
+                 __global volatile const VTYPE *restrict bank1,
+                 __global volatile const VTYPE *restrict bank2,
+                 __global volatile const VTYPE *restrict bank3, const int i_px,
                  const int i_py, const int timesteps) {
   // Extra artificial timestep to send first boundaries
   for (int t = 0; t < timesteps + 1; ++t) {
     // Swap the timestep modulo to accommodate first artificial timestep
-    const int offset = (t == 0 || t % 2 == 1) ? 0 : X_LOCAL * (Y_LOCAL / W);
+    const int offset =
+        (t == 0 || t % 2 == 1) ? 0 : X_LOCAL * (Y_LOCAL / (B * W));
     // +1 for each boundary
     for (int i = 0; i < X_LOCAL + 2 * HALO_X; ++i) {
       // +1 for each boundary
-      for (int j = 0; j < (Y_LOCAL / W) + 2; ++j) {
-        VTYPE res = -1000;
+      for (int j = 0; j < (Y_LOCAL / (B * W)) + 2; ++j) {
+        VTYPE res[B];
+        #pragma unroll
+        for (int b = 0; b < B; ++b) {
+          res[b] = -100;
+        }
         // oob: out of bounds with respect to the local domain, i.e., not
         // necessarily the global domain.
         const bool oob_top = i < HALO_X;
@@ -34,11 +42,18 @@ kernel void Read(__global volatile const VTYPE memory[], const int i_px,
         // It's assumed that the horizontal halo fits in one vector, such that
         // HALO_Y <= W (hence, we use 1 here).
         const bool oob_left = j < 1;
-        const bool oob_right = j >= (Y_LOCAL / W) + 1;
+        const bool oob_right = j >= (Y_LOCAL / (B * W)) + 1;
         const bool valid_read =
             !oob_top && !oob_bottom && !oob_left && !oob_right;
         if (valid_read) {
-          res = memory[offset + (i - HALO_X) * (Y_LOCAL / W) + j - 1];
+          res[0] =
+              bank0[offset + (i - HALO_X) * (Y_LOCAL / (W * B)) + (j - 1)];
+          res[1] =
+              bank1[offset + (i - HALO_X) * (Y_LOCAL / (W * B)) + (j - 1)];
+          res[2] =
+              bank2[offset + (i - HALO_X) * (Y_LOCAL / (W * B)) + (j - 1)];
+          res[3] =
+              bank3[offset + (i - HALO_X) * (Y_LOCAL / (W * B)) + (j - 1)];
         } else {
           // We don't need to communicate on the corner, as this is not used by
           // the stencil.
@@ -48,14 +63,18 @@ kernel void Read(__global volatile const VTYPE memory[], const int i_px,
           if (oob_top) {
             if (i_px > 0 && t > 0 && !on_corner) {
               // Read from channel above
-              res = read_channel_intel(receive_top);
-              // printf("(%i, %i): (%i, %i, %i): read above %f, %f\n", i_px, i_py, t, i, j, res[0], res[1]);
+              #pragma unroll
+              for (int b = 0; b < B; ++b) {
+                res[b] = read_channel_intel(receive_top[b]);
+              }
             }
           } else if (oob_bottom) {
             if (i_px < PX - 1 && t > 0 && !on_corner) {
               // Read from channel below
-              res = read_channel_intel(receive_bottom);
-              // printf("(%i, %i): (%i, %i, %i): read below %f, %f\n", i_px, i_py, t, i, j, res[0], res[1]);
+              #pragma unroll
+              for (int b = 0; b < B; ++b) {
+                res[b] = read_channel_intel(receive_bottom[b]);
+              }
             }
           } else if (oob_left) {
             if (i_py > 0 && t > 0 && !on_corner) {
@@ -65,13 +84,9 @@ kernel void Read(__global volatile const VTYPE memory[], const int i_px,
               // Populate elements within boundary, leaving the rest
               // uninitialized/dummy values
 #if HALO_Y > 1
-              #pragma unroll
-              for (int w = 0; w < HALO_Y; ++w) {
-                res[W - HALO_Y + w] = read_horizontal[w];
-              }
+              #error "NYI"
 #else
-              res[W - 1] = read_horizontal;
-              // printf("(%i, %i): (%i, %i, %i): read left %f\n", i_px, i_py, t, i, j, res[W - 1]);
+              res[B - 1][W - 1] = read_horizontal;
 #endif
             }
           } else if (oob_right) {
@@ -82,19 +97,17 @@ kernel void Read(__global volatile const VTYPE memory[], const int i_px,
               // Populate elements within boundary, leaving the rest
               // uninitialized/dummy values
 #if HALO_Y > 1
-              #pragma unroll
-              for (int w = 0; w < HALO_Y; ++w) {
-                res[w] = read_horizontal[w];
-              }
+              #error NYI
 #else
-              res[0] = read_horizontal;
-              // printf("(%i, %i): (%i, %i, %i): read right %f\n", i_px, i_py, t, i, j, res[0]);
+              res[0][0] = read_horizontal;
 #endif
             }
           }
         } // !valid_read
-        // printf("(%i, %i): (%i, %i, %i): %f, %f\n", i_px, i_py, t, i, j, res[0], res[1]);
-        write_channel_intel(read_stream, res);
+        #pragma unroll
+        for (int b = 0; b < B; ++b) {
+          write_channel_intel(read_stream[b], res[b]);
+        }
       }
     }
   }
@@ -102,111 +115,117 @@ kernel void Read(__global volatile const VTYPE memory[], const int i_px,
 
 kernel void Stencil(const int i_px, const int i_py, const int timesteps) {
   for (int t = 0; t < timesteps + 1; ++t) {
-    DTYPE buffer[(2 * HALO_X) * (Y_LOCAL + 2 * W) + W];
+    DTYPE buffer[(2 * HALO_X) * (Y_LOCAL + 2 * B * W) + B * W];
     for (int i = 0; i < X_LOCAL + 2 * HALO_X; ++i) {
-      for (int j = 0; j < (Y_LOCAL / W) + 2; ++j) {
+      for (int j = 0; j < (Y_LOCAL / (B * W)) + 2; ++j) {
         // Shift buffer
         #pragma unroll
-        for (int b = 0; b < (2 * HALO_X) * (Y_LOCAL + 2 * W); ++b) {
-          buffer[b] = buffer[b + W];
+        for (int b = 0; b < (2 * HALO_X) * (Y_LOCAL + 2 * B * W); ++b) {
+          buffer[b] = buffer[b + B * W];
         }
         // Read into front
-        VTYPE read = read_channel_intel(read_stream);
         #pragma unroll
-        for (int w = 0; w < W; ++w) {
-          buffer[(2 * HALO_X) * (Y_LOCAL + 2 * W) + w] = read[w];
-        }
-        // If in bounds, compute and output
-        if (i >= 2 * HALO_X && j >= 1 && j < (Y_LOCAL / W) + 1) {
-          VTYPE res;
+        for (int b = 0; b < B; ++b) {
+          VTYPE read = read_channel_intel(read_stream[b]);
           #pragma unroll
           for (int w = 0; w < W; ++w) {
-            if ((i_px == 0 && i < 3 * HALO_X) ||
-                (i_px == PX - 1 && i >= X_LOCAL + HALO_X) ||
-                (i_py == 0 && j * W + w < W + HALO_Y) ||
-                (i_py == PY - 1 && j * W + w >= W + Y_LOCAL - HALO_Y) ||
-                t == 0) {
-              // Just forward value if on the boundary, or if on the first
-              // artifical timestep
-              res[w] = buffer[Y_LOCAL + 2 * W + w];
-            } else {
-              res[w] = 0.25 * (buffer[2 * (Y_LOCAL + 2 * W) + w] +  // South
-                               buffer[Y_LOCAL + 2 * W + w - 1] +    // West
-                               buffer[Y_LOCAL + 2 * W + w + 1] +    // East
-                               buffer[w]);                          // North
-              // printf(
-              //     "(%i, %i): (%i, %i, %i): 0.25 * (%f + %f + %f + %f) = %f\n",
-              //     i_px, i_py, t, i, j, buffer[2 * (Y_LOCAL + 2 * W) + w],
-              //     buffer[Y_LOCAL + 2 * W + w - 1],
-              //     buffer[Y_LOCAL + 2 * W + w + 1], buffer[w], res[w]);
-            }
+            buffer[(2 * HALO_X) * (Y_LOCAL + 2 * B * W) + b * W + w] = read[w];
           }
-          write_channel_intel(write_stream, res);
+        }
+        // If in bounds, compute and output
+        if (i >= 2 * HALO_X && j >= 1 && j < (Y_LOCAL / (B * W)) + 1) {
+          #pragma unroll
+          for (int b = 0; b < B; ++b) {
+            VTYPE res;
+            #pragma unroll
+            for (int w = 0; w < W; ++w) {
+              if ((i_px == 0 && i < 3 * HALO_X) ||
+                  (i_px == PX - 1 && i >= X_LOCAL + HALO_X) ||
+                  (i_py == 0 && j * B * W + b * W + w < B * W + HALO_Y) ||
+                  (i_py == PY - 1 &&
+                   j * B * W + b * W + w >= B * W + Y_LOCAL - HALO_Y) ||
+                  t == 0) {
+                // Just forward value if on the boundary, or if on the first
+                // artifical timestep
+                res[w] = buffer[Y_LOCAL + 2 * B * W + b * W + w];
+              } else {
+                res[w] = 0.25 * (buffer[2 * (Y_LOCAL + 2 * B * W) + b * W + w] +
+                                 buffer[(Y_LOCAL + 2 * B * W) + b * W + w - 1] +
+                                 buffer[(Y_LOCAL + 2 * B * W) + b * W + w + 1] +
+                                 buffer[b * W + w]);
+              }
+            }
+            write_channel_intel(write_stream[b], res);
+          }
         }
       }
     }
   }
 }
 
-kernel void Write(__global volatile VTYPE memory[], const int i_px,
+kernel void Write(__global volatile VTYPE *restrict bank0,
+                  __global volatile VTYPE *restrict bank1,
+                  __global volatile VTYPE *restrict bank2,
+                  __global volatile VTYPE *restrict bank3, const int i_px,
                   const int i_py, const int timesteps) {
   // Extra timestep to write first halos before starting computation
   for (int t = 0; t < timesteps + 1; ++t) {
     // Extra artifical timestep shifts the offset
-    int offset = (t % 2 == 0) ? 0 : X_LOCAL * (Y_LOCAL / W);
+    int offset = (t % 2 == 0) ? 0 : X_LOCAL * (Y_LOCAL / (B * W));
     for (int i = 0; i < X_LOCAL; ++i) {
-      for (int j = 0; j < (Y_LOCAL / W); ++j) {
-        VTYPE read = read_channel_intel(write_stream);
+      for (int j = 0; j < Y_LOCAL / (B * W); ++j) {
+        VTYPE read[B];
+        #pragma unroll
+        for (int b = 0; b < B; ++b) {
+          read[b] = read_channel_intel(write_stream[b]);
+        }
         if (i_px > 0 && i < HALO_X) {
           if (t < timesteps) { // Don't communicate on last timestep
             // Write to channel above
-            // printf("(%i, %i): (%i, %i, %i): write above %f, %f\n", i_px, i_py, t, i, j, read[0], read[1]);
-            write_channel_intel(send_top, read);
+            #pragma unroll
+            for (int b = 0; b < B; ++b) {
+              write_channel_intel(send_top[b], read[b]);
+            }
           }
         }
         if (i_px < PX - 1 && i >= X_LOCAL - HALO_X) {
           if (t < timesteps) { // Don't communicate on last timestep
             // Write channel below
-            // printf("(%i, %i): (%i, %i, %i): write below %f, %f\n", i_px, i_py, t, i, j, read[0], read[1]);
-            write_channel_intel(send_bottom, read);
+            #pragma unroll
+            for (int b = 0; b < B; ++b) {
+              write_channel_intel(send_bottom[b], read[b]);
+            }
           }
         }
         if (i_py > 0 && j < 1) {
           if (t < timesteps) { // Don't communicate on last timestep
             // Extract relevant values
 #if HALO_Y > 1
-            HTYPE write_horizontal = -1000;
-            #pragma unroll
-            for (int w = 0; w < HALO_Y; ++w) {
-              write_horizontal[w] = read[w];
-            }
+            #error "NYI"
 #else
-            HTYPE write_horizontal = read[0];
+            HTYPE write_horizontal = read[0][0];
 #endif
             // Write to left channel
-            // printf("(%i, %i): (%i, %i, %i): write left %f, %f\n", i_px, i_py, t, i, j, read[0], read[1]);
             write_channel_intel(send_left, write_horizontal);
           }
         }
-        if (i_py < PY - 1 && j >= (Y_LOCAL / W) - 1) {
+        if (i_py < PY - 1 && j >= (Y_LOCAL / (B * W)) - 1) {
           if (t < timesteps) {
             // Extract relevant values
 #if HALO_Y > 1
-            HTYPE write_horizontal = -1000;
-            #pragma unroll
-            for (int w = 0; w < HALO_Y; ++w) {
-              write_horizontal[w] = read[W - HALO_Y + w];
-            }
+            #error "NYI"
 #else
-            HTYPE write_horizontal = read[W - 1];
+            HTYPE write_horizontal = read[B - 1][W - 1];
 #endif
             // Write to right channel
-            // printf("(%i, %i): (%i, %i, %i): write right %f, %f\n", i_px, i_py, t, i, j, read[0], read[1]);
             write_channel_intel(send_right, write_horizontal);
           }
         }
         if (t > 0) {
-          memory[offset + i * (Y_LOCAL / W) + j] = read;
+          bank0[offset + i * (Y_LOCAL / (B * W)) + j] = read[0];
+          bank1[offset + i * (Y_LOCAL / (B * W)) + j] = read[1];
+          bank2[offset + i * (Y_LOCAL / (B * W)) + j] = read[2];
+          bank3[offset + i * (Y_LOCAL / (B * W)) + j] = read[3];
         }
       }
     }
@@ -247,15 +266,20 @@ kernel void ConvertReceiveTop(const int i_px, const int i_py) {
   while (1) {
     SMI_Channel from_network =
         SMI_Open_receive_channel(Y_LOCAL, SMI_TYPE, (i_px - 1) * PY + i_py, 2);
-    VTYPE vec;
+    VTYPE vec[B];
     #pragma loop_coalesce
-    for (int i = 0; i < Y_LOCAL / W; ++i) {
-      for (int w = 0; w < W; ++w) {
-        DTYPE val;
-        SMI_Pop(&from_network, &val);
-        vec[w] = val;
-        if (w == W - 1) {
-          write_channel_intel(receive_top, vec);
+    for (int i = 0; i < Y_LOCAL / (B * W); ++i) {
+      for (int b0 = 0; b0 < B; ++b0) {
+        for (int w = 0; w < W; ++w) {
+          DTYPE val;
+          SMI_Pop(&from_network, &val);
+          vec[b0][w] = val;
+          if (b0 == B - 1 && w == W - 1) {
+            #pragma unroll
+            for (int b1 = 0; b1 < B; ++b1) {
+              write_channel_intel(receive_top[b1], vec[b1]);
+            }
+          }
         }
       }
     }
@@ -266,15 +290,20 @@ kernel void ConvertReceiveBottom(const int i_px, const int i_py) {
   while (1) {
     SMI_Channel from_network =
         SMI_Open_receive_channel(Y_LOCAL, SMI_TYPE, (i_px + 1) * PY + i_py, 0);
-    VTYPE vec;
+    VTYPE vec[B];
     #pragma loop_coalesce
-    for (int i = 0; i < Y_LOCAL / W; ++i) {
-      for (int w = 0; w < W; ++w) {
-        DTYPE val;
-        SMI_Pop(&from_network, &val);
-        vec[w] = val;
-        if (w == W - 1) {
-          write_channel_intel(receive_bottom, vec);
+    for (int i = 0; i < Y_LOCAL / (B * W); ++i) {
+      for (int b0 = 0; b0 < B; ++b0) {
+        for (int w = 0; w < W; ++w) {
+          DTYPE val;
+          SMI_Pop(&from_network, &val);
+          vec[b0][w] = val;
+          if (b0 == B - 1 && w == W - 1) {
+            #pragma unroll
+            for (int b1 = 0; b1 < B; ++b1) {
+              write_channel_intel(receive_bottom[b1], vec[b1]);
+            }
+          }
         }
       }
     }
@@ -313,15 +342,20 @@ kernel void ConvertSendTop(const int i_px, const int i_py) {
   while (1) {
     SMI_Channel to_network =
         SMI_Open_send_channel(Y_LOCAL, SMI_TYPE, (i_px - 1) * PY + i_py, 0);
-    VTYPE vec;
+    VTYPE vec[B];
     #pragma loop_coalesce
-    for (int i = 0; i < Y_LOCAL / W; ++i) {
-      for (int w = 0; w < W; ++w) {
-        if (w == 0) {
-          vec = read_channel_intel(send_top);
+    for (int i = 0; i < Y_LOCAL / (B * W); ++i) {
+      for (int b0 = 0; b0 < B; ++b0) {
+        for (int w = 0; w < W; ++w) {
+          if (b0 == 0 && w == 0) {
+            #pragma unroll
+            for (int b1 = 0; b1 < B; ++b1) {
+              vec[b1] = read_channel_intel(send_top[b1]);
+            }
+          }
+          DTYPE val = vec[b0][w];
+          SMI_Push(&to_network, &val);
         }
-        DTYPE val = vec[w];
-        SMI_Push(&to_network, &val);
       }
     }
   }
@@ -331,15 +365,20 @@ kernel void ConvertSendBottom(const int i_px, const int i_py) {
   while (1) {
     SMI_Channel to_network =
         SMI_Open_send_channel(Y_LOCAL, SMI_TYPE, (i_px + 1) * PY + i_py, 2);
-    VTYPE vec;
+    VTYPE vec[B];
     #pragma loop_coalesce
-    for (int i = 0; i < Y_LOCAL / W; ++i) {
-      for (int w = 0; w < W; ++w) {
-        if (w == 0) {
-          vec = read_channel_intel(send_bottom);
+    for (int i = 0; i < Y_LOCAL / (B * W); ++i) {
+      for (int b0 = 0; b0 < B; ++b0) {
+        for (int w = 0; w < W; ++w) {
+          if (b0 == 0 && w == 0) {
+            #pragma unroll
+            for (int b1 = 0; b1 < B; ++b1) {
+              vec[b1] = read_channel_intel(send_bottom[b1]);
+            }
+          }
+          DTYPE val = vec[b0][w];
+          SMI_Push(&to_network, &val);
         }
-        DTYPE val = vec[w];
-        SMI_Push(&to_network, &val);
       }
     }
   }

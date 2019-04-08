@@ -45,10 +45,14 @@ kernel void Stencil(const int timesteps) {
 
         VTYPE read = read_channel_intel(read_stream);
 
+#if W > 1
         #pragma unroll
         for (int w = 0; w < W; w++) {
           buffer[2 * HALO_X * Y + w] = read[w];
         }
+#else
+        buffer[2 * HALO_X * Y] = read;
+#endif
 
         if (i >= 2) {
 
@@ -64,7 +68,11 @@ kernel void Stencil(const int timesteps) {
                       (buffer[HALO_X * Y + w - 1] + buffer[HALO_X * Y + w + 1] +
                        buffer[2 * HALO_X * Y + w] + buffer[w]);
             }
+#if W > 1
             res[w] = value;
+#else
+            res = value;
+#endif
           }
 
           write_channel_intel(write_stream, res);

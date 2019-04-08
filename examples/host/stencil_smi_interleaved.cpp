@@ -12,15 +12,16 @@
 // Convert from C to C++
 using Data_t = DTYPE;
 constexpr Data_t kBoundary = BOUNDARY_VALUE;
+constexpr auto kMemoryBanks = B;
 constexpr int kX = X;
 constexpr int kY = Y;
+constexpr int kW = W;
 constexpr int kPX = PX;
 constexpr int kPY = PY;
 constexpr int kXLocal = kX / kPX;
 constexpr int kYLocal = kY / kPY;
-constexpr auto kDevicesPerNode = SMI_DEVICES_PER_NODE;
 constexpr auto kUsage =
-    "Usage: ./stencil_smi <[emulator/hardware]> <num timesteps>\n";
+    "Usage: ./stencil_smi_interleaved <[emulator/hardware]> <num timesteps>\n";
 
 using AlignedVec_t =
     std::vector<Data_t, hlslib::ocl::AlignedAllocator<Data_t, 64>>;
@@ -57,6 +58,22 @@ std::vector<AlignedVec_t> SplitMemory(AlignedVec_t const &memory) {
   return split;
 }
 
+std::vector<AlignedVec_t> InterleaveMemory(AlignedVec_t const &memory) {
+  std::vector<AlignedVec_t> split(
+      kMemoryBanks, AlignedVec_t(kXLocal * kYLocal / kMemoryBanks));
+  for (int x = 0; x < kXLocal; ++x) {
+    for (int y = 0; y < kYLocal / (kMemoryBanks * kW); ++y) {
+      for (int b = 0; b < kMemoryBanks; ++b) {
+        for (int w = 0; w < kW; ++w) {
+          split[b][x * kYLocal / kMemoryBanks + y * kW + w] =
+              memory[x * kYLocal + y * kMemoryBanks * kW + b * kW + w];
+        }
+      }
+    }
+  }
+  return split;
+}
+
 AlignedVec_t CombineMemory(std::vector<AlignedVec_t> const &split) {
   AlignedVec_t memory(kX * kY);
   for (int px = 0; px < kPX; ++px) {
@@ -65,6 +82,21 @@ AlignedVec_t CombineMemory(std::vector<AlignedVec_t> const &split) {
         for (int y = 0; y < kYLocal; ++y) {
           memory[px * kXLocal * kY + x * kY + py * kYLocal + y] =
               split[px * kPY + py][x * kYLocal + y];
+        }
+      }
+    }
+  }
+  return memory;
+}
+
+AlignedVec_t DeinterleaveMemory(std::vector<AlignedVec_t> const &split) {
+  AlignedVec_t memory(kXLocal * kYLocal);
+  for (int x = 0; x < kXLocal; ++x) {
+    for (int y = 0; y < kYLocal / (kMemoryBanks * kW); ++y) {
+      for (int b = 0; b < kMemoryBanks; ++b) {
+        for (int w = 0; w < kW; ++w) {
+          memory[x * kYLocal + y * kMemoryBanks * kW + b * kW + w] =
+              split[b][x * kYLocal / kMemoryBanks + y * kW + w];
         }
       }
     }
@@ -109,10 +141,10 @@ int main(int argc, char **argv) {
     setenv("CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA", "1", false);
     emulator = true;
     // In emulation mode, each rank has its own kernel file
-    kernel_path =
-        ("stencil_smi_emulator_" + std::to_string(mpi_rank) + ".aocx");
+    kernel_path = ("stencil_smi_interleaved_emulator_" +
+                   std::to_string(mpi_rank) + ".aocx");
   } else if (mode_str == "hardware") {
-    kernel_path = "stencil_smi_hardware.aocx";
+    kernel_path = "stencil_smi_interleaved_hardware.aocx";
     emulator = false;
   } else {
     std::cout << kUsage;
@@ -127,9 +159,10 @@ int main(int argc, char **argv) {
   std::vector<std::vector<char>> routing_tables_cks(
       kChannelsPerRank, std::vector<char>(mpi_size));
   for (int i = 0; i < kChannelsPerRank; ++i) {
-    LoadRoutingTable<char>(mpi_rank, i, 4, "stencil_smi_routing", "ckr",
-                           &routing_tables_ckr[i][0]);
-    LoadRoutingTable<char>(mpi_rank, i, mpi_size, "stencil_smi_routing", "cks",
+    LoadRoutingTable<char>(mpi_rank, i, 4, "stencil_smi_interleaved_routing",
+                           "ckr", &routing_tables_ckr[i][0]);
+    LoadRoutingTable<char>(mpi_rank, i, mpi_size,
+                           "stencil_smi_interleaved_routing", "cks",
                            &routing_tables_cks[i][0]);
   }
 
@@ -163,13 +196,29 @@ int main(int argc, char **argv) {
              MPI_COMM_WORLD, &status);
   }
 
+  MPIStatus(mpi_rank, "Interleaving memory...\n");
+  auto interleaved_host = InterleaveMemory(host_buffer);
+
   MPIStatus(mpi_rank, "Creating OpenCL context...\n");
-  hlslib::ocl::Context context(mpi_rank % kDevicesPerNode);
+  hlslib::ocl::Context context;
 
   MPIStatus(mpi_rank, "Allocating device memory...\n");
-  auto device_buffer =
-      context.MakeBuffer<Data_t, hlslib::ocl::Access::readWrite>(2 * kXLocal *
-                                                                 kYLocal);
+  const std::array<hlslib::ocl::MemoryBank, 4> banks = {
+      hlslib::ocl::MemoryBank::bank0, hlslib::ocl::MemoryBank::bank1,
+      hlslib::ocl::MemoryBank::bank2, hlslib::ocl::MemoryBank::bank3};
+  std::vector<hlslib::ocl::Buffer<Data_t, hlslib::ocl::Access::readWrite>>
+      device_buffers;
+  for (int b = 0; b < kMemoryBanks; ++b) {
+    auto device_buffer =
+        context.MakeBuffer<Data_t, hlslib::ocl::Access::readWrite>(
+            banks[b % banks.size()], 2 * kXLocal * kYLocal / kMemoryBanks);
+    device_buffer.CopyFromHost(0, kXLocal * kYLocal / kMemoryBanks,
+                               interleaved_host[b].cbegin());
+    device_buffer.CopyFromHost(kXLocal * kYLocal / kMemoryBanks,
+                               kXLocal * kYLocal / kMemoryBanks,
+                               interleaved_host[b].cbegin());
+    device_buffers.emplace_back(std::move(device_buffer));
+  }
   std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>>
       routing_tables_cks_device(kChannelsPerRank);
   std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>>
@@ -231,17 +280,14 @@ int main(int argc, char **argv) {
 
   MPIStatus(mpi_rank, "Creating compute kernels...\n");
   std::vector<hlslib::ocl::Kernel> compute_kernels;
-  compute_kernels.emplace_back(
-      program.MakeKernel("Read", device_buffer, i_px, i_py, timesteps));
+  compute_kernels.emplace_back(program.MakeKernel(
+      "Read", device_buffers[0], device_buffers[1], device_buffers[2],
+      device_buffers[3], i_px, i_py, timesteps));
   compute_kernels.emplace_back(
       program.MakeKernel("Stencil", i_px, i_py, timesteps));
-  compute_kernels.emplace_back(
-      program.MakeKernel("Write", device_buffer, i_px, i_py, timesteps));
-
-  MPIStatus(mpi_rank, "Copying data to device...\n");
-  device_buffer.CopyFromHost(0, kXLocal * kYLocal, host_buffer.cbegin());
-  device_buffer.CopyFromHost(kXLocal * kYLocal, kXLocal * kYLocal,
-                             host_buffer.cbegin());
+  compute_kernels.emplace_back(program.MakeKernel(
+      "Write", device_buffers[0], device_buffers[1], device_buffers[2],
+      device_buffers[3], i_px, i_py, timesteps));
 
   // Wait for all ranks to be ready for launch 
   MPI_Barrier(MPI_COMM_WORLD);
@@ -276,8 +322,14 @@ int main(int argc, char **argv) {
 
   // Copy back result
   MPIStatus(mpi_rank, "Copying back result...\n");
-  int offset = (timesteps % 2 == 0) ? 0 : kYLocal * kXLocal;
-  device_buffer.CopyToHost(offset, kYLocal * kXLocal, host_buffer.begin());
+  int offset = (timesteps % 2 == 0) ? 0 : kYLocal * kXLocal / kMemoryBanks;
+  for (int b = 0; b < kMemoryBanks; ++b) {
+    device_buffers[b].CopyToHost(offset, kYLocal * kXLocal / kMemoryBanks,
+                                 interleaved_host[b].begin());
+  }
+
+  MPIStatus(mpi_rank, "De-interleaving memory...\n");
+  host_buffer = DeinterleaveMemory(interleaved_host);
 
   // Communicate
   MPIStatus(mpi_rank, "Communicating result...\n");

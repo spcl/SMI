@@ -53,6 +53,7 @@ function(opencl_target KERNEL_NAME USE_CODEGEN NUM_RANKS NUM_TAGS)
     -cl-fast-relaxed-math
     -cl-single-precision-constant
     -no-interleaving=default
+    -fmax=${SMI_FMAX}
     -board=${SMI_TARGET_BOARD}
     ${KERNEL_FILE})
   add_custom_target(build_${KERNEL_NAME}_report
@@ -110,4 +111,5 @@ opencl_target("stencil_simple" OFF 1 0)
 if(PythonInterp_FOUND)
   opencl_target("stencil_spatial_tiling" ON 1 0)
   opencl_target("stencil_smi" OFF ${SMI_STENCIL_NUM_PROCS} 4)
+  opencl_target("stencil_smi_interleaved" OFF ${SMI_STENCIL_NUM_PROCS} 4)
 endif()
