@@ -18,6 +18,7 @@
 #if defined(MPI)
 #include "../../include/utils/smi_utils.hpp"
 #endif
+#define ROUTING_DIR "applications/microbenchmarks/latency_routing/"
 
 //#define CHECK
 using namespace std;
@@ -32,14 +33,15 @@ int main(int argc, char *argv[])
     if(argc<9)
     {
         cerr << "Send/Receiver tester " <<endl;
-        cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <length> -r <rank 0/1> -f <fpga> "<<endl;
+        cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <length> -r <rank on which run the receiver> "<<endl;
         exit(-1);
     }
     int n;
     int c;
     std::string program_path;
-    int rank;
+    int recv_rank;
     int fpga;
+    int rank;
     while ((c = getopt (argc, argv, "n:b:r:f:")) != -1)
         switch (c)
         {
@@ -54,8 +56,8 @@ int main(int argc, char *argv[])
                 break;
             case 'r':
                 {
-                    rank=atoi(optarg);
-                    if(rank!=0 && rank!=1)
+                    recv_rank=atoi(optarg);
+                    if(recv_rank>4)
                     {
                         cerr << "Error: rank may be 0-1"<<endl;
                         exit(-1);
@@ -74,10 +76,14 @@ int main(int argc, char *argv[])
     int rank_count;
     CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &rank_count));
     CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
-    //fpga = rank % 2; // in this case is ok, pay attention
-    fpga=0; //executed on 15 and 16
-    std::cout << "Rank: " << rank << " out of " << rank_count << " ranks" << std::endl;
-    program_path = replace(program_path, "<rank>", std::to_string(rank));
+    fpga = rank % 2; // in this case is ok, pay attention
+    //fpga=0; //executed on 15 and 16
+    std::cout << "Rank: " << rank << " out of " << rank_count << " ranks, executing on fpga " <<fpga<< std::endl;
+    if(rank==0)
+        program_path = replace(program_path, "<rank>", std::to_string(0));
+    else
+        program_path = replace(program_path, "<rank>", std::to_string(1));
+
     std::cout << "Program: " << program_path << std::endl;
     char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);
@@ -92,107 +98,70 @@ int main(int argc, char *argv[])
     std::vector<cl::CommandQueue> queues;
     std::vector<std::string> kernel_names;
 
-    switch(rank)
-    {
-        case 0:
-            cout << "Starting rank 0 on FPGA "<<fpga<<endl;
-            kernel_names.push_back("app");
-            //we don't need to start all CK_S/CK_R if we don't use them
-            kernel_names.push_back("CK_S_0");
-            kernel_names.push_back("CK_S_1");
-            kernel_names.push_back("CK_R_0");
-            kernel_names.push_back("CK_R_1");
-            break;
-        case 1:
-                cout << "Starting rank 1 on FPGA "<<fpga<<endl;
-                kernel_names.push_back("app");
-                kernel_names.push_back("CK_S_0");
-                kernel_names.push_back("CK_S_1");
-                kernel_names.push_back("CK_R_0");
-                kernel_names.push_back("CK_R_1");
+    kernel_names.push_back("app");
+    kernel_names.push_back("CK_S_0");
+    kernel_names.push_back("CK_S_1");
+    kernel_names.push_back("CK_S_2");
+    kernel_names.push_back("CK_S_3");
+    kernel_names.push_back("CK_R_0");
+    kernel_names.push_back("CK_R_1");
+    kernel_names.push_back("CK_R_2");
+    kernel_names.push_back("CK_R_3");
 
-        break;
-
-    }
 
     //this is for the case with classi channels
     IntelFPGAOCLUtils::initEnvironment(platform,device,fpga,context,program,program_path,kernel_names, kernels,queues);
 
     //create memory buffers
-    char ranks=2;
-    char tags=2;
-    cl::Buffer routing_table_ck_s_0(context,CL_MEM_READ_ONLY,ranks);
-    cl::Buffer routing_table_ck_s_1(context,CL_MEM_READ_ONLY,ranks);
+    const char tags=2;
+    cl::Buffer routing_table_ck_s_0(context,CL_MEM_READ_ONLY,rank_count);
+    cl::Buffer routing_table_ck_s_1(context,CL_MEM_READ_ONLY,rank_count);
+    cl::Buffer routing_table_ck_s_2(context,CL_MEM_READ_ONLY,rank_count);
+    cl::Buffer routing_table_ck_s_3(context,CL_MEM_READ_ONLY,rank_count);
     cl::Buffer routing_table_ck_r_0(context,CL_MEM_READ_ONLY,tags);
     cl::Buffer routing_table_ck_r_1(context,CL_MEM_READ_ONLY,tags);
-    if(rank==0)
-    {
-        //senders routing tables
-        char rt_s_0[2]={1,0};
-        char rt_s_1[2]={1,2};
-        queues[0].enqueueWriteBuffer(routing_table_ck_s_0, CL_TRUE,0,ranks,rt_s_0);
-        queues[0].enqueueWriteBuffer(routing_table_ck_s_1, CL_TRUE,0,ranks,rt_s_1);
-        //receivers routing tables: these are meaningless
-        char rt_r_0[2]={100,4}; //the first doesn't do anything
-        char rt_r_1[2]={100,100};   //the second is attached to the ck_r (channel has TAG 1)
-        queues[0].enqueueWriteBuffer(routing_table_ck_r_0, CL_TRUE,0,tags,rt_r_0);
-        queues[0].enqueueWriteBuffer(routing_table_ck_r_1, CL_TRUE,0,tags,rt_r_1);
-        //args for the apps
-        kernels[0].setArg(0,sizeof(int),&n);
-        kernels[0].setArg(1,sizeof(int),&n);
+    cl::Buffer routing_table_ck_r_2(context,CL_MEM_READ_ONLY,tags);
+    cl::Buffer routing_table_ck_r_3(context,CL_MEM_READ_ONLY,tags);
 
-        //args for the CK_Ss
-        kernels[1].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
-        kernels[1].setArg(1,sizeof(char),&ranks);
-        kernels[2].setArg(0,sizeof(cl_mem),&routing_table_ck_s_1);
-        kernels[2].setArg(1,sizeof(char),&ranks);
-
-        //args for the CK_Rs
-        char my_rank=0;
-        kernels[3].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
-        kernels[3].setArg(1,sizeof(char),&my_rank);
-        kernels[4].setArg(0,sizeof(cl_mem),&routing_table_ck_r_1);
-        kernels[4].setArg(1,sizeof(char),&my_rank);
-
-    }
-    if(rank==1)
-    {
-
-        //sender routing tables are meaningless
-        char rt_s_0[2]={0,0};
-        char rt_s_1[2]={100,100};
-        queues[0].enqueueWriteBuffer(routing_table_ck_s_0, CL_TRUE,0,ranks,rt_s_0);
-        queues[0].enqueueWriteBuffer(routing_table_ck_s_1, CL_TRUE,0,ranks,rt_s_1);
-        //receivers routing tables
-        char rt_r_0[2]={4,100}; //the first  is connect to application endpoint (TAG=0)
-        char rt_r_1[2]={100,100};
-        queues[0].enqueueWriteBuffer(routing_table_ck_r_0, CL_TRUE,0,tags,rt_r_0);
-        queues[0].enqueueWriteBuffer(routing_table_ck_r_1, CL_TRUE,0,tags,rt_r_1);
-
-        //args for the apps
-        kernels[0].setArg(0,sizeof(int),&n);
-        kernels[0].setArg(1,sizeof(int),&n);
-
-        //args for the CK_Ss
-        kernels[1].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
-        kernels[1].setArg(1,sizeof(char),&ranks);
-        kernels[2].setArg(0,sizeof(cl_mem),&routing_table_ck_s_1);
-        kernels[2].setArg(1,sizeof(char),&ranks);
-
-        //args for the CK_Rs
-        char my_rank=1;
-        kernels[3].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
-        kernels[3].setArg(1,sizeof(char),&my_rank);
-        kernels[4].setArg(0,sizeof(cl_mem),&routing_table_ck_r_1);
-        kernels[4].setArg(1,sizeof(char),&my_rank);
-
+    //load routing tables
+    char routing_tables_ckr[4][tags]; //only one tag
+    char routing_tables_cks[4][rank_count]; //4 ranks
+    for (int i = 0; i < kChannelsPerRank; ++i) {
+        LoadRoutingTable<char>(rank, i, 1, ROUTING_DIR, "ckr", &routing_tables_ckr[i][0]);
+        LoadRoutingTable<char>(rank, i, rank_count, ROUTING_DIR, "cks", &routing_tables_cks[i][0]);
     }
 
+    queues[0].enqueueWriteBuffer(routing_table_ck_s_0, CL_TRUE,0,rank_count,&routing_tables_cks[0][0]);
+    queues[0].enqueueWriteBuffer(routing_table_ck_s_1, CL_TRUE,0,rank_count,&routing_tables_cks[1][0]);
+    queues[0].enqueueWriteBuffer(routing_table_ck_s_2, CL_TRUE,0,rank_count,&routing_tables_cks[2][0]);
+    queues[0].enqueueWriteBuffer(routing_table_ck_s_3, CL_TRUE,0,rank_count,&routing_tables_cks[3][0]);
+
+    queues[0].enqueueWriteBuffer(routing_table_ck_r_0, CL_TRUE,0,tags,&routing_tables_ckr[0][0]);
+    queues[0].enqueueWriteBuffer(routing_table_ck_r_1, CL_TRUE,0,tags,&routing_tables_ckr[1][0]);
+    queues[0].enqueueWriteBuffer(routing_table_ck_r_2, CL_TRUE,0,tags,&routing_tables_ckr[2][0]);
+    queues[0].enqueueWriteBuffer(routing_table_ck_r_3, CL_TRUE,0,tags,&routing_tables_ckr[3][0]);
+
+    kernels[0].setArg(0,sizeof(int),&n);
+    //args for the CK_Ss
+    kernels[1].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
+    kernels[2].setArg(0,sizeof(cl_mem),&routing_table_ck_s_1);
+    kernels[3].setArg(0,sizeof(cl_mem),&routing_table_ck_s_2);
+    kernels[4].setArg(0,sizeof(cl_mem),&routing_table_ck_s_3);
+
+    //args for the CK_Rs
+    kernels[5].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
+    kernels[5].setArg(1,sizeof(char),&rank);
+    kernels[6].setArg(0,sizeof(cl_mem),&routing_table_ck_r_1);
+    kernels[6].setArg(1,sizeof(char),&rank);
+    kernels[7].setArg(0,sizeof(cl_mem),&routing_table_ck_r_2);
+    kernels[7].setArg(1,sizeof(char),&rank);
+    kernels[8].setArg(0,sizeof(cl_mem),&routing_table_ck_r_3);
+    kernels[8].setArg(1,sizeof(char),&rank);
+
+    //start the CKs
     const int num_kernels=kernel_names.size();
-    queues[num_kernels-1].enqueueTask(kernels[num_kernels-1]);
-    queues[num_kernels-2].enqueueTask(kernels[num_kernels-2]);
-    queues[num_kernels-3].enqueueTask(kernels[num_kernels-3]);
-    queues[num_kernels-4].enqueueTask(kernels[num_kernels-4]);
+    for(int i=num_kernels-1;i>=num_kernels-8;i--)
+        queues[i].enqueueTask(kernels[i]);
 
 
     cl::Event events[1]; //this defination must stay here
@@ -201,19 +170,18 @@ int main(int argc, char *argv[])
     CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
     #endif
 
-    //ATTENTION: If you are executing on the same host
-    //since the PCIe is shared that could be problems in taking times
-    //This mini sleep should resolve
-    //if(rank==0)
-    //    usleep(10000);
 
+    //only rank 0 and the recv rank start the app kernels
     timestamp_t start=current_time_usecs();
-    for(int i=0;i<1;i++)
-        queues[i].enqueueTask(kernels[i],nullptr,&events[i]);
-    
-    for(int i=0;i<1;i++)
-        queues[i].finish();
+    //
+    if(rank==0 || rank==recv_rank)
+    {
+        for(int i=0;i<1;i++)
+            queues[i].enqueueTask(kernels[i],nullptr,&events[i]);
 
+        for(int i=0;i<1;i++)
+            queues[i].finish();
+    }
     timestamp_t end=current_time_usecs();
 
     #if defined(MPI)
