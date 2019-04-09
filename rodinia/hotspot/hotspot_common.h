@@ -34,10 +34,5 @@
 #define TIME 21
 #endif
 
-// Padding to fix alignment for time steps that are not a multiple of 8
-#ifndef PAD
-#define PAD TIME % 16
-#endif
-
 #define HALO_SIZE TIME* RAD     // halo size
 #define BACK_OFF 2 * HALO_SIZE  // back off for going to next block
