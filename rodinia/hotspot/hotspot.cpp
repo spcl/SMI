@@ -122,20 +122,19 @@ int compute_tran_temp(cl_mem MatrixPower, cl_mem MatrixTemp[2], int col,
         dst = 1 - dst;
       }
     } else {
-      for (int t = 0; t < total_iterations; ++t) {
-        CL_SAFE_CALL(clSetKernelArg(kernel, 1, sizeof(cl_mem),
-                                    (void *)&MatrixTemp[0]));
-        CL_SAFE_CALL(clSetKernelArg(kernel, 2, sizeof(cl_mem),
-                                    (void *)&MatrixTemp[0]));
-        CL_SAFE_CALL(
-            clSetKernelArg(kernel, 10, sizeof(float), (void *)&t));
-        CL_SAFE_CALL(clEnqueueTask(command_queue, kernel, 0, NULL, NULL));
+      CL_SAFE_CALL(clSetKernelArg(kernel, 1, sizeof(cl_mem),
+                                  (void *)&MatrixTemp[0]));
+      CL_SAFE_CALL(clSetKernelArg(kernel, 2, sizeof(cl_mem),
+                                  (void *)&MatrixTemp[0]));
+      CL_SAFE_CALL(
+          clSetKernelArg(kernel, 10, sizeof(float), (void *)&total_iterations));
+      CL_SAFE_CALL(
+          clSetKernelArg(kernel, 11, sizeof(float), (void *)&smi_rank));
+      CL_SAFE_CALL(
+          clSetKernelArg(kernel, 12, sizeof(float), (void *)&smi_size));
+      CL_SAFE_CALL(clEnqueueTask(command_queue, kernel, 0, NULL, NULL));
 
-        clFinish(command_queue);
-
-        src = 1 - src;
-        dst = 1 - dst;
-      }
+      clFinish(command_queue);
     }
   }
 
