@@ -1,5 +1,9 @@
+## Bandwidth
+
 ## Latency
 
+For the latency we measured it by using a ping/pon benchmark.
+The 4 FPGAs are organized in a bus so we can test at different hop distance
 
 ## Ingestion rate
 
@@ -15,3 +19,6 @@ What we can do is to show how the ingestion rate changes with the number of QSFP
 the fact that we have two sends here is useless.
 In the code there is a macro (SINGLE_QSFP) and also we disable the second application
 
+## Broadcast
+
+A message composed by N floats is streamed to all the other ranks
