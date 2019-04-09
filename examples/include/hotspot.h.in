@@ -1,0 +1,19 @@
+#pragma once
+
+#pragma OPENCL EXTENSION cl_intel_channels : enable
+
+// CMake config
+#define X ${SMI_STENCIL_SIZE_X} 
+#define Y ${SMI_STENCIL_SIZE_Y} 
+#define W ${SMI_VECTORIZATION_WIDTH}
+#define B 4 // Number of memory banks 
+#define VTYPE ${SMI_DATATYPE}${SMI_VECTORIZATION_WIDTH} 
+#define PX ${SMI_STENCIL_NUM_PROCS_X}
+#define PY ${SMI_STENCIL_NUM_PROCS_Y}
+#define SMI_DEVICES_PER_NODE ${SMI_DEVICES_PER_NODE}
+
+// Derived numbers
+#define X_LOCAL (X / PX)
+#define Y_LOCAL (Y / PY)
+
+#define AMB_TEMP (80.0f)
