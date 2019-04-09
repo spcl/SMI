@@ -13,7 +13,7 @@
 #include "../../include/utils/ocl_utils.hpp"
 #include "../../include/utils/utils.hpp"
 #include <limits.h>
-
+#include <cmath>
 #include "../../include/utils/smi_utils.hpp"
 #define ROUTING_DIR "applications/microbenchmarks/latency_routing/"
 
