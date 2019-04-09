@@ -20,7 +20,8 @@ constexpr int kXLocal = kX / kPX;
 constexpr int kYLocal = kY / kPY;
 constexpr auto kDevicesPerNode = SMI_DEVICES_PER_NODE;
 constexpr auto kUsage =
-    "Usage: ./hotspot_smi <[emulator/hardware]> <num timesteps>\n";
+    "Usage: ./hotspot_smi <[emulator/hardware]> <num timesteps> <temperature "
+    "in> <power in> <temperature out>\n";
 
 // Constants
 constexpr auto kChipHeight = 1.6;
@@ -59,6 +60,24 @@ void Reference(AlignedVec_t &temperature, const AlignedVec_t &power,
       }
     }
     temperature.swap(buffer);
+  }
+}
+
+AlignedVec_t ReadFile(const std::string path) {
+  std::ifstream fstream(path);
+  AlignedVec_t result(kX * kY);
+  std::string line;
+  for (int i = 0; i < kX * kY; ++i) {
+    std::getline(fstream, line);
+    result[i] = std::stof(line);
+  }
+  return result;  
+}
+
+void WriteFile(const std::string path, AlignedVec_t const &data) {
+  std::ofstream fstream(path);
+  for (int i = 0; i < kX * kY; ++i) {
+    fstream << i << "\t" << data[i] << "\n";
   }
 }
 
@@ -150,7 +169,7 @@ int main(int argc, char **argv) {
   const int i_py = mpi_rank % kPY;
 
   // Handle input arguments
-  if (argc != 3) {
+  if (argc != 6) {
     std::cout << kUsage;
     return 1;
   }
@@ -172,6 +191,10 @@ int main(int argc, char **argv) {
   }
 
   const int timesteps = std::stoi(argv[2]);
+
+  const std::string temperature_file_in(argv[3]);
+  const std::string power_file_in(argv[4]);
+  const std::string temperature_file_out(argv[5]);
 
   // Compute hotspot values
   const float grid_height = kChipHeight / kX;
@@ -203,8 +226,8 @@ int main(int argc, char **argv) {
   if (mpi_rank == 0) {
     MPIStatus(mpi_rank, "Initializing host memory...\n");
     // Set center to 0
-    temperature_reference = AlignedVec_t(kX * kY, 0.5);
-    power_reference = AlignedVec_t(kX * kY, 0.1);
+    temperature_reference = ReadFile(temperature_file_in);
+    power_reference = ReadFile(power_file_in);
     temperature_host_split = SplitMemory(temperature_reference);
     temperature_host = std::move(temperature_host_split[0]);
     power_host_split = SplitMemory(power_reference);
@@ -407,6 +430,9 @@ int main(int argc, char **argv) {
     //   std::cout << "\n";
     // }
     // std::cout << "\n";
+
+    WriteFile(temperature_file_out, result);
+    std::cout << "Wrote result to " << temperature_file_out << ".\n";
 
     // Compare result
     const float average = std::accumulate(temperature_reference.begin(),

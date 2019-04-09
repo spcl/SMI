@@ -113,9 +113,6 @@ kernel void ReadPower(__global volatile const VTYPE *restrict bank0,
                       const int timesteps) {
   // Extra artificial timestep to send first boundaries
   for (int t = 0; t < timesteps + 1; ++t) {
-    // Swap the timestep modulo to accommodate first artificial timestep
-    const int offset =
-        (t == 0 || t % 2 == 1) ? 0 : X_LOCAL * (Y_LOCAL / (B * W));
     // +1 for each boundary
     for (int i = 0; i < X_LOCAL + 2; ++i) {
       // +1 for each boundary
@@ -136,14 +133,10 @@ kernel void ReadPower(__global volatile const VTYPE *restrict bank0,
         const bool valid_read =
             !oob_top && !oob_bottom && !oob_left && !oob_right;
         if (valid_read) {
-          res[0] =
-              bank0[offset + (i - 1) * (Y_LOCAL / (W * B)) + (j - 1)];
-          res[1] =
-              bank1[offset + (i - 1) * (Y_LOCAL / (W * B)) + (j - 1)];
-          res[2] =
-              bank2[offset + (i - 1) * (Y_LOCAL / (W * B)) + (j - 1)];
-          res[3] =
-              bank3[offset + (i - 1) * (Y_LOCAL / (W * B)) + (j - 1)];
+          res[0] = bank0[(i - 1) * (Y_LOCAL / (W * B)) + (j - 1)];
+          res[1] = bank1[(i - 1) * (Y_LOCAL / (W * B)) + (j - 1)];
+          res[2] = bank2[(i - 1) * (Y_LOCAL / (W * B)) + (j - 1)];
+          res[3] = bank3[(i - 1) * (Y_LOCAL / (W * B)) + (j - 1)];
         }
         #pragma unroll
         for (int b = 0; b < B; ++b) {
@@ -220,6 +213,10 @@ kernel void Stencil(const float rx1, const float ry1, const float rz1,
                                 (AMB_TEMP - center) * rz1;
                 const float delta = sdc * v;
                 res[w] = center + delta; 
+                // if (i_px == 0 && i_py == 0) {
+                //   printf("(%i, %i, %i): %f, %f, %f, %f, %f = %f\n", t - 1, i - 2,
+                //          j - 1, north, west, center, east, south, res[w]);
+                // }
               }
             }
             write_channel_intel(write_stream[b], res);
