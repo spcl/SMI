@@ -3,41 +3,35 @@
 
  */
 
-
-
 #include <stdio.h>
 #include <string>
 #include <iostream>
 #include <fstream>
 #include <unistd.h>
+#include <cmath>
 #include "../../include/utils/ocl_utils.hpp"
 #include "../../include/utils/utils.hpp"
-#define MPI
-#if defined(MPI)
 #include "../../include/utils/smi_utils.hpp"
-#endif
 
 //#define CHECK
 using namespace std;
 int main(int argc, char *argv[])
 {
 
-    #if defined(MPI)
     CHECK_MPI(MPI_Init(&argc, &argv));
-    #endif
 
     //command line argument parsing
-    if(argc<9)
+    if(argc<7)
     {
         cerr << "Send/Receiver tester " <<endl;
-        cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <length> -r <rank 0/1> -f <fpga> "<<endl;
+        cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <length> -r <num runs> "<<endl;
         exit(-1);
     }
     int n;
     int c;
     std::string program_path;
     int rank;
-    int fpga;
+    int fpga,runs;
     while ((c = getopt (argc, argv, "n:b:r:f:")) != -1)
         switch (c)
         {
@@ -51,24 +45,14 @@ int main(int argc, char *argv[])
                 fpga=atoi(optarg);
                 break;
             case 'r':
-                {
-                    rank=atoi(optarg);
-                    if(rank!=0 && rank!=1)
-                    {
-                        cerr << "Error: rank may be 0-1"<<endl;
-                        exit(-1);
-                    }
-
-                    break;
-                }
-
+                runs=atoi(optarg);
+                break;
             default:
                 cerr << "Usage: "<< argv[0]<<"-b <binary file> -n <length>"<<endl;
                 exit(-1);
         }
 
     cout << "Performing send/receive test with "<<n<<" elements"<<endl;
-    #if defined(MPI)
     int rank_count;
     CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &rank_count));
     CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
@@ -76,7 +60,6 @@ int main(int argc, char *argv[])
     std::cout << "Rank: " << rank << " out of " << rank_count << " ranks" << std::endl;
     program_path = replace(program_path, "<rank>", std::to_string(rank));
     std::cout << "Program: " << program_path << std::endl;
-    #endif
 
     cl::Platform  platform;
     cl::Device device;
@@ -92,31 +75,22 @@ int main(int argc, char *argv[])
             cout << "Starting rank 0 on FPGA "<<fpga<<endl;
             kernel_names.push_back("app_0");
             //we don't need to start all CK_S/CK_R if we don't use them
-            kernel_names.push_back("CK_S_0");
-            kernel_names.push_back("CK_S_1");
-            kernel_names.push_back("CK_S_2");
-            kernel_names.push_back("CK_S_3");
-            kernel_names.push_back("CK_R_0");
-            kernel_names.push_back("CK_R_1");
-            kernel_names.push_back("CK_R_2");
-            kernel_names.push_back("CK_R_3");
+
             break;
         case 1:
-                cout << "Starting rank 1 on FPGA "<<fpga<<endl;
-                kernel_names.push_back("app_1");
-                kernel_names.push_back("app_2");
-                kernel_names.push_back("CK_S_0");
-                kernel_names.push_back("CK_S_1");
-                kernel_names.push_back("CK_S_2");
-                kernel_names.push_back("CK_S_3");
-                kernel_names.push_back("CK_R_0");
-                kernel_names.push_back("CK_R_1");
-                kernel_names.push_back("CK_R_2");
-                kernel_names.push_back("CK_R_3");
-
-        break;
-
+            cout << "Starting rank 1 on FPGA "<<fpga<<endl;
+            kernel_names.push_back("app_1");
+            kernel_names.push_back("app_2");
+            break;
     }
+    kernel_names.push_back("CK_S_0");
+    kernel_names.push_back("CK_S_1");
+    kernel_names.push_back("CK_S_2");
+    kernel_names.push_back("CK_S_3");
+    kernel_names.push_back("CK_R_0");
+    kernel_names.push_back("CK_R_1");
+    kernel_names.push_back("CK_R_2");
+    kernel_names.push_back("CK_R_3");
 
     //this is for the case with classi channels
     IntelFPGAOCLUtils::initEnvironment(platform,device,fpga,context,program,program_path,kernel_names, kernels,queues);
@@ -218,60 +192,83 @@ int main(int argc, char *argv[])
     for(int i=num_kernels-1;i>=num_kernels-8;i--)
         queues[i].enqueueTask(kernels[i]);
 
+    std::vector<double> times;
 
-    cl::Event events[1]; //this defination must stay here
-    // wait for other nodes
-    #if defined(MPI)
-    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-    #endif
+    for(int i=0;i<runs;i++)
+    {
 
-    //ATTENTION: If you are executing on the same host
-    //since the PCIe is shared that could be problems in taking times
-    //This mini sleep should resolve
-    if(rank==0)
-        usleep(10000);
 
-    timestamp_t start=current_time_usecs();
-    /*
-        Normal version
-    for(int i=0;i<kernel_names.size()-8;i++)
-        queues[i].enqueueTask(kernels[i],nullptr,&events[i]);
+        cl::Event events[1]; //this defination must stay here
+        // wait for other nodes
+        CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
 
-    for(int i=0;i<kernel_names.size()-8;i++)
-        queues[i].finish();
-    */
-    //single QSFP version
-    queues[0].enqueueTask(kernels[0],nullptr,&events[0]);
-    queues[0].finish();
-    timestamp_t end=current_time_usecs();
+        //ATTENTION: If you are executing on the same host
+        //since the PCIe is shared that could be problems in taking times
+        //This mini sleep should resolve
+        if(rank==0)
+            usleep(10000);
 
-    #if defined(MPI)
-    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-    #else
-    sleep(1);
-    #endif
+        timestamp_t start=current_time_usecs();
+        //TODO fix this
+        /*
+            Normal version
+        for(int i=0;i<kernel_names.size()-8;i++)
+            queues[i].enqueueTask(kernels[i],nullptr,&events[i]);
+
+        for(int i=0;i<kernel_names.size()-8;i++)
+            queues[i].finish();
+        */
+        //single QSFP version
+        queues[0].enqueueTask(kernels[0],nullptr,&events[0]);
+        queues[0].finish();
+        timestamp_t end=current_time_usecs();
+
+        CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+        if(rank==0)
+        {
+            ulong end, start;
+            events[0].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
+            events[0].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
+
+            double time= (double)((end-start)/1000.0f);
+            times.push_back(time);
+        }
+    }
     if(rank==0)
     {
-        ulong min_start=4294967295, max_end=0;
-        ulong end, start;
-        for(int i=0;i<1;i++)
-        {
-            events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
-            events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
-            if(i==0)
-                min_start=start;
-            if(start<min_start)
-                min_start=start;
-            if(end>max_end)
-                max_end=end;
-        }
-        double time= (double)((max_end-min_start)/1000.0f);
-        cout << "Time elapsed (usecs): "<<time <<endl;
-        cout << "Latency (usecs): " << time/(2*n)<<endl;
-    }
 
-    #if defined(MPI)
+       //check
+        double mean=0;
+        for(auto t:times)
+            mean+=t;
+        mean/=runs;
+        //report the mean in usecs
+        double stddev=0;
+        for(auto t:times)
+            stddev+=((t-mean)*(t-mean));
+        stddev=sqrt(stddev/runs);
+        double conf_interval_99=2.58*stddev/sqrt(runs);
+        double data_sent_KB=KB;
+        cout << "Computation time (usec): " << mean << " (sttdev: " << stddev<<")"<<endl;
+        cout << "Conf interval 99: "<<conf_interval_99<<endl;
+        cout << "Conf interval 99 within " <<(conf_interval_99/mean)*100<<"% from mean" <<endl;
+        cout << "Sent (KB): " <<data_sent_KB<<endl;
+        cout << "Average bandwidth (Gbit/s): " <<  (data_sent_KB*8/(mean/1000000.0))/(1024*1024) << endl;
+
+        //save the info into output file
+        std::ostringstream filename;
+        filename << "ingestion_rate_" << n << ".dat";
+        std::cout << "Saving info into: "<<filename.str()<<std::endl;
+        ofstream fout(filename.str());
+        fout << "#Ingestion rate benchnmark: sending  "<<n<<" messages of size 1" <<std::endl;
+        fout << "#Average Computation time (usecs): "<<mean<<endl;
+        fout << "#Standard deviation (usecs): "<<stddev<<endl;
+        fout << "#Confidence interval 99%: +- "<<conf_interval_99<<endl;
+        fout << "#Execution times (usecs):"<<endl;
+        for(auto t:times)
+            fout << t << endl;
+        fout.close();
+    }
     CHECK_MPI(MPI_Finalize());
-    #endif
 
 }
