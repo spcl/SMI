@@ -248,12 +248,9 @@ int main(int argc, char *argv[])
             stddev+=((t-mean)*(t-mean));
         stddev=sqrt(stddev/runs);
         double conf_interval_99=2.58*stddev/sqrt(runs);
-        double data_sent_KB=KB;
         cout << "Computation time (usec): " << mean << " (sttdev: " << stddev<<")"<<endl;
         cout << "Conf interval 99: "<<conf_interval_99<<endl;
         cout << "Conf interval 99 within " <<(conf_interval_99/mean)*100<<"% from mean" <<endl;
-        cout << "Sent (KB): " <<data_sent_KB<<endl;
-        cout << "Average bandwidth (Gbit/s): " <<  (data_sent_KB*8/(mean/1000000.0))/(1024*1024) << endl;
 
         //save the info into output file
         std::ostringstream filename;
