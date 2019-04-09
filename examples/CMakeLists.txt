@@ -29,4 +29,8 @@ if(PythonInterp_FOUND)
   add_smi_executable("stencil_smi")
   add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_smi_interleaved.cl" OFF ${SMI_STENCIL_NUM_PROCS} 4)
   add_smi_executable("stencil_smi_interleaved")
+  # Rodinia hotspot kernel
+  configure_file(include/hotspot.h.in hotspot.h)
+  add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/hotspot_smi.cl" OFF ${SMI_STENCIL_NUM_PROCS} 4)
+  add_smi_executable("hotspot_smi")
 endif()
