@@ -11,7 +11,7 @@
 #include <fstream>
 #include <unistd.h>
 #include <limits.h>
-
+#include <cmath>
 #include "../../include/utils/ocl_utils.hpp"
 #include "../../include/utils/utils.hpp"
 #include "../../include/utils/smi_utils.hpp"
@@ -27,20 +27,23 @@ int main(int argc, char *argv[])
     if(argc<7)
     {
         cerr << "Send/Receiver tester " <<endl;
-        cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <length> -r <who is the root> "<<endl;
+        cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <length> -r <who is the root> -i <number of iterations> "<<endl;
         exit(-1);
     }
     int n;
     int c;
     std::string program_path;
     char root;
-    int fpga;
+    int fpga,runs;
     int rank;
     while ((c = getopt (argc, argv, "n:b:r:")) != -1)
         switch (c)
         {
             case 'n':
                 n=atoi(optarg);
+                break;
+            case 'i':
+                runs=atoi(optarg);
                 break;
             case 'b':
                 program_path=std::string(optarg);
@@ -147,45 +150,69 @@ int main(int argc, char *argv[])
     for(int i=num_kernels-1;i>=num_kernels-8;i--)
         queues[i].enqueueTask(kernels[i]);
 
-    cl::Event events[1]; //this defination must stay here
-    // wait for other nodes
-    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+    std::vector<double> times;
+    for(int i=0;i<runs;i++)
+    {
+        cl::Event events[1]; //this defination must stay here
+        // wait for other nodes
+        CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
 
-    //ATTENTION: If you are executing on the same host
-    //since the PCIe is shared that could be problems in taking times
-    //This mini sleep should resolve
-    //if(rank==0)
-    //    usleep(10000);
 
-    timestamp_t start=current_time_usecs();
-    for(int i=0;i<1;i++)
-        queues[i].enqueueTask(kernels[i],nullptr,&events[i]);
+        for(int i=0;i<1;i++)
+            queues[i].enqueueTask(kernels[i],nullptr,&events[i]);
 
-    for(int i=0;i<1;i++)
-        queues[i].finish();
+        for(int i=0;i<1;i++)
+            queues[i].finish();
 
-    timestamp_t end=current_time_usecs();
 
-    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+        CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+        if(rank==0)
+        {
+            ulong end, start;
+            events[0].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
+            events[0].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
+            double time= (double)((end-start)/1000.0f);
+            times.push_back(time);
+        }
+    }
     if(rank==0)
     {
-        ulong min_start=4294967295, max_end=0;
-        ulong end, start;
-        for(int i=0;i<1;i++)
-        {
-            events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
-            events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
-            if(i==0)
-                min_start=start;
-            if(start<min_start)
-                min_start=start;
-            if(end>max_end)
-                max_end=end;
-        }
-        double time= (double)((max_end-min_start)/1000.0f);
-        cout << "Time elapsed (usecs): "<<time <<endl;
-        cout << "Latency (usecs): " << time/(2*n)<<endl;
+
+       //check
+        double mean=0;
+        for(auto t:times)
+            mean+=t;
+        mean/=runs;
+        //report the mean in usecs
+        double stddev=0;
+        for(auto t:times)
+            stddev+=((t-mean)*(t-mean));
+        stddev=sqrt(stddev/runs);
+        double conf_interval_99=2.58*stddev/sqrt(runs);
+        double data_sent_KB=n*sizeof(float);
+        cout << "Computation time (usec): " << mean << " (sttdev: " << stddev<<")"<<endl;
+        cout << "Conf interval 99: "<<conf_interval_99<<endl;
+        cout << "Conf interval 99 within " <<(conf_interval_99/mean)*100<<"% from mean" <<endl;
+        cout << "Sent (KB): " <<data_sent_KB<<endl;
+        cout << "Average bandwidth (Gbit/s): " <<  (data_sent_KB*8/(mean/1000000.0))/(1024*1024) << endl;
+
+        //save the info into output file
+        std::ostringstream filename;
+        filename << "smi_broadcast_" << n << ".dat";
+        std::cout << "Saving info into: "<<filename.str()<<std::endl;
+        ofstream fout(filename.str());
+        fout << "#Sent (KB) = "<<data_sent_KB<<", Runs = "<<runs<<endl;
+        fout << "#Average Computation time (usecs): "<<mean<<endl;
+        fout << "#Standard deviation (usecs): "<<stddev<<endl;
+        fout << "#Confidence interval 99%: +- "<<conf_interval_99<<endl;
+        fout << "#Execution times (usecs):"<<endl;
+        fout << "#Average bandwidth (Gbit/s): " <<  (data_sent_KB*8/(mean/1000000.0))/(1024*1024) << endl;
+        for(auto t:times)
+            fout << t << endl;
+        fout.close();
     }
+
+
     CHECK_MPI(MPI_Finalize());
 
 }
