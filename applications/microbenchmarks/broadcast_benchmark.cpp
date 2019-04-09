@@ -198,9 +198,10 @@ int main(int argc, char *argv[])
 
         //save the info into output file
         std::ostringstream filename;
-        filename << "smi_broadcast_" << n << ".dat";
+        filename << "smi_broadcast_"<<rank_count <<"_"<< n << ".dat";
         std::cout << "Saving info into: "<<filename.str()<<std::endl;
         ofstream fout(filename.str());
+        fout << "#SMI Broadcast, executed with " << rank_count <<" ranks, streaming: " << n <<" elements"<<endl;
         fout << "#Sent (KB) = "<<data_sent_KB<<", Runs = "<<runs<<endl;
         fout << "#Average Computation time (usecs): "<<mean<<endl;
         fout << "#Standard deviation (usecs): "<<stddev<<endl;
