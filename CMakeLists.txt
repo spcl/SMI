@@ -28,7 +28,8 @@ function(add_smi_executable KERNEL_NAME)
 endfunction()
 
 # All targets related to building OpenCL kernels 
-function(add_smi_kernel KERNEL_NAME USE_CODEGEN NUM_RANKS NUM_TAGS)
+function(add_smi_kernel KERNEL_PATH USE_CODEGEN NUM_RANKS NUM_TAGS)
+  get_filename_component(KERNEL_NAME ${KERNEL_PATH} NAME_WE)
   if(USE_CODEGEN)
     add_custom_target(generate_${KERNEL_NAME}
       COMMAND ${PYTHON_EXECUTABLE}
@@ -37,7 +38,7 @@ function(add_smi_kernel KERNEL_NAME USE_CODEGEN NUM_RANKS NUM_TAGS)
       ${CMAKE_CURRENT_SOURCE_DIR}/kernels ${CMAKE_CURRENT_BINARY_DIR})
     set(KERNEL_FILE ${CMAKE_CURRENT_BINARY_DIR}/${KERNEL_NAME}.cl)
   else()
-    set(KERNEL_FILE ${CMAKE_CURRENT_SOURCE_DIR}/kernels/${KERNEL_NAME}.cl)
+    set(KERNEL_FILE ${KERNEL_PATH})
   endif()
   if(NUM_RANKS GREATER 1)
     add_custom_target(generate_${KERNEL_NAME}_routing

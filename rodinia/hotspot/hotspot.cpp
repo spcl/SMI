@@ -1,7 +1,7 @@
 #include "hotspot.h"
 #include "common/timer.h"
-#include "mpi.h"
 #include "hlslib/intel/OpenCL.h"
+#include "mpi.h"
 
 cl_device_id *device_list;
 
@@ -110,10 +110,10 @@ int compute_tran_temp(cl_mem MatrixPower, cl_mem MatrixTemp[2], int col,
     // Launch kernel
     if (!run_smi) {
       for (int t = 0; t < total_iterations; ++t) {
-        CL_SAFE_CALL(
-            clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&MatrixTemp[src]));
-        CL_SAFE_CALL(
-            clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *)&MatrixTemp[dst]));
+        CL_SAFE_CALL(clSetKernelArg(kernel, 1, sizeof(cl_mem),
+                                    (void *)&MatrixTemp[src]));
+        CL_SAFE_CALL(clSetKernelArg(kernel, 2, sizeof(cl_mem),
+                                    (void *)&MatrixTemp[dst]));
         CL_SAFE_CALL(clEnqueueTask(command_queue, kernel, 0, NULL, NULL));
 
         clFinish(command_queue);
@@ -122,19 +122,20 @@ int compute_tran_temp(cl_mem MatrixPower, cl_mem MatrixTemp[2], int col,
         dst = 1 - dst;
       }
     } else {
-      CL_SAFE_CALL(
-          clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&MatrixTemp[src]));
-      CL_SAFE_CALL(
-          clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *)&MatrixTemp[dst]));
-      CL_SAFE_CALL(
-          clSetKernelArg(kernel, 10, sizeof(int), (void *)&total_iterations));
-      CL_SAFE_CALL(
-          clSetKernelArg(kernel, 11, sizeof(int), (void *)&smi_rank));
-      CL_SAFE_CALL(
-          clSetKernelArg(kernel, 12, sizeof(int), (void *)&smi_size));
-      CL_SAFE_CALL(clEnqueueTask(command_queue, kernel, 0, NULL, NULL));
+      for (int t = 0; t < total_iterations; ++t) {
+        CL_SAFE_CALL(clSetKernelArg(kernel, 1, sizeof(cl_mem),
+                                    (void *)&MatrixTemp[0]));
+        CL_SAFE_CALL(clSetKernelArg(kernel, 2, sizeof(cl_mem),
+                                    (void *)&MatrixTemp[0]));
+        CL_SAFE_CALL(
+            clSetKernelArg(kernel, 10, sizeof(float), (void *)&t));
+        CL_SAFE_CALL(clEnqueueTask(command_queue, kernel, 0, NULL, NULL));
 
-      clFinish(command_queue);
+        clFinish(command_queue);
+
+        src = 1 - src;
+        dst = 1 - dst;
+      }
     }
   }
 
@@ -177,7 +178,6 @@ void usage(int argc, char **argv) {
 }
 
 int main(int argc, char **argv) {
-
   MPI_Init(&argc, &argv);
 
   int smi_rank, smi_size;
@@ -217,6 +217,13 @@ int main(int argc, char **argv) {
   } else {
     emulator = false;
   }
+
+  if (run_smi && emulator) {
+    kernel_file = kernel_file.substr(0, kernel_file.find(".aocx")) + "_" +
+                  std::to_string(smi_rank) + ".aocx";
+  }
+
+  printf("Using kernel file %s\n", kernel_file.c_str());
 
   size_t devices_size;
   cl_int result, error;
@@ -295,16 +302,29 @@ int main(int argc, char **argv) {
   cl_mem MatrixTemp[2], MatrixPower = NULL;
 
   // Create input memory buffers on device
-  MatrixTemp[0] = clCreateBuffer(context, CL_MEM_READ_WRITE,
-                                 sizeof(float) * size, NULL, &error);
-  if (error != CL_SUCCESS) fatal_CL(error, __LINE__);
-  MatrixTemp[1] = clCreateBuffer(context, CL_MEM_READ_WRITE,
-                                 sizeof(float) * size, NULL, &error);
-  if (error != CL_SUCCESS) fatal_CL(error, __LINE__);
+  if (run_smi) {
+    MatrixTemp[0] = clCreateBuffer(context, CL_MEM_READ_WRITE,
+                                   2 * sizeof(float) * size, NULL, &error);
+    if (error != CL_SUCCESS) fatal_CL(error, __LINE__);
 
-  CL_SAFE_CALL(clEnqueueWriteBuffer(command_queue, MatrixTemp[0], CL_TRUE, 0,
-                                    sizeof(float) * size, FilesavingTemp, 0,
-                                    NULL, NULL));
+    CL_SAFE_CALL(clEnqueueWriteBuffer(command_queue, MatrixTemp[0], CL_TRUE, 0,
+                                      sizeof(float) * size, FilesavingTemp, 0,
+                                      NULL, NULL));
+    CL_SAFE_CALL(clEnqueueWriteBuffer(
+        command_queue, MatrixTemp[0], CL_TRUE, sizeof(float) * size,
+        sizeof(float) * size, FilesavingTemp, 0, NULL, NULL));
+  } else {
+    MatrixTemp[0] = clCreateBuffer(context, CL_MEM_READ_WRITE,
+                                   sizeof(float) * size, NULL, &error);
+    if (error != CL_SUCCESS) fatal_CL(error, __LINE__);
+    MatrixTemp[1] = clCreateBuffer(context, CL_MEM_READ_WRITE,
+                                   sizeof(float) * size, NULL, &error);
+    if (error != CL_SUCCESS) fatal_CL(error, __LINE__);
+
+    CL_SAFE_CALL(clEnqueueWriteBuffer(command_queue, MatrixTemp[0], CL_TRUE, 0,
+                                      sizeof(float) * size, FilesavingTemp, 0,
+                                      NULL, NULL));
+  }
 
   // Copy the power input data
   MatrixPower = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(float) * size,
@@ -323,9 +343,16 @@ int main(int argc, char **argv) {
   float *MatrixOut = NULL;
 
   MatrixOut = (float *)alignedMalloc(sizeof(float) * size);
-  CL_SAFE_CALL(clEnqueueReadBuffer(command_queue, MatrixTemp[ret], CL_TRUE, 0,
-                                   sizeof(float) * size, MatrixOut, 0, NULL,
-                                   NULL));
+  if (run_smi) {
+    int offset = (total_iterations % 2 == 0) ? 0 : grid_rows * grid_cols;
+    CL_SAFE_CALL(clEnqueueReadBuffer(
+        command_queue, MatrixTemp[0], CL_TRUE, sizeof(float) * offset,
+        sizeof(float) * size, MatrixOut, 0, NULL, NULL));
+  } else {
+    CL_SAFE_CALL(clEnqueueReadBuffer(command_queue, MatrixTemp[ret], CL_TRUE, 0,
+                                     sizeof(float) * size, MatrixOut, 0, NULL,
+                                     NULL));
+  }
 
   GetTime(total_end);
   printf("Total run time was %f ms.\n", TimeDiff(total_start, total_end));
@@ -336,7 +363,9 @@ int main(int argc, char **argv) {
   }
 
   clReleaseMemObject(MatrixTemp[0]);
-  clReleaseMemObject(MatrixTemp[1]);
+  if (!run_smi) {
+    clReleaseMemObject(MatrixTemp[1]);
+  }
   clReleaseMemObject(MatrixPower);
 
   clReleaseContext(context);
