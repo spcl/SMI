@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
     CHECK_MPI(MPI_Init(&argc, &argv));
 
     //command line argument parsing
-    if(argc<7)
+    if(argc<9)
     {
         cerr << "Send/Receiver tester " <<endl;
         cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <length> -r <who is the root> -i <number of iterations> "<<endl;
@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
     char root;
     int fpga,runs;
     int rank;
-    while ((c = getopt (argc, argv, "n:b:r:")) != -1)
+    while ((c = getopt (argc, argv, "n:b:r:i:")) != -1)
         switch (c)
         {
             case 'n':
