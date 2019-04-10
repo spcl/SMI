@@ -20,6 +20,7 @@ constexpr int kPX = PX;
 constexpr int kPY = PY;
 constexpr int kXLocal = kX / kPX;
 constexpr int kYLocal = kY / kPY;
+constexpr auto kDevicesPerNode = SMI_DEVICES_PER_NODE;
 constexpr auto kUsage =
     "Usage: ./stencil_smi_interleaved <[emulator/hardware]> <num timesteps>\n";
 
@@ -200,7 +201,9 @@ int main(int argc, char **argv) {
   auto interleaved_host = InterleaveMemory(host_buffer);
 
   MPIStatus(mpi_rank, "Creating OpenCL context...\n");
-  hlslib::ocl::Context context;
+  hlslib::ocl::Context context(mpi_rank % kDevicesPerNode);
+
+  MPI_Barrier(MPI_COMM_WORLD);
 
   MPIStatus(mpi_rank, "Allocating device memory...\n");
   const std::array<hlslib::ocl::MemoryBank, 4> banks = {
