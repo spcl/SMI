@@ -228,6 +228,8 @@ int main(int argc, char **argv) {
     // Set center to 0
     temperature_reference = ReadFile(temperature_file_in);
     power_reference = ReadFile(power_file_in);
+    // temperature_reference = AlignedVec_t(kX * kY, 0);
+    // power_reference = AlignedVec_t(kX * kY, 0);
     temperature_host_split = SplitMemory(temperature_reference);
     temperature_host = std::move(temperature_host_split[0]);
     power_host_split = SplitMemory(power_reference);
@@ -256,8 +258,11 @@ int main(int argc, char **argv) {
   auto temperature_interleaved_host = InterleaveMemory(temperature_host);
   const auto power_interleaved_host = InterleaveMemory(power_host);
 
-  MPIStatus(mpi_rank, "Creating OpenCL context...\n");
-  hlslib::ocl::Context context;
+  const int device = mpi_rank % kDevicesPerNode;
+  MPIStatus(mpi_rank, "Creating OpenCL context using device ", device, "...\n");
+  hlslib::ocl::Context context(mpi_rank % kDevicesPerNode);
+
+  MPI_Barrier(MPI_COMM_WORLD);
 
   MPIStatus(mpi_rank, "Allocating device memory...\n");
   const std::array<hlslib::ocl::MemoryBank, 4> banks = {
