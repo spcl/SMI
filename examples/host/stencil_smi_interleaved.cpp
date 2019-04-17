@@ -20,6 +20,7 @@ constexpr int kPX = PX;
 constexpr int kPY = PY;
 constexpr int kXLocal = kX / kPX;
 constexpr int kYLocal = kY / kPY;
+constexpr auto kDevicesPerNode = SMI_DEVICES_PER_NODE;
 constexpr auto kUsage =
     "Usage: ./stencil_smi_interleaved <[emulator/hardware]> <num timesteps>\n";
 
@@ -154,8 +155,8 @@ int main(int argc, char **argv) {
   const int timesteps = std::stoi(argv[2]);
 
   // Read routing tables
-  std::vector<std::vector<char>> routing_tables_ckr(
-      kChannelsPerRank, std::vector<char>(4));
+  std::vector<std::vector<char>> routing_tables_ckr(kChannelsPerRank,
+                                                    std::vector<char>(4));
   std::vector<std::vector<char>> routing_tables_cks(
       kChannelsPerRank, std::vector<char>(mpi_size));
   for (int i = 0; i < kChannelsPerRank; ++i) {
@@ -200,132 +201,144 @@ int main(int argc, char **argv) {
   auto interleaved_host = InterleaveMemory(host_buffer);
 
   MPIStatus(mpi_rank, "Creating OpenCL context...\n");
-  hlslib::ocl::Context context;
+  try {
+    hlslib::ocl::Context context(mpi_rank % kDevicesPerNode);
 
-  MPIStatus(mpi_rank, "Allocating device memory...\n");
-  const std::array<hlslib::ocl::MemoryBank, 4> banks = {
-      hlslib::ocl::MemoryBank::bank0, hlslib::ocl::MemoryBank::bank1,
-      hlslib::ocl::MemoryBank::bank2, hlslib::ocl::MemoryBank::bank3};
-  std::vector<hlslib::ocl::Buffer<Data_t, hlslib::ocl::Access::readWrite>>
-      device_buffers;
-  for (int b = 0; b < kMemoryBanks; ++b) {
-    auto device_buffer =
-        context.MakeBuffer<Data_t, hlslib::ocl::Access::readWrite>(
-            banks[b % banks.size()], 2 * kXLocal * kYLocal / kMemoryBanks);
-    device_buffer.CopyFromHost(0, kXLocal * kYLocal / kMemoryBanks,
-                               interleaved_host[b].cbegin());
-    device_buffer.CopyFromHost(kXLocal * kYLocal / kMemoryBanks,
-                               kXLocal * kYLocal / kMemoryBanks,
-                               interleaved_host[b].cbegin());
-    device_buffers.emplace_back(std::move(device_buffer));
-  }
-  std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>>
-      routing_tables_cks_device(kChannelsPerRank);
-  std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>>
-      routing_tables_ckr_device(kChannelsPerRank);
-  for (int i = 0; i < kChannelsPerRank; ++i) {
-    routing_tables_cks_device[i] =
-        context.MakeBuffer<char, hlslib::ocl::Access::read>(
-            routing_tables_cks[i].cbegin(), routing_tables_cks[i].cend());
-    routing_tables_ckr_device[i] =
-        context.MakeBuffer<char, hlslib::ocl::Access::read>(
-            routing_tables_ckr[i].cbegin(), routing_tables_ckr[i].cend());
-  }
+    MPI_Barrier(MPI_COMM_WORLD);
 
-  MPIStatus(mpi_rank, "Creating program from binary...\n");
-  auto program = context.MakeProgram(kernel_path);
+    MPIStatus(mpi_rank, "Allocating device memory...\n");
+    const std::array<hlslib::ocl::MemoryBank, 4> banks = {
+        hlslib::ocl::MemoryBank::bank0, hlslib::ocl::MemoryBank::bank1,
+        hlslib::ocl::MemoryBank::bank2, hlslib::ocl::MemoryBank::bank3};
+    std::vector<hlslib::ocl::Buffer<Data_t, hlslib::ocl::Access::readWrite>>
+        device_buffers;
+    for (int b = 0; b < kMemoryBanks; ++b) {
+      auto device_buffer =
+          context.MakeBuffer<Data_t, hlslib::ocl::Access::readWrite>(
+              banks[b % banks.size()], 2 * kXLocal * kYLocal / kMemoryBanks);
+      device_buffer.CopyFromHost(0, kXLocal * kYLocal / kMemoryBanks,
+                                 interleaved_host[b].cbegin());
+      device_buffer.CopyFromHost(kXLocal * kYLocal / kMemoryBanks,
+                                 kXLocal * kYLocal / kMemoryBanks,
+                                 interleaved_host[b].cbegin());
+      device_buffers.emplace_back(std::move(device_buffer));
+    }
+    std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>>
+        routing_tables_cks_device(kChannelsPerRank);
+    std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>>
+        routing_tables_ckr_device(kChannelsPerRank);
+    for (int i = 0; i < kChannelsPerRank; ++i) {
+      routing_tables_cks_device[i] =
+          context.MakeBuffer<char, hlslib::ocl::Access::read>(
+              routing_tables_cks[i].cbegin(), routing_tables_cks[i].cend());
+      routing_tables_ckr_device[i] =
+          context.MakeBuffer<char, hlslib::ocl::Access::read>(
+              routing_tables_ckr[i].cbegin(), routing_tables_ckr[i].cend());
+    }
 
-  // std::pair<kernel object, whether kernel is autorun>
-  std::vector<hlslib::ocl::Kernel> comm_kernels;
+    MPIStatus(mpi_rank, "Creating program from binary...\n");
+    auto program = context.MakeProgram(kernel_path);
 
-  MPIStatus(mpi_rank, "Starting communication kernels...\n");
-  for (int i = 0; i < kChannelsPerRank; ++i) {
-    comm_kernels.emplace_back(program.MakeKernel("CK_S_" + std::to_string(i),
-                                                 routing_tables_cks_device[i]));
-    comm_kernels.emplace_back(program.MakeKernel("CK_R_" + std::to_string(i),
-                                                 routing_tables_ckr_device[i],
-                                                 char(mpi_rank)));
-  }
-  for (auto &k : comm_kernels) {
-    // Will never terminate, so we don't care about the return value of fork
-    k.ExecuteTaskFork();
-  }
+    // std::pair<kernel object, whether kernel is autorun>
+    std::vector<hlslib::ocl::Kernel> comm_kernels;
 
-  // Wait for communication kernels to start
-  MPI_Barrier(MPI_COMM_WORLD);
+    MPIStatus(mpi_rank, "Starting communication kernels...\n");
+    for (int i = 0; i < kChannelsPerRank; ++i) {
+      comm_kernels.emplace_back(program.MakeKernel(
+          "CK_S_" + std::to_string(i), routing_tables_cks_device[i]));
+      comm_kernels.emplace_back(program.MakeKernel("CK_R_" + std::to_string(i),
+                                                   routing_tables_ckr_device[i],
+                                                   char(mpi_rank)));
+    }
+    for (auto &k : comm_kernels) {
+      // Will never terminate, so we don't care about the return value of fork
+      k.ExecuteTaskFork();
+    }
 
-  MPIStatus(mpi_rank, "Starting memory conversion kernels...\n");
-  std::vector<hlslib::ocl::Kernel> conv_kernels;
-  conv_kernels.emplace_back(
-      program.MakeKernel("ConvertReceiveLeft", i_px, i_py));
-  conv_kernels.emplace_back(
-      program.MakeKernel("ConvertReceiveRight", i_px, i_py));
-  conv_kernels.emplace_back(
-      program.MakeKernel("ConvertReceiveTop", i_px, i_py));
-  conv_kernels.emplace_back(
-      program.MakeKernel("ConvertReceiveBottom", i_px, i_py));
-  conv_kernels.emplace_back(program.MakeKernel("ConvertSendLeft", i_px, i_py));
-  conv_kernels.emplace_back(program.MakeKernel("ConvertSendRight", i_px, i_py));
-  conv_kernels.emplace_back(program.MakeKernel("ConvertSendTop", i_px, i_py));
-  conv_kernels.emplace_back(
-      program.MakeKernel("ConvertSendBottom", i_px, i_py));
-  conv_kernels.emplace_back(
-      program.MakeKernel("ConvertSendBottom", i_px, i_py));
-  for (auto &k : conv_kernels) {
-    k.ExecuteTaskFork();
-  }
+    // Wait for communication kernels to start
+    MPI_Barrier(MPI_COMM_WORLD);
 
-  // Wait for conversion kernels to start
-  MPI_Barrier(MPI_COMM_WORLD);
+    MPIStatus(mpi_rank, "Starting memory conversion kernels...\n");
+    std::vector<hlslib::ocl::Kernel> conv_kernels;
+    conv_kernels.emplace_back(
+        program.MakeKernel("ConvertReceiveLeft", i_px, i_py));
+    conv_kernels.emplace_back(
+        program.MakeKernel("ConvertReceiveRight", i_px, i_py));
+    conv_kernels.emplace_back(
+        program.MakeKernel("ConvertReceiveTop", i_px, i_py));
+    conv_kernels.emplace_back(
+        program.MakeKernel("ConvertReceiveBottom", i_px, i_py));
+    conv_kernels.emplace_back(
+        program.MakeKernel("ConvertSendLeft", i_px, i_py));
+    conv_kernels.emplace_back(
+        program.MakeKernel("ConvertSendRight", i_px, i_py));
+    conv_kernels.emplace_back(program.MakeKernel("ConvertSendTop", i_px, i_py));
+    conv_kernels.emplace_back(
+        program.MakeKernel("ConvertSendBottom", i_px, i_py));
+    conv_kernels.emplace_back(
+        program.MakeKernel("ConvertSendBottom", i_px, i_py));
+    for (auto &k : conv_kernels) {
+      k.ExecuteTaskFork();
+    }
 
-  MPIStatus(mpi_rank, "Creating compute kernels...\n");
-  std::vector<hlslib::ocl::Kernel> compute_kernels;
-  compute_kernels.emplace_back(program.MakeKernel(
-      "Read", device_buffers[0], device_buffers[1], device_buffers[2],
-      device_buffers[3], i_px, i_py, timesteps));
-  compute_kernels.emplace_back(
-      program.MakeKernel("Stencil", i_px, i_py, timesteps));
-  compute_kernels.emplace_back(program.MakeKernel(
-      "Write", device_buffers[0], device_buffers[1], device_buffers[2],
-      device_buffers[3], i_px, i_py, timesteps));
+    // Wait for conversion kernels to start
+    MPI_Barrier(MPI_COMM_WORLD);
 
-  // Wait for all ranks to be ready for launch 
-  MPI_Barrier(MPI_COMM_WORLD);
+    MPIStatus(mpi_rank, "Creating compute kernels...\n");
+    std::vector<hlslib::ocl::Kernel> compute_kernels;
+    compute_kernels.emplace_back(program.MakeKernel(
+        "Read", device_buffers[0], device_buffers[1], device_buffers[2],
+        device_buffers[3], i_px, i_py, timesteps));
+    compute_kernels.emplace_back(
+        program.MakeKernel("Stencil", i_px, i_py, timesteps));
+    compute_kernels.emplace_back(program.MakeKernel(
+        "Write", device_buffers[0], device_buffers[1], device_buffers[2],
+        device_buffers[3], i_px, i_py, timesteps));
 
-  MPIStatus(mpi_rank, "Launching kernels...\n");
-  std::vector<std::future<std::pair<double, double>>> futures;
-  const auto start = std::chrono::high_resolution_clock::now();
-  for (auto &k : compute_kernels) {
-    futures.emplace_back(k.ExecuteTaskAsync());
-  }
+    // Wait for all ranks to be ready for launch
+    MPI_Barrier(MPI_COMM_WORLD);
 
-  MPIStatus(mpi_rank, "Waiting for kernels to finish...\n");
-  for (auto &f : futures) {
-    f.wait();
-  }
-  const auto end = std::chrono::high_resolution_clock::now();
-  const double elapsed =
-      1e-9 *
-      std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
-  MPIStatus(mpi_rank, "Finished in ", elapsed, " seconds.\n");
+    MPIStatus(mpi_rank, "Launching kernels...\n");
+    std::vector<std::future<std::pair<double, double>>> futures;
+    const auto start = std::chrono::high_resolution_clock::now();
+    for (auto &k : compute_kernels) {
+      futures.emplace_back(k.ExecuteTaskAsync());
+    }
 
-  // Make sure all kernels finished 
-  MPI_Barrier(MPI_COMM_WORLD);
-  if (mpi_rank == 0) {
-    const auto end_global = std::chrono::high_resolution_clock::now();
+    MPIStatus(mpi_rank, "Waiting for kernels to finish...\n");
+    for (auto &f : futures) {
+      f.wait();
+    }
+    const auto end = std::chrono::high_resolution_clock::now();
     const double elapsed =
-        1e-9 *
-        std::chrono::duration_cast<std::chrono::nanoseconds>(end_global - start)
-            .count();
-    MPIStatus(mpi_rank, "All ranks done in ", elapsed, " seconds.\n");
-  }
+        1e-9 * std::chrono::duration_cast<std::chrono::nanoseconds>(end - start)
+                   .count();
+    MPIStatus(mpi_rank, "Finished in ", elapsed, " seconds.\n");
 
-  // Copy back result
-  MPIStatus(mpi_rank, "Copying back result...\n");
-  int offset = (timesteps % 2 == 0) ? 0 : kYLocal * kXLocal / kMemoryBanks;
-  for (int b = 0; b < kMemoryBanks; ++b) {
-    device_buffers[b].CopyToHost(offset, kYLocal * kXLocal / kMemoryBanks,
-                                 interleaved_host[b].begin());
+    // Make sure all kernels finished
+    MPI_Barrier(MPI_COMM_WORLD);
+    if (mpi_rank == 0) {
+      const auto end_global = std::chrono::high_resolution_clock::now();
+      const double elapsed =
+          1e-9 * std::chrono::duration_cast<std::chrono::nanoseconds>(
+                     end_global - start)
+                     .count();
+      MPIStatus(mpi_rank, "All ranks done in ", elapsed, " seconds.\n");
+    }
+
+    // Copy back result
+    MPIStatus(mpi_rank, "Copying back result...\n");
+    int offset = (timesteps % 2 == 0) ? 0 : kYLocal * kXLocal / kMemoryBanks;
+    for (int b = 0; b < kMemoryBanks; ++b) {
+      device_buffers[b].CopyToHost(offset, kYLocal * kXLocal / kMemoryBanks,
+                                   interleaved_host[b].begin());
+    }
+
+  } catch (...) {
+    // Don't exit immediately, such that MPI will not exit other ranks that are
+    // currently reconfiguring the FPGA.
+    std::this_thread::sleep_for(std::chrono::seconds(30));
+    throw;
   }
 
   MPIStatus(mpi_rank, "De-interleaving memory...\n");

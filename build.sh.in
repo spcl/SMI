@@ -1,0 +1,3 @@
+#!/bin/bash
+#SBATCH --time=12:00:00 --partition=batch -A hpc-prf-mfpga 
+srun make ${SMI_STENCIL_MAKE_TARGET} 
