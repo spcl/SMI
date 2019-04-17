@@ -16,7 +16,6 @@
 //align to 64 to remove aliasing
 typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     SMI_Network_message net;          //buffered network message
-    SMI_Network_message net_2;          //buffered network message
     char tag_out;                    //Output channel for the bcast, used by the root
     char tag_in;                     //Input channel for the bcast. These two must be properly code generated. Good luck
     char root_rank;
@@ -28,6 +27,8 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     SMI_Datatype data_type;               //type of message
     char size_of_type;              //size of data type
     char elements_per_packet;       //number of data elements per packet
+    SMI_Network_message net_2;        //buffered network message
+    char packet_element_id_rcv;     //used by the receivers
 }SMI_BChannel;
 
 
@@ -66,6 +67,7 @@ SMI_BChannel SMI_Open_bcast_channel(uint count, SMI_Datatype data_type, char roo
     SET_HEADER_NUM_ELEMS(chan.net.header,0);    //at the beginning no data
     chan.processed_elements=0;
     chan.packet_element_id=0;
+    chan.packet_element_id_rcv=0;
     return chan;
 }
 
@@ -105,19 +107,19 @@ void SMI_Bcast(SMI_BChannel *chan, void* data)
     {
         //chan->net=read_channel_intel(channels_from_ck_r[0]);
         //in this case we have to copy the data into the target variable
-        if(chan->packet_element_id==0)
+        if(chan->packet_element_id_rcv==0)
         {
             const char chan_idx=internal_receiver_rt[chan->tag_in];
-            chan->net_2=read_channel_intel(channels_from_ck_r[chan_idx]);
+            chan->net_2=read_channel_intel(channels_from_ck_r[/*chan_idx*/0]);
         }
-       char * ptr=chan->net_2.data+(chan->packet_element_id)*4;
-        chan->packet_element_id++;                       //first increment and then use it: otherwise compiler detects Fmax problems
+       char * ptr=chan->net_2.data+(chan->packet_element_id_rcv)*4;
+        chan->packet_element_id_rcv++;                       //first increment and then use it: otherwise compiler detects Fmax problems
         //TODO: this prevents HyperFlex (try with a constant and you'll see)
         //I had to put this check, because otherwise II goes to 2
         //if we reached the number of elements in this packet get the next one from CK_R
-        if(chan->packet_element_id==7)
-            chan->packet_element_id=0;
-        chan->processed_elements++;                      //TODO: probably useless
+        if(chan->packet_element_id_rcv==7)
+            chan->packet_element_id_rcv=0;
+       // chan->processed_elements++;                      //TODO: probably useless
         *(float *)data= *(float*)(ptr);
         //create data element
   /*      if(chan->data_type==SMI_INT)
