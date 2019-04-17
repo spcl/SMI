@@ -78,13 +78,13 @@ SMI_BChannel SMI_Open_bcast_channel(uint count, SMI_Datatype data_type, char roo
  */
 void SMI_Bcast(SMI_BChannel *chan, void* data)
 {
-    char *conv=(char*)data;
-    const char chan_idx_out=internal_sender_rt[chan->tag_out];  //This should be properly code generated, good luck
     if(chan->my_rank==chan->root_rank)//I'm the root
     {
+        char *conv=(char*)data;
+        const char chan_idx_out=internal_sender_rt[chan->tag_out];  //This should be properly code generated, good luck
         #pragma unroll
         for(int jj=0;jj<4;jj++) //copy the data
-            chan->net.data[chan->packet_element_id*chan->size_of_type+jj]=conv[jj];
+            chan->net.data[chan->packet_element_id*4+jj]=conv[jj];
         chan->processed_elements++;
         chan->packet_element_id++;
         if(chan->packet_element_id==chan->elements_per_packet || chan->processed_elements==chan->message_size) //send it if packet is filled or we reached the message size
@@ -112,7 +112,7 @@ void SMI_Bcast(SMI_BChannel *chan, void* data)
             const char chan_idx=internal_receiver_rt[chan->tag_in];
             chan->net_2=read_channel_intel(channels_from_ck_r[/*chan_idx*/0]);
         }
-       char * ptr=chan->net_2.data+(chan->packet_element_id_rcv)*4;
+        char * ptr=chan->net_2.data+(chan->packet_element_id_rcv)*4;
         chan->packet_element_id_rcv++;                       //first increment and then use it: otherwise compiler detects Fmax problems
         //TODO: this prevents HyperFlex (try with a constant and you'll see)
         //I had to put this check, because otherwise II goes to 2
