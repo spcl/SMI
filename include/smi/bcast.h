@@ -23,7 +23,7 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     char num_rank;
     uint message_size;              //given in number of data elements
     uint processed_elements;        //how many data elements we have sent/received
-    uint packet_element_id;         //given a packet, the id of the element that we are currently processing (from 0 to the data elements per packet)
+    char packet_element_id;         //given a packet, the id of the element that we are currently processing (from 0 to the data elements per packet)
     SMI_Datatype data_type;               //type of message
     char size_of_type;              //size of data type
     char elements_per_packet;       //number of data elements per packet
@@ -138,7 +138,7 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data, volatile void* data_rcv)
         if(chan->data_type==SMI_DOUBLE)
             *(double *)data= *(double*)(ptr);
 */
-                    //mem_fence(CLK_CHANNEL_MEM_FENCE);
+        //mem_fence(CLK_CHANNEL_MEM_FENCE);
     }
 
 }

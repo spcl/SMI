@@ -17,7 +17,7 @@ __kernel void app(const int N, char root,char my_rank, char num_ranks)
         SMI_Bcast(&chan,&to_comm, &to_rcv);
      //   acc+=to_comm;
 
-        if(my_rank!=root && i!=to_rcv)
-        	printf("Rank %d received %d while I was expecting %d\n",my_rank,i,to_rcv);
+        //if(my_rank!=root && i!=to_rcv)
+        //	printf("Rank %d received %d while I was expecting %d\n",my_rank,i,to_rcv);
     }
 }
