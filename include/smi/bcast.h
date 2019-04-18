@@ -57,6 +57,10 @@ SMI_BChannel SMI_Open_bcast_channel(uint count, SMI_Datatype data_type, char roo
             chan.size_of_type=8;
             chan.elements_per_packet=3;
             break;
+        case (SMI_CHAR):
+            chan.size_of_type=1;
+            chan.elements_per_packet=28;
+            break;
          //TODO add more data types
     }
 
@@ -85,6 +89,8 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data, volatile void* data_rcv)
         #pragma unroll
         for(int jj=0;jj<4;jj++) //copy the data
             chan->net.data[chan->packet_element_id*4+jj]=conv[jj];
+        //chan->net.data[chan->packet_element_id]=*conv;
+
         chan->processed_elements++;
         chan->packet_element_id++;
         if(chan->packet_element_id==chan->elements_per_packet || chan->processed_elements==chan->message_size) //send it if packet is filled or we reached the message size
@@ -114,6 +120,7 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data, volatile void* data_rcv)
             chan->net_2=read_channel_intel(channels_from_ck_r[/*chan_idx*/0]);
         }
         char * ptr=chan->net_2.data+(chan->packet_element_id_rcv)*4;
+        //char * ptr=chan->net_2.data+(chan->packet_element_id_rcv);
         chan->packet_element_id_rcv++;                       //first increment and then use it: otherwise compiler detects Fmax problems
         //TODO: this prevents HyperFlex (try with a constant and you'll see)
         //I had to put this check, because otherwise II goes to 2
@@ -122,6 +129,7 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data, volatile void* data_rcv)
             chan->packet_element_id_rcv=0;
        // chan->processed_elements++;                      //TODO: probably useless
         *(float *)data_rcv= *(float*)(ptr);
+        //*(char *)data_rcv= *(ptr);
         //create data element
   /*      if(chan->data_type==SMI_INT)
             *(int *)data= *(int*)(ptr);
