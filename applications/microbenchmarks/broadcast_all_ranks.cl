@@ -10,10 +10,14 @@ __kernel void app(const int N, char root,char my_rank, char num_ranks)
     //printf("Size of: %u\n",sizeof(chan));
     for(int i=0;i<N;i++)
     {
-    	float to_comm=(float)i;
-        SMI_Bcast(&chan,&to_comm);
+    	float to_comm;
+        if(my_rank==root)
+            to_comm=i;
+        float to_rcv;
+        SMI_Bcast(&chan,&to_comm, &to_rcv);
      //   acc+=to_comm;
-        //if(i!=to_comm)
-        //	printf("Rank %d received %d while I was expecting %d\n",my_rank,i,to_comm);
+
+        //if(my_rank!=root && i!=to_rcv)
+        //	printf("Rank %d received %d while I was expecting %d\n",my_rank,i,to_rcv);
     }
 }
