@@ -78,6 +78,8 @@ int main(int argc, char *argv[])
     std::vector<cl::CommandQueue> queues;
     std::vector<std::string> kernel_names;
     kernel_names.push_back("app");
+    kernel_names.push_back("kernel_bcast");
+
     kernel_names.push_back("CK_S_0");
     kernel_names.push_back("CK_S_1");
     kernel_names.push_back("CK_S_2");
@@ -129,25 +131,29 @@ int main(int argc, char *argv[])
     kernels[0].setArg(2,sizeof(char),&rank);
     kernels[0].setArg(3,sizeof(char),&rank_count);
 
+    kernels[1].setArg(0,sizeof(char),&rank_count);
+
+
     //args for the CK_Ss
-    kernels[1].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
-    kernels[2].setArg(0,sizeof(cl_mem),&routing_table_ck_s_1);
-    kernels[3].setArg(0,sizeof(cl_mem),&routing_table_ck_s_2);
-    kernels[4].setArg(0,sizeof(cl_mem),&routing_table_ck_s_3);
+    kernels[2].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
+    kernels[3].setArg(0,sizeof(cl_mem),&routing_table_ck_s_1);
+    kernels[4].setArg(0,sizeof(cl_mem),&routing_table_ck_s_2);
+    kernels[5].setArg(0,sizeof(cl_mem),&routing_table_ck_s_3);
 
     //args for the CK_Rs
-    kernels[5].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
-    kernels[5].setArg(1,sizeof(char),&rank);
-    kernels[6].setArg(0,sizeof(cl_mem),&routing_table_ck_r_1);
+    kernels[6].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
     kernels[6].setArg(1,sizeof(char),&rank);
-    kernels[7].setArg(0,sizeof(cl_mem),&routing_table_ck_r_2);
+    kernels[7].setArg(0,sizeof(cl_mem),&routing_table_ck_r_1);
     kernels[7].setArg(1,sizeof(char),&rank);
-    kernels[8].setArg(0,sizeof(cl_mem),&routing_table_ck_r_3);
+    kernels[8].setArg(0,sizeof(cl_mem),&routing_table_ck_r_2);
     kernels[8].setArg(1,sizeof(char),&rank);
+    kernels[9].setArg(0,sizeof(cl_mem),&routing_table_ck_r_3);
+    kernels[9].setArg(1,sizeof(char),&rank);
 
     //start the CKs
     const int num_kernels=kernel_names.size();
-    for(int i=num_kernels-1;i>=num_kernels-8;i--)
+
+    for(int i=num_kernels-1;i>=num_kernels-9;i--) //start also the bcast kernel
         queues[i].enqueueTask(kernels[i]);
 
     std::vector<double> times;

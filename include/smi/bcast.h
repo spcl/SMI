@@ -5,6 +5,13 @@
 #include "data_types.h"
 #include "header_message.h"
 #include "network_message.h"
+
+//temp here, then need to move
+
+channel SMI_Network_message channel_bcast_send __attribute__((depth(2)));
+//channel SMI_Network_message channel_bcast_recv __attribute__((depth(2))); //not used here, to be decided
+
+
 /*
  * 101 implementation of BCast
     Problems:
@@ -95,17 +102,21 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data, volatile void* data_rcv)
         chan->packet_element_id++;
         if(chan->packet_element_id==chan->elements_per_packet || chan->processed_elements==chan->message_size) //send it if packet is filled or we reached the message size
         {
+
             SET_HEADER_NUM_ELEMS(chan->net.header,chan->packet_element_id);
+            SET_HEADER_SRC(chan->net.header,chan->my_rank);
             //send this packet to all the ranks
             //naive implementation
-            for(int i=0;i<chan->num_rank;i++)
+            /*for(int i=0;i<chan->num_rank;i++)
             {
                 if(i!=chan->my_rank) //it's not me
                 {
                     SET_HEADER_DST(chan->net.header,i);
                     write_channel_intel(channels_to_ck_s[0],chan->net);
                 }
-            }
+            }*/
+            //offload to bcast kernel
+            write_channel_intel(channel_bcast_send,chan->net);
             chan->packet_element_id=0;
         }
 
@@ -143,6 +154,41 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data, volatile void* data_rcv)
 
 }
 
+
+//temp here, then if it works we need to move it
+
+__kernel void kernel_bcast(char num_rank)
+{
+    //decide whether we keep this argument or not
+    //otherwise we have to decide where to put it
+    bool external=true;
+    char rcv;
+    char root;
+    SMI_Network_message mess;
+    while(true)
+    {
+        if(external)
+        {
+            mess=read_channel_intel(channel_bcast_send);
+            rcv=0;
+            external=false;
+            root=GET_HEADER_SRC(mess.header);
+        }
+
+        if(rcv!=root) //it's not me
+        {
+            SET_HEADER_DST(mess.header,rcv);
+            write_channel_intel(channels_to_ck_s[0],mess);
+        }
+        rcv++;
+        if(rcv==num_rank)
+        {
+            external=true;
+            //rcv=0;
+        }
+    }
+
+}
 
 
 #endif // BCAST_H
