@@ -8,9 +8,10 @@
     Type of operation performed
 */
 typedef enum{
-    SMI_SEND = 20,
-    SMI_RECEIVE = 21,
-    SMI_BROADCAST = 22
+    SMI_SEND = 0,
+    SMI_RECEIVE = 1,
+    SMI_BROADCAST = 2,
+    SMI_REQUEST=3
 }SMI_Operationtype;
 
 #endif

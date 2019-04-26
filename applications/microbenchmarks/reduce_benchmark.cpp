@@ -15,7 +15,7 @@
 #include "../../include/utils/ocl_utils.hpp"
 #include "../../include/utils/utils.hpp"
 #include "../../include/utils/smi_utils.hpp"
-#define ROUTING_DIR "applications/microbenchmarks/broadcast_routing/"
+#define ROUTING_DIR "applications/microbenchmarks/reduce_routing/"
 //#define CHECK
 using namespace std;
 int main(int argc, char *argv[])
@@ -95,6 +95,7 @@ int main(int argc, char *argv[])
 
     //create memory buffers
     char tags=1;
+    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
     cl::Buffer routing_table_ck_s_0(context,CL_MEM_READ_ONLY,rank_count);
     cl::Buffer routing_table_ck_s_1(context,CL_MEM_READ_ONLY,rank_count);
     cl::Buffer routing_table_ck_s_2(context,CL_MEM_READ_ONLY,rank_count);
@@ -130,6 +131,8 @@ int main(int argc, char *argv[])
     kernels[0].setArg(1,sizeof(char),&root);
     kernels[0].setArg(2,sizeof(char),&rank);
     kernels[0].setArg(3,sizeof(char),&rank_count);
+    kernels[0].setArg(4,sizeof(cl_mem),&check);
+
 
     kernels[1].setArg(0,sizeof(char),&rank_count);
 
@@ -179,6 +182,14 @@ int main(int argc, char *argv[])
             events[0].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
             double time= (double)((end-start)/1000.0f);
             times.push_back(time);
+            char res;
+            queues[0].enqueueReadBuffer(check,CL_TRUE,0,1,&res);
+            if(res==1)
+                cout << "Result is Ok!"<<endl;
+            else
+                cout << "Error!!!!"<<endl;
+
+
         }
     }
     if(rank==0)
