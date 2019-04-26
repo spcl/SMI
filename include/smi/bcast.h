@@ -87,7 +87,7 @@ SMI_BChannel SMI_Open_bcast_channel(uint count, SMI_Datatype data_type, char roo
  * This Bcast is the fusion between a pop and a push
  * NOTE: this is a naive implementation
  */
-void SMI_Bcast(SMI_BChannel *chan, volatile void* data, volatile void* data_rcv)
+void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rcv*/)
 {
     if(chan->my_rank==chan->root_rank)//I'm the root
     {
@@ -139,7 +139,7 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data, volatile void* data_rcv)
         if(chan->packet_element_id_rcv==7)
             chan->packet_element_id_rcv=0;
        // chan->processed_elements++;                      //TODO: probably useless
-        *(float *)data_rcv= *(float*)(ptr);
+        *(float *)data= *(float*)(ptr);
         //*(char *)data_rcv= *(ptr);
         //create data element
   /*      if(chan->data_type==SMI_INT)
