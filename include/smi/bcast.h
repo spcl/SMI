@@ -74,6 +74,8 @@ SMI_BChannel SMI_Open_bcast_channel(uint count, SMI_Datatype data_type, char roo
     //setup header for the message
     SET_HEADER_DST(chan.net.header,0);
     //SET_HEADER_SRC(chan.net.header,my_rank);
+    SET_HEADER_SRC(chan.net.header,root);
+
     SET_HEADER_TAG(chan.net.header,0);        //used by destination
     SET_HEADER_NUM_ELEMS(chan.net.header,0);    //at the beginning no data
     chan.processed_elements=0;
@@ -89,22 +91,41 @@ SMI_BChannel SMI_Open_bcast_channel(uint count, SMI_Datatype data_type, char roo
  */
 void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rcv*/)
 {
+    //take here the pointers to send/recv data to avoid fake dependencies
+    const char elem_per_packet=chan->elements_per_packet;
     if(chan->my_rank==chan->root_rank)//I'm the root
     {
+        //char pack_elem_id_snd=chan->packet_element_id;
         char *conv=(char*)data;
-        const char chan_idx_out=internal_sender_rt[chan->tag_out];  //This should be properly code generated, good luck
-        #pragma unroll
-        for(int jj=0;jj<4;jj++) //copy the data
-            chan->net.data[chan->packet_element_id*4+jj]=conv[jj];
-        //chan->net.data[chan->packet_element_id]=*conv;
-
+        char *data_snd=chan->net.data;
+        const uint message_size=chan->message_size;
         chan->processed_elements++;
+      // const char chan_idx_out=internal_sender_rt[chan->tag_out];  //This should be properly code generated, good luck
+        switch(chan->data_type)
+        {
+            case SMI_CHAR:
+                data_snd[chan->packet_element_id]=*conv;
+            break;
+            case SMI_INT:
+            case SMI_FLOAT:
+                #pragma unroll
+                for(int jj=0;jj<4;jj++) //copy the data
+                    data_snd[chan->packet_element_id*4+jj]=conv[jj];
+            break;
+            /*case SMI_DOUBLE:
+                #pragma unroll
+                for(int jj=0;jj<8;jj++) //copy the data
+                    data_snd[chan->packet_element_id*8+jj]=conv[jj];
+            break;*/
+        }
+
+        //chan->net.data[chan->packet_element_id]=*conv;
         chan->packet_element_id++;
-        if(chan->packet_element_id==chan->elements_per_packet || chan->processed_elements==chan->message_size) //send it if packet is filled or we reached the message size
+        //chan->packet_element_id++;
+        if(chan->packet_element_id==elem_per_packet || chan->processed_elements==message_size) //send it if packet is filled or we reached the message size
         {
 
             SET_HEADER_NUM_ELEMS(chan->net.header,chan->packet_element_id);
-            SET_HEADER_SRC(chan->net.header,chan->my_rank);
             //send this packet to all the ranks
             //naive implementation
             /*for(int i=0;i<chan->num_rank;i++)
@@ -118,37 +139,71 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
             //offload to bcast kernel
             write_channel_intel(channel_bcast_send,chan->net);
             chan->packet_element_id=0;
+            //chan->packet_element_id=0;
         }
+       // chan->packet_element_id=pack_elem_id_snd;
+        //else
+          //  chan->packet_element_id=pack_elem_id_snd;
 
     }
     else //I have to receive
     {
         //chan->net=read_channel_intel(channels_from_ck_r[0]);
         //in this case we have to copy the data into the target variable
+        //char pack_elem_id_rcv=chan->packet_element_id_rcv;
         if(chan->packet_element_id_rcv==0)
         {
             const char chan_idx=internal_receiver_rt[chan->tag_in];
-            chan->net_2=read_channel_intel(channels_from_ck_r[/*chan_idx*/0]);
+            chan->net_2=read_channel_intel(channels_from_ck_r[chan_idx]);
         }
-        char * ptr=chan->net_2.data+(chan->packet_element_id_rcv)*4;
         //char * ptr=chan->net_2.data+(chan->packet_element_id_rcv);
+        char *data_rcv=chan->net_2.data;
+        switch(chan->data_type)
+        {
+            case SMI_CHAR:
+            {
+                char * ptr=data_rcv;
+                *(char *)data= *(char*)(ptr);
+                break;
+            }
+            case SMI_INT:
+            {
+                 char * ptr=data_rcv+(chan->packet_element_id_rcv)*4;
+                 *(int *)data= *(int*)(ptr);
+                break;
+            }
+            case SMI_FLOAT:
+            {
+                 char * ptr=data_rcv+(chan->packet_element_id_rcv)*4;
+                 *(float *)data= *(float*)(ptr);
+                break;
+            }
+            /*case SMI_DOUBLE:
+            {
+                char * ptr=data_rcv+(chan->packet_element_id_rcv)*8;
+                *(double *)data= *(double*)(ptr);
+                break;
+            }*/
+        }
+       // char * ptr=data_rcv+(chan->packet_element_id_rcv)*4;
+       // *(float *)data= *(float*)(ptr);
+        //pack_elem_id_rcv++;
         chan->packet_element_id_rcv++;                       //first increment and then use it: otherwise compiler detects Fmax problems
         //TODO: this prevents HyperFlex (try with a constant and you'll see)
         //I had to put this check, because otherwise II goes to 2
         //if we reached the number of elements in this packet get the next one from CK_R
-        if(chan->packet_element_id_rcv==7)
-            chan->packet_element_id_rcv=0;
+        if( chan->packet_element_id_rcv==elem_per_packet)
+             chan->packet_element_id_rcv=0;
+        //    chan->packet_element_id_rcv=0;
+        //else
+        //    chan->packet_element_id_rcv=pack_elem_id_rcv;
+
+
+
        // chan->processed_elements++;                      //TODO: probably useless
-        *(float *)data= *(float*)(ptr);
         //*(char *)data_rcv= *(ptr);
         //create data element
-  /*      if(chan->data_type==SMI_INT)
-            *(int *)data= *(int*)(ptr);
-        if(chan->data_type==SMI_FLOAT)
-            *(float *)data= *(float*)(ptr);
-        if(chan->data_type==SMI_DOUBLE)
-            *(double *)data= *(double*)(ptr);
-*/
+
         //mem_fence(CLK_CHANNEL_MEM_FENCE);
     }
 
