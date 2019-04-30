@@ -69,6 +69,9 @@ int main(int argc, char *argv[])
     char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);
     printf("Rank %d executing on host: %s\n",rank,hostname);
+    float power;
+    size_t returnedSize;
+
 
     cl::Platform  platform;
     cl::Device device;

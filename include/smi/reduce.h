@@ -70,7 +70,7 @@ SMI_RChannel SMI_Open_reduce_channel(uint count, SMI_Datatype data_type, char ro
             chan.size_of_type=1;
             chan.elements_per_packet=28;
             break;
-         //TODO add more data types
+            //TODO add more data types
     }
 
     //setup header for the message
@@ -92,7 +92,7 @@ void SMI_Reduce(SMI_RChannel *chan, volatile void* data_snd, volatile void* data
 
     char *conv=(char*)data_snd;
     const char chan_idx_out=internal_sender_rt[chan->tag_out];  //This should be properly code generated, good luck
-    #pragma unroll
+#pragma unroll
     for(int jj=0;jj<4;jj++) //copy the data
         chan->net.data[chan->packet_element_id*4+jj]=conv[jj];
     //chan->net.data[chan->packet_element_id]=*conv;
@@ -103,7 +103,7 @@ void SMI_Reduce(SMI_RChannel *chan, volatile void* data_snd, volatile void* data
     {
 
         SET_HEADER_NUM_ELEMS(chan->net.header,chan->packet_element_id);
-        //offload to bcast kernel
+        //offload to reduce kernel
         if(chan->my_rank==chan->root_rank)
             write_channel_intel(channel_reduce_send,chan->net);
         else
@@ -129,7 +129,7 @@ void SMI_Reduce(SMI_RChannel *chan, volatile void* data_snd, volatile void* data
         //if we reached the number of elements in this packet get the next one from CK_R
         if(chan->packet_element_id_rcv==7)
             chan->packet_element_id_rcv=0;
-       // chan->processed_elements++;                      //TODO: probably useless
+        // chan->processed_elements++;                      //TODO: probably useless
         *(int *)data_rcv= *(int*)(ptr);
     }
 
@@ -150,110 +150,112 @@ void SMI_Reduce(SMI_RChannel *chan, volatile void* data_snd, volatile void* data
 
 //TODO: what about the data type??? who tells you that? Codegen?
 //TODO: how many "multiple channel" shall we use, for the moment two toward ck_s and one from ck_r
-__kernel void kernel_reduce(char num_rank)
+__kernel void kernel_reduce(const char num_rank)
 {
     //decide whether we keep this argument or not
     //otherwise we have to decide where to put it
-    char rcv;
-    char root;
-    SMI_Network_message mess;
+
+    SMI_Network_message mess,mess_no_root;
     SMI_Network_message reduce; //TODO: decide the internal data format
     bool init=false;
     char sender_id=0;
-    int reduce_result;
+    volatile int reduce_result;
     char data_recvd=0;
-    bool can_i_send=false; //true when I receive the send request from the root
-    bool request_sent=false;
+    volatile bool send_request=false;//true if (the root) has to send reduce request, false if we can receive form input channels
+    char send_to=0;
     while(true)
     {
         bool valid=false;
-        switch(sender_id)
+        if(!send_request)
         {
-            case 0:
-                mess=read_channel_nb_intel(channel_reduce_send,&valid);
-            break;
-            case 1: //read from CK_R
-                mess=read_channel_nb_intel(channels_from_ck_r[/*chan_idx*/0],&valid);
-            break;
-        }
-        if(valid)
-        {
-            if(sender_id==0)
-            {
-                //simply send this to the attached CK_S
-                //we have to distinguish whether this is the root or not
-                //if(GET_HEADER_DST(mess.header)==GET_HEADER_SRC(mess.header)) //root
-               // {
-                //ONLY the root can receive from here
-
-                char * ptr=mess.data;
-                int data= *(int*)(ptr);
-                reduce_result+=data;        //SMI_ADD
-//                    printf("Reduce kernel received from app, root, no init\n");
-                data_recvd++;
-
-                if(!request_sent)//send request to all other ranks
-                {
-                    //TODO: tmp we can't do this in this way, perf issue
-                    SET_HEADER_OP(reduce.header,SMI_REQUEST);
-                    SET_HEADER_TAG(reduce.header,0); //TODO: Fix this tag
-                    for(char i=0;i<num_rank;i++)
-                    {
-                        if(i!=GET_HEADER_DST(mess.header))
-                        {
-                            SET_HEADER_DST(reduce.header,i);
-                            write_channel_intel(channels_to_ck_s[1],reduce);
-                        }
-                    }
-                    request_sent=true; //TODO: understand how to handle request if COUNT>1
-                }
-                //}
-
-
+            switch(sender_id)
+            {   //for the root, I have to receive from both sides
+                case 0:
+                    mess=read_channel_nb_intel(channel_reduce_send,&valid);
+                    break;
+                case 1: //read from CK_R
+                    mess=read_channel_nb_intel(channels_from_ck_r[/*chan_idx*/0],&valid);
+                    break;
             }
-            else
+            if(valid)
             {
-                //received from CK_R,
-                //apply reduce
-                //   printf("Reduce kernel, received from remote\n");
-
-                if(GET_HEADER_OP(mess.header)==SMI_REQUEST)//i'm not the root
+                if(sender_id==0)
                 {
-                    //can_i_send=true;
-                    //I' m not the root now I can read from the app channel
-                    mess=read_channel_intel(channel_reduce_send_no_root);
-                    write_channel_intel(channels_to_ck_s[0],mess);
+                    //simply send this to the attached CK_S
+                    //we have to distinguish whether this is the root or not
+                    //if(GET_HEADER_DST(mess.header)==GET_HEADER_SRC(mess.header)) //root
+                    // {
+                    //ONLY the root can receive from here
 
-                }
-                else
-                {
                     char * ptr=mess.data;
                     int data= *(int*)(ptr);
                     reduce_result+=data;        //SMI_ADD
+                    //                    printf("Reduce kernel received from app, root, no init\n");
                     data_recvd++;
+                    send_request=true;
                 }
+                else
+                {
+                    //received from CK_R,
+                    //apply reduce
+                    //   printf("Reduce kernel, received from remote\n");
+
+                    if(GET_HEADER_OP(mess.header)==SMI_REQUEST)//i'm not the root
+                    {
+                        //can_i_send=true;
+                        //I' m not the root now I can read from the app channel
+                        mess_no_root=read_channel_intel(channel_reduce_send_no_root);
+                        write_channel_intel(channels_to_ck_s[0],mess_no_root);
+
+                    }
+                    else
+                    {
+                        char * ptr=mess.data;
+                        int data= *(int*)(ptr);
+                        reduce_result+=data;        //SMI_ADD
+                        data_recvd++;
+                    }
+
+                }
+                if(data_recvd==num_rank)
+                {
+                    //     printf("Reduce kernel, send to app\n");
+                    //send to application
+                    char *data_snd=reduce.data;
+                    char *conv=(char*)(&reduce_result);
+                    #pragma unroll
+                    for(int jj=0;jj<4;jj++) //copy the data
+                        data_snd[jj]=conv[jj];
+                    write_channel_intel(channel_reduce_recv,reduce);
+                    init=false;
+                    data_recvd=0;
+                    reduce_result=0;
+                }
+            }
+            if(sender_id==0)
+                sender_id=1;
+            else
+                sender_id=0;
+        }
+        else
+        {
+            if(send_to!=GET_HEADER_DST(mess.header))
+            {
+                SET_HEADER_OP(reduce.header,SMI_REQUEST);
+                SET_HEADER_TAG(reduce.header,0); //TODO: Fix this tag
+                SET_HEADER_DST(reduce.header,send_to);
+                write_channel_intel(channels_to_ck_s[1],reduce);
 
             }
-            if(data_recvd==num_rank)
+            send_to++;
+            if(send_to==num_rank)
             {
-           //     printf("Reduce kernel, send to app\n");
-                //send to application
-                char *data_snd=reduce.data;
-                char *conv=(char*)(&reduce_result);
-                #pragma unroll
-                for(int jj=0;jj<4;jj++) //copy the data
-                    data_snd[jj]=conv[jj];
-                write_channel_intel(channel_reduce_recv,reduce);
-                init=false;
-                data_recvd=0;
-                reduce_result=0;
-                request_sent=false;
+                send_request=false;
+                send_to=0;
             }
         }
-        if(sender_id==0)
-            sender_id=1;
-        else
-            sender_id=0;
+        //mem_fence(CLK_CHANNEL_MEM_FENCE);
+
     }
 
 }
