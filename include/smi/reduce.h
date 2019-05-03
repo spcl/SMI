@@ -160,12 +160,16 @@ __kernel void kernel_reduce(const char num_rank)
     SMI_Network_message reduce; //TODO: decide the internal data format
     bool init=true;
     char sender_id=0;
-    int reduce_result[2];
-    char data_recvd=0;
+    const char credits_flow_control=2;
+    int reduce_result[credits_flow_control];
+    char data_recvd[credits_flow_control];
     bool send_credits=false;//true if (the root) has to send reduce request
-    char credits=2; //the number of credits that I have
+    char credits=credits_flow_control; //the number of credits that I have
     char send_to=0;
     char __attribute__((register)) add_to[256];   //for each rank tells to what element in the buffer we should add the received item
+    for(int i=0;i<credits_flow_control;i++)
+        data_recvd[i]=0;
+
     for(int i=0;i<256;i++)
         add_to[i]=0;
     char current_buffer_element=0;
@@ -186,6 +190,7 @@ __kernel void kernel_reduce(const char num_rank)
             }
             if(valid)
             {
+                char a;
                 if(sender_id==0)
                 {
                     //simply send this to the attached CK_S
@@ -199,12 +204,14 @@ __kernel void kernel_reduce(const char num_rank)
                     int data= *(int*)(ptr);
                     reduce_result[add_to_root]+=data;        //SMI_ADD
                     //printf("Reduce kernel received from app, root. Adding it to: %d \n",add_to[rank]);
-                    data_recvd++;
+                    //data_recvd[add_to_root]++;
+                    a=add_to_root;
                     send_credits=init;      //the first reduce, we send this
                     init=false;
                     add_to_root++;
-                    if(add_to_root==2)
+                    if(add_to_root==credits_flow_control)
                         add_to_root=0;
+
                     //add_to[rank]=addto;
 
                 }
@@ -228,19 +235,22 @@ __kernel void kernel_reduce(const char num_rank)
                         char * ptr=mess.data;
                         char rank=GET_HEADER_SRC(mess.header);
                         int data= *(int*)(ptr);
-                        data_recvd++;
+                        //printf("Reduce kernel, received from %d: %d\n",rank,data);
                         char addto=add_to[rank];
+                        //data_recvd[addto]++;
+                        a=addto;
                         reduce_result[addto]+=data;        //SMI_ADD
                         addto++;
                         //add_to[rank]++;
-                        if(addto==2)
+                        if(addto==credits_flow_control)
                             addto=0;
                         add_to[rank]=addto;
 
                     }
 
-                }
-                if(data_recvd==num_rank)
+                }  
+                data_recvd[a]++;
+                if(data_recvd[current_buffer_element]==num_rank) //TODO: evitare di fare questa cosa su tutti i rank!
                 {
                     //printf("Reduce kernel, send to app: %d\n",reduce_result[current_buffer_element]);
                     //send to application
@@ -252,9 +262,12 @@ __kernel void kernel_reduce(const char num_rank)
                     write_channel_intel(channel_reduce_recv,reduce);
                     send_credits=true;
                     credits++;
-                    data_recvd=0;
+                    data_recvd[current_buffer_element]=0;
                     reduce_result[current_buffer_element]=0;
-                    current_buffer_element=(current_buffer_element==0)?1:0;
+                    current_buffer_element++;
+                    if(current_buffer_element==credits_flow_control)
+                        current_buffer_element=0;
+                    
                 }
             }
             if(sender_id==0)
@@ -265,16 +278,23 @@ __kernel void kernel_reduce(const char num_rank)
         else
         {
             //send credits
-            char st=send_to;
-            if(st!=GET_HEADER_DST(mess.header))
+            //char st=send_to;
+            if(send_to!=GET_HEADER_DST(mess.header))
             {
                 SET_HEADER_OP(reduce.header,SMI_REQUEST);
                 SET_HEADER_TAG(reduce.header,0); //TODO: Fix this tag
-                SET_HEADER_DST(reduce.header,st);
+                SET_HEADER_DST(reduce.header,send_to);
                 write_channel_intel(channels_to_ck_s[1],reduce);
 
             }
-            st++;
+            send_to++;
+            if(send_to==num_rank)
+            {
+                send_to=0;
+                credits--;
+                send_credits=(credits!=0);
+            }
+            /*
             if(st==num_rank)
             {
                 credits--;
@@ -282,7 +302,7 @@ __kernel void kernel_reduce(const char num_rank)
                 send_credits=(credits==0);
             }
             else
-                send_to=st;
+                send_to=st;*/
         }
         //mem_fence(CLK_CHANNEL_MEM_FENCE);
 
