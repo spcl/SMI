@@ -203,8 +203,8 @@ __kernel void kernel_reduce(const char num_rank)
                     char * ptr=mess.data;
                     int data= *(int*)(ptr);
                     reduce_result[add_to_root]+=data;        //SMI_ADD
-                    //printf("Reduce kernel received from app, root. Adding it to: %d \n",add_to[rank]);
-                    //data_recvd[add_to_root]++;
+                    //printf("Reduce kernel received from app, root. Adding it to: %d \n",add_to_root);
+                    data_recvd[add_to_root]++;
                     a=add_to_root;
                     send_credits=init;      //the first reduce, we send this
                     init=false;
@@ -227,6 +227,7 @@ __kernel void kernel_reduce(const char num_rank)
                         //I' m not the root now I can read from the app channel
                         mess_no_root=read_channel_intel(channel_reduce_send_no_root);
                         write_channel_intel(channels_to_ck_s[0],mess_no_root);
+                        //printf("Rank %d sent element to root\n",GET_HEADER_DST(mess.header));
 
                     }
                     else
@@ -237,7 +238,7 @@ __kernel void kernel_reduce(const char num_rank)
                         int data= *(int*)(ptr);
                         //printf("Reduce kernel, received from %d: %d\n",rank,data);
                         char addto=add_to[rank];
-                        //data_recvd[addto]++;
+                        data_recvd[addto]++;
                         a=addto;
                         reduce_result[addto]+=data;        //SMI_ADD
                         addto++;
@@ -248,8 +249,10 @@ __kernel void kernel_reduce(const char num_rank)
 
                     }
 
-                }  
-                data_recvd[a]++;
+                } 
+                //printf("a: %d, data_recvd: %d\n",(int)a,(int)data_recvd[a]);
+                //data_recvd[a]++;
+                //printf("reduce result %d, received %d out of %d\n",(int)a,(int)data_recvd[a],num_rank);
                 if(data_recvd[current_buffer_element]==num_rank) //TODO: evitare di fare questa cosa su tutti i rank!
                 {
                     //printf("Reduce kernel, send to app: %d\n",reduce_result[current_buffer_element]);
