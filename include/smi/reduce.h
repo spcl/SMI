@@ -160,7 +160,7 @@ __kernel void kernel_reduce(const char num_rank)
     SMI_Network_message reduce; //TODO: decide the internal data format
     bool init=true;
     char sender_id=0;
-    const char credits_flow_control=2;
+    const char credits_flow_control=3;
     int reduce_result[credits_flow_control];
     char data_recvd[credits_flow_control];
     bool send_credits=false;//true if (the root) has to send reduce request

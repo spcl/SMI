@@ -1,6 +1,6 @@
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 
-#include "smi_reduce.h"
+#include "smi_reduce_2.h"
 
 
 
