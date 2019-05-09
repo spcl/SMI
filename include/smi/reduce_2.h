@@ -1,7 +1,6 @@
 #ifndef REDUCE_2_H
 #define REDUCE_2_H
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
-
 #include "data_types.h"
 #include "header_message.h"
 #include "network_message.h"
@@ -146,6 +145,7 @@ void SMI_Reduce(SMI_RChannel *chan, volatile void* data_snd, volatile void* data
 __kernel void kernel_reduce_noroot()
 {
     SMI_Network_message net_mess,reduce_mess;
+    int sent=0;
     while(true)
     {
         //first of all I have to receive from the root a credit, and then I can
@@ -155,8 +155,8 @@ __kernel void kernel_reduce_noroot()
         //this must be a credit
         reduce_mess=read_channel_intel(channel_reduce_send_no_root);
         //printf("[NO ROOT-%d] Received  data\n",GET_HEADER_DST(net_mess.header));
+      //  printf("[NO ROOT-%d] sending data %d\n",GET_HEADER_DST(net_mess.header),sent++);
         write_channel_intel(channels_to_ck_s[1],reduce_mess); //tag 1
-        //printf("[NO ROOT-%d] sent data\n",GET_HEADER_DST(net_mess.header));
     }
 
 }
@@ -253,7 +253,7 @@ __kernel void kernel_reduce_root(const char num_rank)
                     char * ptr=mess_root.data;
                     int data= *(int*)(ptr);
                     reduce_result[add_to_root]+=data;        //SMI_ADD
-                 //   printf("Reduce kernel received from app, root. Adding it to: %d \n",add_to_root);
+                 //   printf("[ROOT] received from app, root. Adding it to: %d \n",add_to_root);
                     data_recvd[add_to_root]++;
                     send_credits=init;      //the first reduce, we send this
                     init=false;
@@ -275,37 +275,38 @@ __kernel void kernel_reduce_root(const char num_rank)
                     add_to[rank]=addto;
                     char * ptr=mess.data;
                     int data= *(int*)(ptr);
-                    //printf("[ROOT] Received from %d data: %d\n",rank,data);
+                  //  printf("[ROOT] Received from %d data: %d\n",rank,data);
                     data_recvd[tmp]++;
                     reduce_result[tmp]+=data;        //SMI_ADD
                     //addto++;
                     //add_to[rank]++;
+                }
+                if(data_recvd[current_buffer_element]==num_rank) //TODO: evitare di fare questa cosa su tutti i rank!
+                {
+                    SMI_Network_message reduce; //TODO: decide the internal data format
+                  //  printf("****[ROOT], send to app: %d*****\n",reduce_result[current_buffer_element]);
+                    //send to application
+                    char *data_snd=reduce.data;
+                    char *conv=(char*)(&reduce_result[current_buffer_element]);
+                    #pragma unroll
+                    for(int jj=0;jj<4;jj++) //copy the data
+                        data_snd[jj]=conv[jj];
+                    write_channel_intel(channel_reduce_recv,reduce);
+                    send_credits=true;
+                    credits++;
+                    data_recvd[current_buffer_element]=0;
+                    reduce_result[current_buffer_element]=0;
+                    current_buffer_element++;
+                    if(current_buffer_element==credits_flow_control)
+                        current_buffer_element=0;
+
                 }
                 //printf("a: %d, data_recvd: %d\n",(int)a,(int)data_recvd[a]);
                 //data_recvd[a]++;
                 //printf("reduce result %d, received %d out of %d\n",(int)a,(int)data_recvd[a],num_rank);
             }
 //#endif
-            if(data_recvd[current_buffer_element]==num_rank) //TODO: evitare di fare questa cosa su tutti i rank!
-            {
-                SMI_Network_message reduce; //TODO: decide the internal data format
-                //printf("Reduce kernel, send to app: %d\n",reduce_result[current_buffer_element]);
-                //send to application
-                char *data_snd=reduce.data;
-                char *conv=(char*)(&reduce_result[current_buffer_element]);
-                #pragma unroll
-                for(int jj=0;jj<4;jj++) //copy the data
-                    data_snd[jj]=conv[jj];
-                write_channel_intel(channel_reduce_recv,reduce);
-                send_credits=true;
-                credits++;
-                data_recvd[current_buffer_element]=0;
-                reduce_result[current_buffer_element]=0;
-                current_buffer_element++;
-                if(current_buffer_element==credits_flow_control)
-                    current_buffer_element=0;
 
-            }
             if(sender_id==0)
                 sender_id=1;
             else
@@ -319,7 +320,7 @@ __kernel void kernel_reduce_root(const char num_rank)
             if(send_to!=GET_HEADER_DST(mess_root.header))
             {
                 SET_HEADER_OP(reduce.header,SMI_REQUEST);
-                SET_HEADER_TAG(reduce.header,1); //TODO: Fix this tag
+                SET_HEADER_TAG(reduce.header,1); //TODO: Fix this tag. Must be known in some way
                 SET_HEADER_DST(reduce.header,send_to);
                // printf("[REDUCE] send credit to %d\n",send_to);
                 write_channel_intel(channels_to_ck_s[0],reduce);
@@ -333,8 +334,8 @@ __kernel void kernel_reduce_root(const char num_rank)
                 send_credits=(credits!=0);
             }
 
+        // mem_fence(CLK_CHANNEL_MEM_FENCE);
         }
-        //mem_fence(CLK_CHANNEL_MEM_FENCE);
 
     }
 

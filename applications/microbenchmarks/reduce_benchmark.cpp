@@ -167,6 +167,7 @@ int main(int argc, char *argv[])
     std::vector<double> times;
     for(int i=0;i<runs;i++)
     {
+      //  kernels[0].setArg(5,sizeof(int),&i);
         cl::Event events[1]; //this defination must stay here
         // wait for other nodes
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
@@ -180,7 +181,7 @@ int main(int argc, char *argv[])
 
 
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-        if(rank==0)
+        if(rank==root)
         {
             ulong end, start;
             events[0].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
@@ -197,7 +198,8 @@ int main(int argc, char *argv[])
 
         }
     }
-    if(rank==0)
+    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+    if(rank==root)
     {
 
        //check
