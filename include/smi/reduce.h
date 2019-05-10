@@ -160,13 +160,13 @@ __kernel void kernel_reduce(const char num_rank)
     SMI_Network_message reduce; //TODO: decide the internal data format
     bool init=true;
     char sender_id=0;
-    const char credits_flow_control=3;
+    const char credits_flow_control=5;
     int reduce_result[credits_flow_control];
     char data_recvd[credits_flow_control];
     bool send_credits=false;//true if (the root) has to send reduce request
     char credits=credits_flow_control; //the number of credits that I have
     char send_to=0;
-    char __attribute__((register)) add_to[256];   //for each rank tells to what element in the buffer we should add the received item
+    char __attribute__((register)) add_to[16];   //for each rank tells to what element in the buffer we should add the received item
     for(int i=0;i<credits_flow_control;i++)
         data_recvd[i]=0;
 
