@@ -81,8 +81,10 @@ int main(int argc, char *argv[])
     std::vector<cl::CommandQueue> queues;
     std::vector<std::string> kernel_names;
     kernel_names.push_back("app");
-    kernel_names.push_back("kernel_reduce_noroot");
-    kernel_names.push_back("kernel_reduce_root");
+     kernel_names.push_back("kernel_reduce");
+
+   // kernel_names.push_back("kernel_reduce_noroot");
+   // kernel_names.push_back("kernel_reduce_root");
 
     kernel_names.push_back("CK_S_0");
     kernel_names.push_back("CK_S_1");
@@ -139,24 +141,25 @@ int main(int argc, char *argv[])
     kernels[0].setArg(4,sizeof(cl_mem),&check);
 
 
-    kernels[2].setArg(0,sizeof(char),&rank_count);
+    kernels[1].setArg(0,sizeof(char),&rank_count);
+    //kernels[2].setArg(0,sizeof(char),&rank_count);
 
 
     //args for the CK_Ss
-    kernels[3].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
-    kernels[4].setArg(0,sizeof(cl_mem),&routing_table_ck_s_1);
-    kernels[5].setArg(0,sizeof(cl_mem),&routing_table_ck_s_2);
-    kernels[6].setArg(0,sizeof(cl_mem),&routing_table_ck_s_3);
+    kernels[2].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
+    kernels[3].setArg(0,sizeof(cl_mem),&routing_table_ck_s_1);
+    kernels[4].setArg(0,sizeof(cl_mem),&routing_table_ck_s_2);
+    kernels[5].setArg(0,sizeof(cl_mem),&routing_table_ck_s_3);
 
     //args for the CK_Rs
-    kernels[7].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
+    kernels[6].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
+    kernels[6].setArg(1,sizeof(char),&rank);
+    kernels[7].setArg(0,sizeof(cl_mem),&routing_table_ck_r_1);
     kernels[7].setArg(1,sizeof(char),&rank);
-    kernels[8].setArg(0,sizeof(cl_mem),&routing_table_ck_r_1);
+    kernels[8].setArg(0,sizeof(cl_mem),&routing_table_ck_r_2);
     kernels[8].setArg(1,sizeof(char),&rank);
-    kernels[9].setArg(0,sizeof(cl_mem),&routing_table_ck_r_2);
+    kernels[9].setArg(0,sizeof(cl_mem),&routing_table_ck_r_3);
     kernels[9].setArg(1,sizeof(char),&rank);
-    kernels[10].setArg(0,sizeof(cl_mem),&routing_table_ck_r_3);
-    kernels[10].setArg(1,sizeof(char),&rank);
 
     //start the CKs
     const int num_kernels=kernel_names.size();
