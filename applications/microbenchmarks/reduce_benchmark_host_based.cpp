@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
 
         //save the info into output file
         std::ostringstream filename;
-        filename << "host_based_broadcast_" << n << ".dat";
+        filename << "host_based_reduce_" << n << ".dat";
         std::cout << "Saving info into: "<<filename.str()<<std::endl;
         ofstream fout(filename.str());
         fout << "#Sent (KB) = "<<data_sent_KB<<", Runs = "<<runs<<endl;
