@@ -1,8 +1,8 @@
 /**
-    Broadcast benchmark, host based:
-    - data is prepared by rank 0 (written in memory, using host_broadcast_rank0.cl)
-    - then it is copied into host and broadcasted to all the others
-    - whose in turns copy it to device and execute host_broadcast_rank1.cl
+    Reduce benchmark, host based:
+    - each rank prepare data  (written in memory)
+    - then it is copied into host and reduce to all the others
+    - then the root will have the result copied into DRAM and read again
 
  */
 
@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
     //command line argument parsing
     if(argc<7)
     {
-        cerr << "Send/Receiver tester " <<endl;
+        cerr << "Reduce (integer) tester. Root is rank 0 " <<endl;
         cerr << "Usage: "<< argv[0]<<" -b <binary file with <type> tag> -n <lenght> -r <num runs> "<<endl;
         exit(-1);
     }
@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
                 exit(-1);
         }
     KB=n*4/1024;
-    cout << "Performing send/receive test with "<<n<<" elements"<<endl;
+    cout << "Performing reduce test with "<<n<<" elements"<<endl;
     int rank_count;
     int rank;
     CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &rank_count));
@@ -71,10 +71,10 @@ int main(int argc, char *argv[])
         std::cout << "You have to execut this with 4 ranks" <<std::endl;
         exit(-1);
     }
-    if(rank==0)
+   /* if(rank==0)
         program_path = replace(program_path, "<type>", std::string("root"));
     else
-        program_path = replace(program_path, "<type>", std::string("rank"));
+        program_path = replace(program_path, "<type>", std::string("rank"));*/
     std::cout << "Program: " << program_path << std::endl;
     char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);
@@ -87,19 +87,24 @@ int main(int argc, char *argv[])
     cl::Program program;
     std::vector<cl::Kernel> kernels;
     std::vector<cl::CommandQueue> queues;
-    std::vector<std::string> kernel_names={"app_0"};
+    std::vector<std::string> kernel_names={"app_rank","app_root"};
+
 
     //this is for the case with classi channels
     IntelFPGAOCLUtils::initEnvironment(platform,device,fpga,context,program,program_path,kernel_names, kernels,queues);
 
     //create memory buffers
-    double *host_data;
+    int *host_data,*reduced_data;
     //ATTENTION: declare all the memory here otherwise it hangs
-    cl::Buffer mem(context,CL_MEM_READ_WRITE,max(n,1)*sizeof(float));
-    posix_memalign ((void **)&host_data, IntelFPGAOCLUtils::AOCL_ALIGNMENT, n*sizeof(float));
+    cl::Buffer mem(context,CL_MEM_READ_WRITE,max(n,1)*sizeof(int));
+    posix_memalign ((void **)&host_data, IntelFPGAOCLUtils::AOCL_ALIGNMENT, n*sizeof(int));
+    posix_memalign ((void **)&reduced_data, IntelFPGAOCLUtils::AOCL_ALIGNMENT, n*sizeof(int));
+
 
     kernels[0].setArg(0,sizeof(cl_mem),&mem);
     kernels[0].setArg(1,sizeof(int),&n);
+    kernels[1].setArg(0,sizeof(cl_mem),&mem);
+    kernels[1].setArg(1,sizeof(int),&n);
 
     std::vector<double> times;
     timestamp_t startt,endt;
@@ -110,29 +115,28 @@ int main(int argc, char *argv[])
         // wait for other nodes
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
         startt=current_time_usecs();
+        queues[0].enqueueTask(kernels[0],nullptr,&events[0]);
+        queues[0].finish();
+        //copy the data to host
+        queues[0].enqueueReadBuffer(mem,CL_TRUE,0,n*sizeof(int),host_data);
+        //reduce it
+        MPI_Reduce(host_data,reduced_data,n,MPI_INT,MPI_SUM,0,MPI_COMM_WORLD);
+
         if(rank==0)
         {
-            queues[0].enqueueTask(kernels[0],nullptr,&events[0]);
-            queues[0].finish();
-            //get the result and send it  to rank 1
-            queues[0].enqueueReadBuffer(mem,CL_TRUE,0,n*sizeof(float),host_data);
-            MPI_Bcast(host_data, n, MPI_FLOAT, 0, MPI_COMM_WORLD);
-        }
-        else
-        {
-            MPI_Bcast(host_data, n, MPI_FLOAT, 0, MPI_COMM_WORLD);
-            //copy and start axpy
-            queues[0].enqueueWriteBuffer(mem,CL_TRUE,0,n*sizeof(float),host_data);
-            queues[0].enqueueTask(kernels[0],nullptr,&events[0]);
-            queues[0].finish();
+            //copy to device and execute
+            queues[1].enqueueWriteBuffer(mem,CL_TRUE,0,n*sizeof(int),reduced_data);
+            queues[1].enqueueTask(kernels[1],nullptr,&events[1]);
+            queues[1].finish();
             endt=current_time_usecs();
             times.push_back(endt-startt);
         }
 
+
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
 
     }
-    if(rank==1)//compute the time not on the root
+    if(rank==0) //compute the time on the root
     {
 
        //check
@@ -156,7 +160,7 @@ int main(int argc, char *argv[])
         //save the info into output file
         std::ostringstream filename;
         filename << "host_based_broadcast_" << n << ".dat";
-	std::cout << "Saving info into: "<<filename.str()<<std::endl;
+        std::cout << "Saving info into: "<<filename.str()<<std::endl;
         ofstream fout(filename.str());
         fout << "#Sent (KB) = "<<data_sent_KB<<", Runs = "<<runs<<endl;
         fout << "#Average Computation time (usecs): "<<mean<<endl;

@@ -24,6 +24,10 @@ SMI_Channel SMI_Open_send_channel(uint count, SMI_Datatype data_type, char desti
 
     switch(data_type)
     {
+        case(SMI_CHAR):
+            chan.size_of_type=1;
+            chan.elements_per_packet=28;
+            break;
         case(SMI_INT):
             chan.size_of_type=4;
             chan.elements_per_packet=7;
@@ -64,6 +68,10 @@ SMI_Channel SMI_Open_receive_channel(uint count, SMI_Datatype data_type, char so
 
     switch(data_type)
     {
+        case(SMI_CHAR):
+            chan.size_of_type=1;
+            chan.elements_per_packet=28;
+            break;
         case(SMI_INT):
             chan.size_of_type=4;
             chan.elements_per_packet=6;

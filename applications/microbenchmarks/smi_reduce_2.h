@@ -77,7 +77,7 @@ channel SMI_Network_message channels_interconnect_ck_s_to_ck_r[QSFP_COUNT] __att
 // connect corresponding CK_R/CK_S pairs
 channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __attribute__((depth(16)));
 
-#include "smi/reduce_2.h"
+#include "smi/reduce_3.h"
 
 __kernel void CK_S_0(__global volatile char *restrict rt)
 {
