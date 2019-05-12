@@ -412,7 +412,9 @@ int main(int argc, char *argv[])
     //Program ends
     timestamp_t endt=current_time_usecs();
    
-
+    #if defined(MPI)
+    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+    #endif
     
     if(rank ==0)
     {

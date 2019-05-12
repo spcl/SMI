@@ -87,7 +87,7 @@ __kernel void KERNEL_NAME(int row_streamed, const int N, const int M, TYPE_T alp
 
     TYPE_T local_y[MAX_TILE_SIZE];
     TYPE_T local_x[MAX_TILE_SIZE];
-    SMI_Channel chan=SMI_Open_send_channel(M,SMI_FLOAT,0,0);
+    SMI_Channel chan=SMI_Open_send_channel(N,SMI_FLOAT,0,0);
     #pragma max_concurrency 1
     for(int ti=0;ti<BlocksY;ti++)
     {
