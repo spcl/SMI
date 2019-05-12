@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
     kernels[0].setArg(0,sizeof(cl_mem),&mem);
     kernels[0].setArg(1,sizeof(int),&n);
   
-    std::vector<double> times;
+    std::vector<double> times, transfers;
     timestamp_t startt,endt;
     //Program startup
     for(int i=0;i<runs;i++)
@@ -112,14 +112,20 @@ int main(int argc, char *argv[])
             queues[0].enqueueTask(kernels[0],nullptr,&events[0]);
             queues[0].finish();
             //get the result and send it  to rank 1
+            timestamp_t transf_start;
             queues[0].enqueueReadBuffer(mem,CL_TRUE,0,n*sizeof(double),host_data);
+            transfers.push_back(current_time_usecs()-transf_start);
             MPI_Send(host_data,n,MPI_DOUBLE,1,0,MPI_COMM_WORLD);
+
         }
         if(rank==1)
         {
+
             MPI_Recv(host_data,n,MPI_DOUBLE,0,0,MPI_COMM_WORLD,  MPI_STATUS_IGNORE);
             //copy and start axpy
+            timestamp_t transf_start;
             queues[0].enqueueWriteBuffer(mem,CL_TRUE,0,n*sizeof(double),host_data);
+            transfers.push_back(current_time_usecs()-transf_start);
             queues[0].enqueueTask(kernels[0],nullptr,&events[0]);
             queues[0].finish();
             endt=current_time_usecs();
@@ -136,6 +142,8 @@ int main(int argc, char *argv[])
        
         
     }
+    for(auto d:transfers)
+        printf("Rank %d, trasfer: %.3f\n",d);
     if(rank==1)
     {
 
