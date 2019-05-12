@@ -1,5 +1,7 @@
 /**
  *  ATTENTION: helpers modified to have better performance (volatile, N %64 ==0 ...)
+            THIS WORKS ONLY IN THE CONSIDERED SETUP OVER FPGA-14
+            (or in general, in the case in which two FPGA are directly connected each other using channel 0)
  */
 
 #include <stdio.h>
@@ -375,7 +377,10 @@ int main(int argc, char *argv[])
         for(int i=0;i<num_kernels-2;i++)
             queues[i].enqueueTask(kernels[i],nullptr,&events[i]);
         for(int i=0;i<kernel_names.size()-2;i++)
+        {
             queues[i].finish();
+            printf("Kernel %d finito\n",i);
+        }
 
         //wait
         #if defined(MPI)
