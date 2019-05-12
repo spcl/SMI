@@ -53,9 +53,9 @@ int main(int argc, char *argv[])
     CHECK_MPI(MPI_Init(&argc, &argv));
     #endif
     //command line argument parsing
-    if(argc<15)
+    if(argc<17)
     {
-        cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <n> -a <alpha> -c <beta> -r <num runs> -k <rank 0/1> -f <fpga>"<<endl;
+        cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <n>  -m <m> -a <alpha> -c <beta> -r <num runs> -k <rank 0/1> -f <fpga>"<<endl;
         exit(-1);
     }
 
@@ -66,11 +66,14 @@ int main(int argc, char *argv[])
     std::string json_path;
     int fpga;
 
-    while ((c = getopt (argc, argv, "n:b:r:a:c:k:f:")) != -1)
+    while ((c = getopt (argc, argv, "n:b:r:a:c:k:f:m:")) != -1)
         switch (c)
         {
             case 'n':
                 n=atoi(optarg);
+                break;
+            case 'm':
+                m=atoi(optarg);
                 break;
             case 'a':
                 alpha=atof(optarg);
@@ -123,15 +126,15 @@ int main(int argc, char *argv[])
     }
 
     //create data
-    posix_memalign ((void **)&A, IntelFPGAOCLUtils::AOCL_ALIGNMENT, n*n*sizeof(float));
-    posix_memalign ((void **)&B, IntelFPGAOCLUtils::AOCL_ALIGNMENT, n*n*sizeof(float));
-    posix_memalign ((void **)&x, IntelFPGAOCLUtils::AOCL_ALIGNMENT, n*sizeof(float));
+    posix_memalign ((void **)&A, IntelFPGAOCLUtils::AOCL_ALIGNMENT, n*m*sizeof(float));
+    posix_memalign ((void **)&B, IntelFPGAOCLUtils::AOCL_ALIGNMENT, n*m*sizeof(float));
+    posix_memalign ((void **)&x, IntelFPGAOCLUtils::AOCL_ALIGNMENT, m*sizeof(float));
     posix_memalign ((void **)&y, IntelFPGAOCLUtils::AOCL_ALIGNMENT, n*sizeof(float));
     posix_memalign ((void **)&fpga_res_y, IntelFPGAOCLUtils::AOCL_ALIGNMENT, n*sizeof(float));
 
-    generate_float_vector(x,n);
-    generate_float_matrix(A,n,n);
-    generate_float_matrix(B,n,n);
+    generate_float_vector(x,m);
+    generate_float_matrix(A,n,m);
+    generate_float_matrix(B,n,m);
 
     std::vector<double> streamed_times,transfer_times;
 
@@ -175,9 +178,9 @@ int main(int argc, char *argv[])
 
 
     //Copy data
-    cl::Buffer input_x(context, CL_MEM_READ_ONLY|CL_CHANNEL_3_INTELFPGA, n *sizeof(float));
+    cl::Buffer input_x(context, CL_MEM_READ_ONLY|CL_CHANNEL_3_INTELFPGA, m *sizeof(float));
     cl::Buffer output_y(context, CL_MEM_READ_WRITE|CL_CHANNEL_4_INTELFPGA, n * sizeof(float));
-    size_t elem_per_module=n*n/2;
+    size_t elem_per_module=n*m/2;
     cl::Buffer input_M_0(context, CL_MEM_READ_ONLY|CL_CHANNEL_1_INTELFPGA, elem_per_module*sizeof(float));
     cl::Buffer input_M_1(context, CL_MEM_READ_ONLY|CL_CHANNEL_2_INTELFPGA, elem_per_module*sizeof(float));
     cl::Buffer routing_table_ck_s_0(context,CL_MEM_READ_ONLY,2);
@@ -195,20 +198,20 @@ int main(int argc, char *argv[])
         //copy the matrix interleaving it into two modules
         size_t offset=0;
         size_t increment=64/2*sizeof(float);
-        const int loop_it=((int)(n))/64;   //W must be a divisor of M
+        const int loop_it=((int)(m))/64;   //W must be a divisor of M
         for(int i=0;i<n;i++)
         {
             for(int j=0;j<loop_it;j++)
             {
                 //write to the different banks
-                queues[0].enqueueWriteBuffer(input_M_0, CL_FALSE,offset, (64/2)*sizeof(float),&(A[i*n+j*64]));
-                queues[0].enqueueWriteBuffer(input_M_1, CL_FALSE,offset, (64/2)*sizeof(float),&(A[i*n+j*64+32]));
+                queues[0].enqueueWriteBuffer(input_M_0, CL_FALSE,offset, (64/2)*sizeof(float),&(A[i*m+j*64]));
+                queues[0].enqueueWriteBuffer(input_M_1, CL_FALSE,offset, (64/2)*sizeof(float),&(A[i*m+j*64+32]));
 
                 offset+=increment;
             }
         }
         queues[0].finish();
-        queues[0].enqueueWriteBuffer(input_x,CL_TRUE,0,n*sizeof(float),x);
+        queues[0].enqueueWriteBuffer(input_x,CL_TRUE,0,m*sizeof(float),x);
         queues[0].finish();
         printf("Data copied\n");
 
@@ -220,7 +223,7 @@ int main(int argc, char *argv[])
 
         kernels[0].setArg(0, sizeof(int),&one);
         kernels[0].setArg(1, sizeof(int),&n);
-        kernels[0].setArg(2, sizeof(int),&n);
+        kernels[0].setArg(2, sizeof(int),&m);
         kernels[0].setArg(3, sizeof(float),&alpha);
         kernels[0].setArg(4, sizeof(float),&fzero);
 
@@ -232,13 +235,13 @@ int main(int argc, char *argv[])
         kernels[2].setArg(0, sizeof(cl_mem),&input_M_0);
         kernels[2].setArg(1, sizeof(cl_mem),&input_M_1);
         kernels[2].setArg(2, sizeof(int),&n);
-        kernels[2].setArg(3, sizeof(int),&n);
-        kernels[2].setArg(4, sizeof(int),&n);
+        kernels[2].setArg(3, sizeof(int),&m);
+        kernels[2].setArg(4, sizeof(int),&m);
 
 
         //read_vector_x
         kernels[3].setArg(0, sizeof(cl_mem),&input_x);
-        kernels[3].setArg(1, sizeof(int),&n);
+        kernels[3].setArg(1, sizeof(int),&m);
         kernels[3].setArg(2, sizeof(int),&tile_size);
         kernels[3].setArg(3, sizeof(int),&x_repetitions);
 
@@ -278,20 +281,20 @@ int main(int argc, char *argv[])
         //copy the matrix interleaving it into two modules
         size_t offset=0;
         size_t increment=64/2*sizeof(float);
-        const int loop_it=((int)(n))/64;   //W must be a divisor of M
+        const int loop_it=((int)(m))/64;   //W must be a divisor of M
         for(int i=0;i<n;i++)
         {
             for(int j=0;j<loop_it;j++)
             {
                 //write to the different banks
-                queues[0].enqueueWriteBuffer(input_M_0, CL_FALSE,offset, (64/2)*sizeof(float),&(B[i*n+j*64]));
-                queues[0].enqueueWriteBuffer(input_M_1, CL_FALSE,offset, (64/2)*sizeof(float),&(B[i*n+j*64+32]));
+                queues[0].enqueueWriteBuffer(input_M_0, CL_FALSE,offset, (64/2)*sizeof(float),&(B[i*m+j*64]));
+                queues[0].enqueueWriteBuffer(input_M_1, CL_FALSE,offset, (64/2)*sizeof(float),&(B[i*m+j*64+32]));
 
                 offset+=increment;
             }
         }
         queues[0].finish();
-        queues[0].enqueueWriteBuffer(input_x,CL_TRUE,0,n*sizeof(float),x);
+        queues[0].enqueueWriteBuffer(input_x,CL_TRUE,0,m*sizeof(float),x);
         queues[0].finish();
 
         //gemv_A
@@ -302,7 +305,7 @@ int main(int argc, char *argv[])
 
         kernels[0].setArg(0, sizeof(int),&one);
         kernels[0].setArg(1, sizeof(int),&n);
-        kernels[0].setArg(2, sizeof(int),&n);
+        kernels[0].setArg(2, sizeof(int),&m);
         kernels[0].setArg(3, sizeof(float),&beta);
         kernels[0].setArg(4, sizeof(float),&fzero);
 
@@ -311,13 +314,13 @@ int main(int argc, char *argv[])
         kernels[1].setArg(0, sizeof(cl_mem),&input_M_0);
         kernels[1].setArg(1, sizeof(cl_mem),&input_M_1);
         kernels[1].setArg(2, sizeof(int),&n);
-        kernels[1].setArg(3, sizeof(int),&n);
-        kernels[1].setArg(4, sizeof(int),&n);
+        kernels[1].setArg(3, sizeof(int),&m);
+        kernels[1].setArg(4, sizeof(int),&m);
 
 
         //read_vector_x
         kernels[2].setArg(0, sizeof(cl_mem),&input_x);
-        kernels[2].setArg(1, sizeof(int),&n);
+        kernels[2].setArg(1, sizeof(int),&m);
         kernels[2].setArg(2, sizeof(int),&tile_size);
         kernels[2].setArg(3, sizeof(int),&x_repetitions);
 
@@ -411,8 +414,8 @@ int main(int argc, char *argv[])
          queues[0].enqueueReadBuffer(output_y,CL_FALSE,0,n*sizeof(float),fpga_res_y);
         //check: we can do this since no-one overwrites the input data
         timestamp_t comp_start=current_time_usecs();
-        cblas_sgemv(CblasRowMajor,CblasNoTrans,n,n,beta,B,n,x,1,0,y,1);
-        cblas_sgemv(CblasRowMajor,CblasNoTrans,n,n,alpha,A,n,x,1,1,y,1);
+        cblas_sgemv(CblasRowMajor,CblasNoTrans,n,m,beta,B,m,x,1,0,y,1);
+        cblas_sgemv(CblasRowMajor,CblasNoTrans,n,m,alpha,A,m,x,1,1,y,1);
         timestamp_t cpu_time=current_time_usecs()-comp_start;
 
 

@@ -222,10 +222,10 @@ int main(int argc, char *argv[])
         cout << "Conf interval 99 within " <<(conf_interval_99/mean)*100<<"% from mean" <<endl;
         cout << "Sent (KB): " <<data_sent_KB<<endl;
         cout << "Average bandwidth (Gbit/s): " <<  (data_sent_KB*8/(mean/1000000.0))/(1024*1024) << endl;
-#if 0
+
         //save the info into output file
         std::ostringstream filename;
-        filename << "smi_broadcast_"<<rank_count <<"_"<< n << ".dat";
+        filename << "smi_reduce_"<<rank_count <<"_"<< n << ".dat";
         std::cout << "Saving info into: "<<filename.str()<<std::endl;
         ofstream fout(filename.str());
         fout << "#SMI Broadcast, executed with " << rank_count <<" ranks, streaming: " << n <<" elements"<<endl;
@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
         for(auto t:times)
             fout << t << endl;
         fout.close();
-#endif
+
     }
 
 
