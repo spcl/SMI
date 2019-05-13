@@ -233,21 +233,21 @@ int main(int argc, char *argv[])
     }
 
     //create data
-    posix_memalign ((void **)&A, IntelFPGAOCLUtils::AOCL_ALIGNMENT, n*n*sizeof(float));
-    posix_memalign ((void **)&B, IntelFPGAOCLUtils::AOCL_ALIGNMENT, n*n*sizeof(float));
-    posix_memalign ((void **)&x, IntelFPGAOCLUtils::AOCL_ALIGNMENT, n*sizeof(float));
+    posix_memalign ((void **)&A, IntelFPGAOCLUtils::AOCL_ALIGNMENT, n*m*sizeof(float));
+    posix_memalign ((void **)&B, IntelFPGAOCLUtils::AOCL_ALIGNMENT, n*m*sizeof(float));
+    posix_memalign ((void **)&x, IntelFPGAOCLUtils::AOCL_ALIGNMENT, m*sizeof(float));
     posix_memalign ((void **)&y, IntelFPGAOCLUtils::AOCL_ALIGNMENT, n*sizeof(float));
-    generate_float_vector(x,n);
-    generate_float_matrix(A,n,n);
-    generate_float_matrix(B,n,n);
+    generate_float_vector(x,m);
+    generate_float_matrix(A,n,m);
+    generate_float_matrix(B,n,m);
 
     std::vector<double> streamed_times,transfer_times;
 
 
     //check
     timestamp_t comp_start=current_time_usecs();
-    cblas_sgemv(CblasRowMajor,CblasNoTrans,n,n,beta,B,n,x,1,0,y,1);
-    cblas_sgemv(CblasRowMajor,CblasNoTrans,n,n,alpha,A,n,x,1,1,y,1);
+    cblas_sgemv(CblasRowMajor,CblasNoTrans,n,m,beta,B,m,x,1,0,y,1);
+    cblas_sgemv(CblasRowMajor,CblasNoTrans,n,m,alpha,A,m,x,1,1,y,1);
     timestamp_t cpu_time=current_time_usecs()-comp_start;
 
 
