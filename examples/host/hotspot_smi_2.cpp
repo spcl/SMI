@@ -5,14 +5,14 @@
 #include <numeric>
 #include <sstream>
 #include <vector>
-#include "common.h"
+//#include "common.h"
 #include "hlslib/intel/OpenCL.h"
 #include "hotspot.h"
 #include "ocl_utils.hpp"
 #include "utils.hpp"
 #include "smi_utils.hpp"
 #include <unistd.h>
-
+const int HOST_NAME_MAX=256;
 // Convert from C to C++
 constexpr auto kMemoryBanks = B;
 constexpr int kX = X;
@@ -169,8 +169,8 @@ int main(int argc, char **argv) {
   int mpi_size, mpi_rank;
   MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
   MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
-  const int i_px = mpi_rank / kPY;
-  const int i_py = mpi_rank % kPY;
+   int i_px = mpi_rank / kPY;
+   int i_py = mpi_rank % kPY;
 
   // Handle input arguments
   if (argc != 6) {
@@ -194,23 +194,23 @@ int main(int argc, char **argv) {
     return 2;
   }
 
-  const int timesteps = std::stoi(argv[2]);
+ int timesteps = std::stoi(argv[2]);
 
   const std::string temperature_file_in(argv[3]);
   const std::string power_file_in(argv[4]);
   const std::string temperature_file_out(argv[5]);
 
   // Compute hotspot values
-  const float grid_height = kChipHeight / kX;
-  const float grid_width = kChipWidth / kY;
-  const float rx1 = 1 / (grid_width / (2.0 * kKSI * kTChip * grid_height));
-  const float ry1 = 1 / (grid_height / (2.0 * kKSI * kTChip * grid_width));
-  const float rz1 = 1 / (kTChip / (kKSI * grid_height * grid_width));
-  const float cap =
+   float grid_height = kChipHeight / kX;
+   float grid_width = kChipWidth / kY;
+   float rx1 = 1 / (grid_width / (2.0 * kKSI * kTChip * grid_height));
+   float ry1 = 1 / (grid_height / (2.0 * kKSI * kTChip * grid_width));
+   float rz1 = 1 / (kTChip / (kKSI * grid_height * grid_width));
+   float cap =
       kFactorChip * kSpecHeatSI * kTChip * grid_width * grid_height;
-  const float max_slope = kMaxPD / (kFactorChip * kTChip * kSpecHeatSI);
-  const float step = kPrecision / max_slope;
-  const float step_div_cap = step / cap;
+   float max_slope = kMaxPD / (kFactorChip * kTChip * kSpecHeatSI);
+   float step = kPrecision / max_slope;
+   float step_div_cap = step / cap;
 
   // Read routing tables
   std::vector<std::vector<char>> routing_tables_ckr(kChannelsPerRank,
@@ -280,7 +280,7 @@ int main(int argc, char **argv) {
   std::cout << "Program: " << kernel_path << " executed on fpga: "<<fpga<<std::endl;
   char hostname[HOST_NAME_MAX];
   gethostname(hostname, HOST_NAME_MAX);
-  printf("Rank %d executing on host: %s\n",rank,hostname);
+  printf("Rank %d executing on host: %s\n",mpi_rank,hostname);
   cl::Platform  platform;
   cl::Device device;
   cl::Context context;
@@ -300,7 +300,6 @@ int main(int argc, char **argv) {
 
   MPIStatus(mpi_rank, "Allocating device memory...\n");
   char tags=4;
-  cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
   cl::Buffer routing_table_ck_s_0(context,CL_MEM_READ_ONLY,mpi_size);
   cl::Buffer routing_table_ck_s_1(context,CL_MEM_READ_ONLY,mpi_size);
   cl::Buffer routing_table_ck_s_2(context,CL_MEM_READ_ONLY,mpi_size);
@@ -310,121 +309,116 @@ int main(int argc, char **argv) {
   cl::Buffer routing_table_ck_r_2(context,CL_MEM_READ_ONLY,tags);
   cl::Buffer routing_table_ck_r_3(context,CL_MEM_READ_ONLY,tags);
 
+  cl::Buffer temperature_interleaved_device[4], power_interleaved_device[4];
+  temperature_interleaved_device[0]=cl::Buffer(context,CL_MEM_READ_WRITE,sizeof(float)* 2 * kXLocal * kYLocal / kMemoryBanks);
+  temperature_interleaved_device[1]=cl::Buffer(context,CL_MEM_READ_WRITE,sizeof(float)* 2 * kXLocal * kYLocal / kMemoryBanks);
+  temperature_interleaved_device[2]=cl::Buffer(context,CL_MEM_READ_WRITE,sizeof(float)* 2 * kXLocal * kYLocal / kMemoryBanks);
+  temperature_interleaved_device[3]=cl::Buffer(context,CL_MEM_READ_WRITE,sizeof(float)* 2 * kXLocal * kYLocal / kMemoryBanks);
+  power_interleaved_device[0]=cl::Buffer(context,CL_MEM_READ_ONLY, sizeof(float)* power_interleaved_host[0].size());
+  power_interleaved_device[1]=cl::Buffer(context,CL_MEM_READ_ONLY, sizeof(float)* power_interleaved_host[1].size());
+  power_interleaved_device[2]=cl::Buffer(context,CL_MEM_READ_ONLY, sizeof(float)* power_interleaved_host[2].size());
+  power_interleaved_device[3]=cl::Buffer(context,CL_MEM_READ_ONLY, sizeof(float)* power_interleaved_host[3].size());
 
-  questi mi sembra che siano semplicemente temperature interleaved device
-          fa la move cosi' per convenienza
-  const std::array<hlslib::ocl::MemoryBank, 4> banks = {
-      hlslib::ocl::MemoryBank::bank0, hlslib::ocl::MemoryBank::bank1,
-      hlslib::ocl::MemoryBank::bank2, hlslib::ocl::MemoryBank::bank3};
-  std::vector<hlslib::ocl::Buffer<float, hlslib::ocl::Access::readWrite>>
-      temperature_interleaved_device, power_interleaved_device;
   for (int b = 0; b < kMemoryBanks; ++b) {
-    auto temperature_device =
-        context.MakeBuffer<float, hlslib::ocl::Access::readWrite>(
-            banks[b % banks.size()], 2 * kXLocal * kYLocal / kMemoryBanks);
-    temperature_device.CopyFromHost(0, kXLocal * kYLocal / kMemoryBanks,
-                                    temperature_interleaved_host[b].cbegin());
-    temperature_device.CopyFromHost(kXLocal * kYLocal / kMemoryBanks,
-                                    kXLocal * kYLocal / kMemoryBanks,
-                                    temperature_interleaved_host[b].cbegin());
-    temperature_interleaved_device.emplace_back(std::move(temperature_device));
-    auto power_device =
-        context.MakeBuffer<float, hlslib::ocl::Access::readWrite>(
-            banks[b % banks.size()], power_interleaved_host[b].cbegin(),
-            power_interleaved_host[b].cend());
-    power_interleaved_device.emplace_back(std::move(power_device));
-  }
-  std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>>
-      routing_tables_cks_device(kChannelsPerRank);
-  std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>>
-      routing_tables_ckr_device(kChannelsPerRank);
-  for (int i = 0; i < kChannelsPerRank; ++i) {
-    routing_tables_cks_device[i] =
-        context.MakeBuffer<char, hlslib::ocl::Access::read>(
-            routing_tables_cks[i].cbegin(), routing_tables_cks[i].cend());
-    routing_tables_ckr_device[i] =
-        context.MakeBuffer<char, hlslib::ocl::Access::read>(
-            routing_tables_ckr[i].cbegin(), routing_tables_ckr[i].cend());
-  }
+     queues[0].enqueueWriteBuffer(temperature_interleaved_device[b], CL_TRUE,0,sizeof(float)* kXLocal * kYLocal / kMemoryBanks,temperature_interleaved_host[b].data());
+     queues[0].enqueueWriteBuffer(temperature_interleaved_device[b], CL_TRUE,sizeof(float)* kXLocal * kYLocal / kMemoryBanks,sizeof(float)* kXLocal * kYLocal / kMemoryBanks,temperature_interleaved_host[b].data());
+     queues[0].enqueueWriteBuffer(power_interleaved_device[b],CL_TRUE,0 ,sizeof(float)* power_interleaved_host[b].size(), power_interleaved_host[b].data());
+   }
 
-  MPIStatus(mpi_rank, "Creating program from binary...\n");
-  auto program = context.MakeProgram(kernel_path);
+  queues[0].enqueueWriteBuffer(routing_table_ck_s_0, CL_TRUE,0,mpi_size,&routing_tables_cks[0][0]);
+  queues[0].enqueueWriteBuffer(routing_table_ck_s_1, CL_TRUE,0,mpi_size,&routing_tables_cks[1][0]);
+  queues[0].enqueueWriteBuffer(routing_table_ck_s_2, CL_TRUE,0,mpi_size,&routing_tables_cks[2][0]);
+  queues[0].enqueueWriteBuffer(routing_table_ck_s_3, CL_TRUE,0,mpi_size,&routing_tables_cks[3][0]);
 
-  // std::pair<kernel object, whether kernel is autorun>
-  std::vector<hlslib::ocl::Kernel> comm_kernels;
+  queues[0].enqueueWriteBuffer(routing_table_ck_r_0, CL_TRUE,0,4,&routing_tables_ckr[0]);
+  queues[0].enqueueWriteBuffer(routing_table_ck_r_1, CL_TRUE,0,4,&routing_tables_ckr[1]);
+  queues[0].enqueueWriteBuffer(routing_table_ck_r_2, CL_TRUE,0,4,&routing_tables_ckr[2]);
+  queues[0].enqueueWriteBuffer(routing_table_ck_r_3, CL_TRUE,0,4,&routing_tables_ckr[3]);
+ 
 
-  MPIStatus(mpi_rank, "Starting communication kernels...\n");
-  for (int i = 0; i < kChannelsPerRank; ++i) {
-    comm_kernels.emplace_back(program.MakeKernel("CK_S_" + std::to_string(i),
-                                                 routing_tables_cks_device[i]));
-    comm_kernels.emplace_back(program.MakeKernel("CK_R_" + std::to_string(i),
-                                                 routing_tables_ckr_device[i],
-                                                 char(mpi_rank)));
-  }
-  for (auto &k : comm_kernels) {
-    // Will never terminate, so we don't care about the return value of fork
-    k.ExecuteTaskFork();
-  }
+  //LAUNCH CK
+   //args for the CK_Ss
+  kernels[0].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
+  kernels[1].setArg(0,sizeof(cl_mem),&routing_table_ck_s_1);
+  kernels[2].setArg(0,sizeof(cl_mem),&routing_table_ck_s_2);
+  
+
+  //args for the CK_Rs
+  kernels[3].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
+  kernels[3].setArg(1,sizeof(char),&mpi_rank);
+  kernels[4].setArg(0,sizeof(cl_mem),&routing_table_ck_r_1);
+  kernels[4].setArg(1,sizeof(char),&mpi_rank);
+  kernels[5].setArg(0,sizeof(cl_mem),&routing_table_ck_r_2);
+  kernels[5].setArg(1,sizeof(char),&mpi_rank);
+
+  for(int i=0;i<6;i++)
+     queues[i].enqueueTask(kernels[i]);
 
   // Wait for communication kernels to start
   MPI_Barrier(MPI_COMM_WORLD);
 
   MPIStatus(mpi_rank, "Starting memory conversion kernels...\n");
-  std::vector<hlslib::ocl::Kernel> conv_kernels;
-  conv_kernels.emplace_back(
-      program.MakeKernel("ConvertReceiveLeft", i_px, i_py,(char)mpi_rank));
-  conv_kernels.emplace_back(
-      program.MakeKernel("ConvertReceiveRight", i_px, i_py,(char)mpi_rank));
-  conv_kernels.emplace_back(
-      program.MakeKernel("ConvertReceiveTop", i_px, i_py,(char)mpi_rank));
-  conv_kernels.emplace_back(
-      program.MakeKernel("ConvertReceiveBottom", i_px, i_py,(char)mpi_rank));
-  conv_kernels.emplace_back(program.MakeKernel("ConvertSendLeft", i_px, i_py,(char)mpi_rank));
-  conv_kernels.emplace_back(program.MakeKernel("ConvertSendRight", i_px, i_py,(char)mpi_rank));
-  conv_kernels.emplace_back(program.MakeKernel("ConvertSendTop", i_px, i_py,(char)mpi_rank));
-  conv_kernels.emplace_back(
-      program.MakeKernel("ConvertSendBottom", i_px, i_py,(char)mpi_rank));
-  conv_kernels.emplace_back(
-      program.MakeKernel("ConvertSendBottom", i_px, i_py,(char)mpi_rank));
-  for (auto &k : conv_kernels) {
-    k.ExecuteTaskFork();
-  }
 
+  //convert receive
+  for(int i=6;i<14;i++)
+  {
+    kernels[i].setArg(0,sizeof(int),&i_px);
+    kernels[i].setArg(1,sizeof(int),&i_py);
+    kernels[i].setArg(2,sizeof(char),&mpi_rank);
+  }
+  for(int i=6;i<14;i++)
+    queues[i].enqueueTask(kernels[i]);
   // Wait for conversion kernels to start
   MPI_Barrier(MPI_COMM_WORLD);
 
   MPIStatus(mpi_rank, "Creating compute kernels...\n");
 
+  //compute kernels
+  //Read
+  for(int i=0;i<4;i++)
+    kernels[14].setArg(i,sizeof(cl_mem),&(temperature_interleaved_device[i]));
+  kernels[14].setArg(4,sizeof(int),&i_px);
+  kernels[14].setArg(5,sizeof(int),&i_py);
+  kernels[14].setArg(6,sizeof(int),&timesteps);
+  kernels[14].setArg(7,sizeof(char),&mpi_rank);
+  //Read power
+  for(int i=0;i<4;i++)
+    kernels[15].setArg(i,sizeof(cl_mem),&power_interleaved_device[i]);
+  kernels[15].setArg(4,sizeof(int),&timesteps);
+  kernels[15].setArg(5,sizeof(char),&mpi_rank);
+  //stencil
+  kernels[16].setArg(0,sizeof(float),&rx1);
+  kernels[16].setArg(1,sizeof(float),&ry1);
+  kernels[16].setArg(2,sizeof(float),&rz1);
+  kernels[16].setArg(3,sizeof(float),&step_div_cap);
+  kernels[16].setArg(4,sizeof(int),&i_px);
+  kernels[16].setArg(5,sizeof(int),&i_py);
+  kernels[16].setArg(6,sizeof(int),&timesteps);
+  kernels[16].setArg(7,sizeof(char),&mpi_rank);
 
-  std::vector<hlslib::ocl::Kernel> compute_kernels;
-  compute_kernels.emplace_back(program.MakeKernel(
-      "Read", temperature_interleaved_device[0],
-      temperature_interleaved_device[1], temperature_interleaved_device[2],
-      temperature_interleaved_device[3], i_px, i_py, timesteps,(char)mpi_rank));
-  compute_kernels.emplace_back(program.MakeKernel(
-      "ReadPower", power_interleaved_device[0], power_interleaved_device[1],
-      power_interleaved_device[2], power_interleaved_device[3], timesteps,(char)mpi_rank));
-  compute_kernels.emplace_back(program.MakeKernel(
-      "Stencil", rx1, ry1, rz1, step_div_cap, i_px, i_py, timesteps,(char)mpi_rank));
-  compute_kernels.emplace_back(program.MakeKernel(
-      "Write", temperature_interleaved_device[0],
-      temperature_interleaved_device[1], temperature_interleaved_device[2],
-      temperature_interleaved_device[3], i_px, i_py, timesteps,(char)mpi_rank));
+  //write
+  for(int i=0;i<4;i++)
+    kernels[17].setArg(i,sizeof(cl_mem),&temperature_interleaved_device[i]);
+  kernels[17].setArg(4,sizeof(int),&i_px);
+  kernels[17].setArg(5,sizeof(int),&i_py);
+  kernels[17].setArg(6,sizeof(int),&timesteps);
+  kernels[17].setArg(7,sizeof(char),&mpi_rank);
+
 
   // Wait for all ranks to be ready for launch
   MPI_Barrier(MPI_COMM_WORLD);
 
   MPIStatus(mpi_rank, "Launching kernels...\n");
+
   std::vector<std::future<std::pair<double, double>>> futures;
   const auto start = std::chrono::high_resolution_clock::now();
-  for (auto &k : compute_kernels) {
-    futures.emplace_back(k.ExecuteTaskAsync());
-  }
+  for(int i=14;i<18;i++)
+    queues[i].enqueueTask(kernels[i]);
 
   MPIStatus(mpi_rank, "Waiting for kernels to finish...\n");
-  for (auto &f : futures) {
-    f.wait();
-  }
+  for(int i=14;i<18;i++)
+    queues[i].finish();
+
   const auto end = std::chrono::high_resolution_clock::now();
   const double elapsed =
       1e-9 *
@@ -446,9 +440,8 @@ int main(int argc, char **argv) {
   MPIStatus(mpi_rank, "Copying back result...\n");
   int offset = (timesteps % 2 == 0) ? 0 : kYLocal * kXLocal / kMemoryBanks;
   for (int b = 0; b < kMemoryBanks; ++b) {
-    temperature_interleaved_device[b].CopyToHost(
-        offset, kYLocal * kXLocal / kMemoryBanks,
-        temperature_interleaved_host[b].begin());
+    queues[0].enqueueReadBuffer(temperature_interleaved_device[b],CL_TRUE,offset,sizeof(float)*kYLocal * kXLocal / kMemoryBanks,temperature_interleaved_host[b].data());
+
   }
 
   MPIStatus(mpi_rank, "De-interleaving memory...\n");
