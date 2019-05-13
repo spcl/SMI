@@ -255,7 +255,7 @@ int main(int argc, char *argv[])
     bool ok=true;
 
 
-    testStreamed(program_path,n,alpha,beta,streamed_times, transfer_times,runs);
+    testStreamed(program_path,n,m,alpha,beta,streamed_times, transfer_times,runs);
 
     for(int i=0;i<n;i++)
     {
