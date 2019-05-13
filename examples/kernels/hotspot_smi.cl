@@ -158,7 +158,6 @@ kernel void ReadPower(__global volatile const VTYPE *restrict bank0,
         for (int b = 0; b < B; ++b) {
           res[b] = -100;
         }
-#if 0
         // oob: out of bounds with respect to the local domain, i.e., not
         // necessarily the global domain.
         const bool oob_top = i < 1;
@@ -175,7 +174,6 @@ kernel void ReadPower(__global volatile const VTYPE *restrict bank0,
           res[2] = bank2[(i - 1) * (Y_LOCAL / (W * B)) + (j - 1)];
           res[3] = bank3[(i - 1) * (Y_LOCAL / (W * B)) + (j - 1)];
         }
-#endif
         #pragma unroll
         for (int b = 0; b < B; ++b) {
           write_channel_intel(power_stream[b], res[b]);

@@ -310,6 +310,9 @@ int main(int argc, char **argv) {
   cl::Buffer routing_table_ck_r_2(context,CL_MEM_READ_ONLY,tags);
   cl::Buffer routing_table_ck_r_3(context,CL_MEM_READ_ONLY,tags);
 
+
+  questi mi sembra che siano semplicemente temperature interleaved device
+          fa la move cosi' per convenienza
   const std::array<hlslib::ocl::MemoryBank, 4> banks = {
       hlslib::ocl::MemoryBank::bank0, hlslib::ocl::MemoryBank::bank1,
       hlslib::ocl::MemoryBank::bank2, hlslib::ocl::MemoryBank::bank3};
