@@ -69,7 +69,7 @@ void testStreamed(std::string program_path,int n, int m, float alpha, float beta
     float fzero=0;
     float fone=1;
     int width=64;
-    int tile_size=128;  //attention, change this if necessary
+    int tile_size=2048;  //attention, change this if necessary
     std::cout << "Executing streamed version with width: "<<width << "and tile "<<tile_size<<endl;
     int x_repetitions=ceil((float)(n)/tile_size);
 

@@ -8,7 +8,7 @@
 #define ANSI_COLOR_CYAN    "\x1b[36m"
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
-//#define DEBUG
+#define DEBUG
 #ifdef DEBUG
 #  define D(x) x
 #else
@@ -33,7 +33,7 @@
 
 channel VTYPE read_stream[B] __attribute__((depth(2)));
 channel VTYPE power_stream[B] __attribute__((depth(2)));
-channel VTYPE write_stream[B] __attribute__((depth(2)));
+channel VTYPE write_stream[B] __attribute__((depth(W)));
 channel VTYPE receive_top[B] __attribute__((depth(2)));
 channel VTYPE receive_bottom[B] __attribute__((depth(2)));
 channel float receive_left __attribute__((depth(32)));
@@ -134,8 +134,8 @@ kernel void Read(__global volatile const VTYPE *restrict bank0,
         for (int b = 0; b < B; ++b) {
           write_channel_intel(read_stream[b], res[b]);
         }
-        D(printf(ANSI_COLOR_GREEN "[READ-%d] sent data (%d,%d) to stencil kernel \n" ANSI_COLOR_RESET,my_rank,i,j);)
       }
+     // D(printf(ANSI_COLOR_GREEN "[READ-%d] sent data (%d) to stencil kernel \n" ANSI_COLOR_RESET,my_rank,i);)
     }
   }
 }
@@ -158,6 +158,7 @@ kernel void ReadPower(__global volatile const VTYPE *restrict bank0,
         for (int b = 0; b < B; ++b) {
           res[b] = -100;
         }
+#if 0
         // oob: out of bounds with respect to the local domain, i.e., not
         // necessarily the global domain.
         const bool oob_top = i < 1;
@@ -174,13 +175,14 @@ kernel void ReadPower(__global volatile const VTYPE *restrict bank0,
           res[2] = bank2[(i - 1) * (Y_LOCAL / (W * B)) + (j - 1)];
           res[3] = bank3[(i - 1) * (Y_LOCAL / (W * B)) + (j - 1)];
         }
+#endif
         #pragma unroll
         for (int b = 0; b < B; ++b) {
           write_channel_intel(power_stream[b], res[b]);
         }
-        D(printf(ANSI_COLOR_BLUE "[POWER-%d] sent data (%d,%d) to stencil kernel \n" ANSI_COLOR_RESET,my_rank,i,j);)
 
       }
+      //D(printf(ANSI_COLOR_BLUE "[POWER-%d] sent data (%d) to stencil kernel \n" ANSI_COLOR_RESET,my_rank,i);)
     }
   }
   D(printf(ANSI_COLOR_BLUE "***********[POWER-%d] finished************ \n" ANSI_COLOR_RESET,my_rank);)
@@ -219,10 +221,10 @@ kernel void Stencil(const float rx1, const float ry1, const float rz1,
         D(printf("[STENCIL-%d] read data (%d,%d)\n",my_rank,i,j);)
         // If in bounds, compute and output
         if (i >= 2 && j >= 1 && j < (Y_LOCAL / (B * W)) + 1) {
-          #pragma unroll
+          #pragma unroll 1
           for (int b = 0; b < B; ++b) {
             VTYPE res;
-            #pragma unroll
+            #pragma unroll 1
             for (int w = 0; w < W; ++w) {
               if (t == 0) {
                 res[w] = buffer[Y_LOCAL + 2 * B * W + b * W + w];
@@ -263,8 +265,9 @@ kernel void Stencil(const float rx1, const float ry1, const float rz1,
               }
             }
             write_channel_intel(write_stream[b], res);
-            D(printf("[STENCIL-%d] sent data (%d,%d)\n",my_rank,i,j);)
+            //D(printf("[STENCIL-%d] sent data (%d,%d)\n",my_rank,i,j);)
           }
+          D(printf("[STENCIL-%d] sent data (%d,%d)\n",my_rank,i,j);)
          // printf("[STENCIL-%d] sent data for timestamp: %d j:%d\n",my_rank,t,j);
         }
       }
@@ -280,6 +283,7 @@ kernel void Write(__global volatile VTYPE *restrict bank0,
                   __global volatile VTYPE *restrict bank2,
                   __global volatile VTYPE *restrict bank3, const int i_px,
                   const int i_py, const int timesteps, char my_rank) {
+      mem_fence(CLK_GLOBAL_MEM_FENCE | CLK_CHANNEL_MEM_FENCE);
   // Extra timestep to write first halos before starting computation
   D(printf(ANSI_COLOR_YELLOW "[WRITE-%d] i_px: %d, i_py: %d\n" ANSI_COLOR_RESET,my_rank,i_px,i_py);)
   D(printf(ANSI_COLOR_YELLOW "[WRITE-%d] i loops runs for %d iteration, j-loop runs for %d iterations\n" ANSI_COLOR_RESET,my_rank,X_LOCAL,Y_LOCAL / (B * W));)
@@ -356,6 +360,7 @@ kernel void Write(__global volatile VTYPE *restrict bank0,
 }
 
 kernel void ConvertReceiveLeft(const int i_px, const int i_py, char my_rank) {
+      mem_fence(CLK_GLOBAL_MEM_FENCE | CLK_CHANNEL_MEM_FENCE);
     int iteration=0;
   while (1) {
 
@@ -367,7 +372,7 @@ kernel void ConvertReceiveLeft(const int i_px, const int i_py, char my_rank) {
       float val; 
       SMI_Pop(&from_network, &val);
       //printf("[CRL - %d] received the %d-th value, sending it\n",my_rank,i);
-      mem_fence( CLK_CHANNEL_MEM_FENCE);
+      //mem_fence( CLK_CHANNEL_MEM_FENCE);
       write_channel_intel(receive_left, val);
 
     }

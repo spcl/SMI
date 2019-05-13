@@ -8,6 +8,9 @@
 #include "common.h"
 #include "hlslib/intel/OpenCL.h"
 #include "hotspot.h"
+#include "ocl_utils.hpp"
+#include "utils.hpp"
+#include "smi_utils.hpp"
 #include <unistd.h>
 
 // Convert from C to C++
@@ -72,7 +75,7 @@ AlignedVec_t ReadFile(const std::string path) {
     std::getline(fstream, line);
     result[i] = std::stof(line);
   }
-  return result;  
+  return result;
 }
 
 void WriteFile(const std::string path, AlignedVec_t const &data) {
@@ -220,6 +223,7 @@ int main(int argc, char **argv) {
     LoadRoutingTable<char>(mpi_rank, i, mpi_size, "hotspot_smi_routing", "cks",
                            &routing_tables_cks[i][0]);
   }
+
  /* usleep(100000*mpi_rank);
   std::cout << "----------------" <<std::endl;
   std::cout << "Rank: "<< mpi_rank<<std::endl;
@@ -270,15 +274,42 @@ int main(int argc, char **argv) {
   MPIStatus(mpi_rank, "Interleaving memory...\n");
   auto temperature_interleaved_host = InterleaveMemory(temperature_host);
   const auto power_interleaved_host = InterleaveMemory(power_host);
+  int fpga = mpi_rank % 2; // in this case is ok, pay attention
+  //fpga=0; //executed on 15 and 16
+  std::cout << "Rank: " << mpi_rank << " out of " << mpi_size << " ranks" << std::endl;
+  std::cout << "Program: " << kernel_path << " executed on fpga: "<<fpga<<std::endl;
+  char hostname[HOST_NAME_MAX];
+  gethostname(hostname, HOST_NAME_MAX);
+  printf("Rank %d executing on host: %s\n",rank,hostname);
+  cl::Platform  platform;
+  cl::Device device;
+  cl::Context context;
+  cl::Program program;
+  std::vector<cl::Kernel> kernels;
+  std::vector<cl::CommandQueue> queues;
+  std::vector<std::string> kernel_names={"CK_S_0","CK_S_1","CK_S_2","CK_R_0","CK_R_1","CK_R_2","ConvertReceiveLeft",\
+                                         "ConvertReceiveRight", "ConvertReceiveTop","ConvertReceiveBottom", "ConvertSendLeft","ConvertSendRight",\
+                                         "ConvertSendTop","ConvertSendBottom","Read","ReadPower","Stencil","Write"};
 
-  const int device = mpi_rank % kDevicesPerNode;
-  MPIStatus(mpi_rank, "Creating OpenCL context using device ", device, "...\n");
-  hlslib::ocl::Context context(mpi_rank % kDevicesPerNode);
+
+
+  //this is for the case with classi channels
+  IntelFPGAOCLUtils::initEnvironment(platform,device,fpga,context,program,kernel_path,kernel_names, kernels,queues);
 
   MPI_Barrier(MPI_COMM_WORLD);
-  MPIStatus(mpi_rank, "Creating program from binary...\n");
-  auto program = context.MakeProgram(kernel_path);
+
   MPIStatus(mpi_rank, "Allocating device memory...\n");
+  char tags=4;
+  cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
+  cl::Buffer routing_table_ck_s_0(context,CL_MEM_READ_ONLY,mpi_size);
+  cl::Buffer routing_table_ck_s_1(context,CL_MEM_READ_ONLY,mpi_size);
+  cl::Buffer routing_table_ck_s_2(context,CL_MEM_READ_ONLY,mpi_size);
+  cl::Buffer routing_table_ck_s_3(context,CL_MEM_READ_ONLY,mpi_size);
+  cl::Buffer routing_table_ck_r_0(context,CL_MEM_READ_ONLY,tags);
+  cl::Buffer routing_table_ck_r_1(context,CL_MEM_READ_ONLY,tags);
+  cl::Buffer routing_table_ck_r_2(context,CL_MEM_READ_ONLY,tags);
+  cl::Buffer routing_table_ck_r_3(context,CL_MEM_READ_ONLY,tags);
+
   const std::array<hlslib::ocl::MemoryBank, 4> banks = {
       hlslib::ocl::MemoryBank::bank0, hlslib::ocl::MemoryBank::bank1,
       hlslib::ocl::MemoryBank::bank2, hlslib::ocl::MemoryBank::bank3};
@@ -313,7 +344,8 @@ int main(int argc, char **argv) {
             routing_tables_ckr[i].cbegin(), routing_tables_ckr[i].cend());
   }
 
-
+  MPIStatus(mpi_rank, "Creating program from binary...\n");
+  auto program = context.MakeProgram(kernel_path);
 
   // std::pair<kernel object, whether kernel is autorun>
   std::vector<hlslib::ocl::Kernel> comm_kernels;
@@ -349,7 +381,8 @@ int main(int argc, char **argv) {
   conv_kernels.emplace_back(program.MakeKernel("ConvertSendTop", i_px, i_py,(char)mpi_rank));
   conv_kernels.emplace_back(
       program.MakeKernel("ConvertSendBottom", i_px, i_py,(char)mpi_rank));
-
+  conv_kernels.emplace_back(
+      program.MakeKernel("ConvertSendBottom", i_px, i_py,(char)mpi_rank));
   for (auto &k : conv_kernels) {
     k.ExecuteTaskFork();
   }
@@ -358,6 +391,8 @@ int main(int argc, char **argv) {
   MPI_Barrier(MPI_COMM_WORLD);
 
   MPIStatus(mpi_rank, "Creating compute kernels...\n");
+
+
   std::vector<hlslib::ocl::Kernel> compute_kernels;
   compute_kernels.emplace_back(program.MakeKernel(
       "Read", temperature_interleaved_device[0],
