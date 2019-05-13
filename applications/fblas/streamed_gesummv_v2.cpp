@@ -45,7 +45,7 @@ inline bool test_equals(float result, float expected, float relative_error)
 }
 
 
-void testStreamed(std::string program_path,int n, float alpha, float beta, std::vector<double> &times, std::vector <double> &transfer_times,int runs )
+void testStreamed(std::string program_path,int n, int m, float alpha, float beta, std::vector<double> &times, std::vector <double> &transfer_times,int runs )
 {
     cl::Platform platform;
     cl::Device device;
@@ -58,10 +58,10 @@ void testStreamed(std::string program_path,int n, float alpha, float beta, std::
     //create data
     posix_memalign ((void **)&fpga_res_y, IntelFPGAOCLUtils::AOCL_ALIGNMENT, n*sizeof(float));
 
-    cl::Buffer input_x(context, CL_MEM_READ_ONLY|CL_CHANNEL_1_INTELFPGA, n *sizeof(float));
+    cl::Buffer input_x(context, CL_MEM_READ_ONLY|CL_CHANNEL_1_INTELFPGA, m *sizeof(float));
     cl::Buffer input_output_y(context, CL_MEM_READ_WRITE|CL_CHANNEL_2_INTELFPGA, n * sizeof(float));
-    cl::Buffer input_A(context, CL_MEM_READ_ONLY|CL_CHANNEL_3_INTELFPGA, n * n*sizeof(float));
-    cl::Buffer input_B(context, CL_MEM_WRITE_ONLY|CL_CHANNEL_4_INTELFPGA, n * n*sizeof(float));
+    cl::Buffer input_A(context, CL_MEM_READ_ONLY|CL_CHANNEL_3_INTELFPGA, n * m*sizeof(float));
+    cl::Buffer input_B(context, CL_MEM_WRITE_ONLY|CL_CHANNEL_4_INTELFPGA, n * m*sizeof(float));
 
      //set kernel arguments
     int one=1;
@@ -76,14 +76,14 @@ void testStreamed(std::string program_path,int n, float alpha, float beta, std::
     //gemv_A
     kernels[0].setArg(0, sizeof(int),&one);
     kernels[0].setArg(1, sizeof(int),&n);
-    kernels[0].setArg(2, sizeof(int),&n);
+    kernels[0].setArg(2, sizeof(int),&m);
     kernels[0].setArg(3, sizeof(float),&alpha);
     kernels[0].setArg(4, sizeof(float),&fzero);
 
     //gemv_B
     kernels[1].setArg(0, sizeof(int),&one);
     kernels[1].setArg(1, sizeof(int),&n);
-    kernels[1].setArg(2, sizeof(int),&n);
+    kernels[1].setArg(2, sizeof(int),&m);
     kernels[1].setArg(3, sizeof(float),&beta);
     kernels[1].setArg(4, sizeof(float),&fzero);
 
@@ -94,18 +94,18 @@ void testStreamed(std::string program_path,int n, float alpha, float beta, std::
     //read_matrix_A
     kernels[3].setArg(0, sizeof(cl_mem),&input_A);
     kernels[3].setArg(1, sizeof(int),&n);
-    kernels[3].setArg(2, sizeof(int),&n);
-    kernels[3].setArg(3, sizeof(int),&n);
+    kernels[3].setArg(2, sizeof(int),&m);
+    kernels[3].setArg(3, sizeof(int),&m);
 
      //read_matrix_B
     kernels[4].setArg(0, sizeof(cl_mem),&input_B);
     kernels[4].setArg(1, sizeof(int),&n);
-    kernels[4].setArg(2, sizeof(int),&n);
-    kernels[4].setArg(3, sizeof(int),&n);
+    kernels[4].setArg(2, sizeof(int),&m);
+    kernels[4].setArg(3, sizeof(int),&m);
 
     //read_vector_x_A
     kernels[5].setArg(0, sizeof(cl_mem),&input_x);
-    kernels[5].setArg(1, sizeof(int),&n);
+    kernels[5].setArg(1, sizeof(int),&m);
     kernels[5].setArg(2, sizeof(int),&tile_size);
     kernels[5].setArg(3, sizeof(int),&x_repetitions);
 
@@ -117,7 +117,7 @@ void testStreamed(std::string program_path,int n, float alpha, float beta, std::
 
     //read_vector_x_B
     kernels[7].setArg(0, sizeof(cl_mem),&input_x);
-    kernels[7].setArg(1, sizeof(int),&n);
+    kernels[7].setArg(1, sizeof(int),&m);
     kernels[7].setArg(2, sizeof(int),&tile_size);
     kernels[7].setArg(3, sizeof(int),&x_repetitions);
 
@@ -139,9 +139,9 @@ void testStreamed(std::string program_path,int n, float alpha, float beta, std::
         cl::Event events[10];
         
         timestamp_t comp_start=current_time_usecs();
-        queues[0].enqueueWriteBuffer(input_A,CL_FALSE,0,n*n*sizeof(float),A);
-        queues[0].enqueueWriteBuffer(input_B,CL_FALSE,0,n*n*sizeof(float),B);
-        queues[0].enqueueWriteBuffer(input_x,CL_FALSE,0,n*sizeof(float),x);
+        queues[0].enqueueWriteBuffer(input_A,CL_FALSE,0,n*m*sizeof(float),A);
+        queues[0].enqueueWriteBuffer(input_B,CL_FALSE,0,n*m*sizeof(float),B);
+        queues[0].enqueueWriteBuffer(input_x,CL_FALSE,0,m*sizeof(float),x);
         queues[0].finish();
         transfer_time=current_time_usecs()-comp_start;
         asm volatile("": : :"memory");
@@ -185,9 +185,9 @@ int main(int argc, char *argv[])
 {
 
     //command line argument parsing
-    if(argc<11)
+    if(argc<13)
     {
-        cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <n> -a <alpha> -c <beta> -r <num runs>"<<endl;
+        cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <n> -m <m> -a <alpha> -c <beta> -r <num runs>"<<endl;
         exit(-1);
     }
 
@@ -196,11 +196,14 @@ int main(int argc, char *argv[])
     double alpha,beta;
     std::string program_path,program_path_streamed;;
     std::string json_path;
-    while ((c = getopt (argc, argv, "n:b:r:a:c:")) != -1)
+    while ((c = getopt (argc, argv, "n:b:r:a:c:m:")) != -1)
         switch (c)
         {
             case 'n':
                 n=atoi(optarg);
+                break;
+            case 'm':
+                m=atoi(optarg);
                 break;
             case 'a':
                 alpha=atof(optarg);

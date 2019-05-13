@@ -377,10 +377,7 @@ int main(int argc, char *argv[])
         for(int i=0;i<num_kernels-2;i++)
             queues[i].enqueueTask(kernels[i],nullptr,&events[i]);
         for(int i=0;i<kernel_names.size()-2;i++)
-        {
             queues[i].finish();
-            printf("Kernel %d finito\n",i);
-        }
 
         //wait
         #if defined(MPI)
