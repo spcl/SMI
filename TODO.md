@@ -17,4 +17,4 @@
 	Or can we rely on MPI_FINALIZE?
 
 
-- collective: we can think about having some small computation on CK_S CK_R
+- code generation MPMD: if the ranks are asymettric (e.g. one send and the other receive) we need to differentiate between "sending" and "receiving" tags

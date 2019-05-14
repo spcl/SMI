@@ -360,6 +360,10 @@ int main(int argc, char **argv) {
   MPIStatus(mpi_rank, "Creating compute kernels...\n");
   std::vector<hlslib::ocl::Kernel> compute_kernels;
   compute_kernels.emplace_back(program.MakeKernel(
+      "Write", temperature_interleaved_device[0],
+      temperature_interleaved_device[1], temperature_interleaved_device[2],
+      temperature_interleaved_device[3], i_px, i_py, timesteps,(char)mpi_rank));
+  compute_kernels.emplace_back(program.MakeKernel(
       "Read", temperature_interleaved_device[0],
       temperature_interleaved_device[1], temperature_interleaved_device[2],
       temperature_interleaved_device[3], i_px, i_py, timesteps,(char)mpi_rank));
@@ -368,10 +372,6 @@ int main(int argc, char **argv) {
       power_interleaved_device[2], power_interleaved_device[3], timesteps,(char)mpi_rank));
   compute_kernels.emplace_back(program.MakeKernel(
       "Stencil", rx1, ry1, rz1, step_div_cap, i_px, i_py, timesteps,(char)mpi_rank));
-  compute_kernels.emplace_back(program.MakeKernel(
-      "Write", temperature_interleaved_device[0],
-      temperature_interleaved_device[1], temperature_interleaved_device[2],
-      temperature_interleaved_device[3], i_px, i_py, timesteps,(char)mpi_rank));
 
   // Wait for all ranks to be ready for launch
   MPI_Barrier(MPI_COMM_WORLD);
@@ -379,8 +379,10 @@ int main(int argc, char **argv) {
   MPIStatus(mpi_rank, "Launching kernels...\n");
   std::vector<std::future<std::pair<double, double>>> futures;
   const auto start = std::chrono::high_resolution_clock::now();
+  int i=0;
   for (auto &k : compute_kernels) {
     futures.emplace_back(k.ExecuteTaskAsync());
+    std::cout<< "Launched compute "<< i++ <<std::endl;
   }
 
   MPIStatus(mpi_rank, "Waiting for kernels to finish...\n");

@@ -1,5 +1,5 @@
 #include "hotspot.h"
-#include "smi.h"
+#include "smi_rank0.h"
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
 #define ANSI_COLOR_YELLOW  "\x1b[33m"
@@ -8,17 +8,17 @@
 #define ANSI_COLOR_CYAN    "\x1b[36m"
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
-#define DEBUG
+//#define DEBUG
 #ifdef DEBUG
 #  define D(x) x
 #else
 #  define D(x)
 #endif
-
+/*
 #if PX * PY != RANK_COUNT
 #error "Incompatible number of stencil processes and number of communication ranks."
 #endif
-
+*/
 //channel VTYPE read_stream[B] __attribute__((depth((Y/(W*B))/PY)));
 //channel VTYPE power_stream[B] __attribute__((depth((Y/(W*B))/PY)));
 //channel VTYPE write_stream[B] __attribute__((depth((Y/(W*B))/PY)));
@@ -216,7 +216,7 @@ kernel void Stencil(const float rx1, const float ry1, const float rz1,
         for (int b = 0; b < B; ++b) {
           power[b] = read_channel_intel(power_stream[b]);
         }
-        D(printf("[STENCIL-%d] read data (%d,%d)\n",my_rank,i,j);)
+        //D(printf("[STENCIL-%d] read data (%d,%d)\n",my_rank,i,j);)
         // If in bounds, compute and output
         if (i >= 2 && j >= 1 && j < (Y_LOCAL / (B * W)) + 1) {
           #pragma unroll 1
@@ -262,13 +262,15 @@ kernel void Stencil(const float rx1, const float ry1, const float rz1,
                 // }
               }
             }
+           // D(printf("[STENCIL-%d] sending data (%d,%d)...\n",my_rank,i,j);)
             write_channel_intel(write_stream[b], res);
-            //D(printf("[STENCIL-%d] sent data (%d,%d)\n",my_rank,i,j);)
+           // D(printf("[STENCIL-%d] sent data (%d,%d)\n",my_rank,i,j);)
           }
-          D(printf("[STENCIL-%d] sent data (%d,%d)\n",my_rank,i,j);)
+          //D(printf("[STENCIL-%d] sent data (%d,%d)\n",my_rank,i,j);)
          // printf("[STENCIL-%d] sent data for timestamp: %d j:%d\n",my_rank,t,j);
         }
       }
+      D(printf("[STENCIL-%d] finished row %d\n",my_rank,i);)
     }
     //mem_fence(CLK_GLOBAL_MEM_FENCE | CLK_CHANNEL_MEM_FENCE);
   }
@@ -281,7 +283,7 @@ kernel void Write(__global volatile VTYPE *restrict bank0,
                   __global volatile VTYPE *restrict bank2,
                   __global volatile VTYPE *restrict bank3, const int i_px,
                   const int i_py, const int timesteps, char my_rank) {
-      mem_fence(CLK_GLOBAL_MEM_FENCE | CLK_CHANNEL_MEM_FENCE);
+     // mem_fence(CLK_GLOBAL_MEM_FENCE | CLK_CHANNEL_MEM_FENCE);
   // Extra timestep to write first halos before starting computation
   D(printf(ANSI_COLOR_YELLOW "[WRITE-%d] i_px: %d, i_py: %d\n" ANSI_COLOR_RESET,my_rank,i_px,i_py);)
   D(printf(ANSI_COLOR_YELLOW "[WRITE-%d] i loops runs for %d iteration, j-loop runs for %d iterations\n" ANSI_COLOR_RESET,my_rank,X_LOCAL,Y_LOCAL / (B * W));)
@@ -358,7 +360,7 @@ kernel void Write(__global volatile VTYPE *restrict bank0,
 }
 
 kernel void ConvertReceiveLeft(const int i_px, const int i_py, char my_rank) {
-      mem_fence(CLK_GLOBAL_MEM_FENCE | CLK_CHANNEL_MEM_FENCE);
+      //mem_fence(CLK_GLOBAL_MEM_FENCE | CLK_CHANNEL_MEM_FENCE);
     int iteration=0;
   while (1) {
 
@@ -366,6 +368,7 @@ kernel void ConvertReceiveLeft(const int i_px, const int i_py, char my_rank) {
 
     SMI_Channel from_network =
         SMI_Open_receive_channel(X_LOCAL, SMI_FLOAT, i_px * PY + (i_py - 1), 1);
+      //printf("[%d] CRL, tag:%d --------\n",my_rank, from_network.tag);
     for (int i = 0; i < X_LOCAL; ++i) {
       float val; 
       SMI_Pop(&from_network, &val);
@@ -406,6 +409,7 @@ kernel void ConvertReceiveTop(const int i_px, const int i_py,char my_rank) {
 
     SMI_Channel from_network =
         SMI_Open_receive_channel(Y_LOCAL, SMI_FLOAT, (i_px - 1) * PY + i_py, 2);
+
     VTYPE vec[B];
     #pragma loop_coalesce
     for (int i = 0; i < Y_LOCAL / (B * W); ++i) {
@@ -438,6 +442,8 @@ kernel void ConvertReceiveBottom(const int i_px, const int i_py,char my_rank) {
 
     SMI_Channel from_network =
         SMI_Open_receive_channel(Y_LOCAL, SMI_FLOAT, (i_px + 1) * PY + i_py, 0);
+    //printf("[%d] CRB, tag:%d -----\n", my_rank, from_network.tag);
+
     VTYPE vec[B];
     #pragma loop_coalesce
     for (int i = 0; i < Y_LOCAL / (B * W); ++i) {
@@ -472,9 +478,7 @@ kernel void ConvertSendLeft(const int i_px, const int i_py, char my_rank) {
         SMI_Open_send_channel(X_LOCAL, SMI_FLOAT, i_px * PY + i_py - 1, 3);
     D(printf(ANSI_COLOR_RED"[CSL - %d] starting iteration %d\n"ANSI_COLOR_RESET,my_rank,iteration);)
     for (int i = 0; i < X_LOCAL; ++i) {
-      //printf("[CSL - %d] Waiting for a value...\n",my_rank);
       float val = read_channel_intel(send_left);
-      //printf("[CSL - %d] send the %d-th value, sending it\n",my_rank,i);
       //mem_fence(CLK_GLOBAL_MEM_FENCE | CLK_CHANNEL_MEM_FENCE);
      // mem_fence(CLK_CHANNEL_MEM_FENCE);
 
@@ -495,9 +499,7 @@ kernel void ConvertSendRight(const int i_px, const int i_py,char my_rank) {
     SMI_Channel to_network =
         SMI_Open_send_channel(X_LOCAL, SMI_FLOAT, i_px * PY + i_py + 1, 1);
     for (int i = 0; i < X_LOCAL; ++i) {
-      // printf("[CSR - %d] Waiting for a value...\n",my_rank);
       float val = read_channel_intel(send_right);
-      //printf("[CSR - %d] send the %d-th value, sending it\n",my_rank,i);
       //mem_fence(CLK_GLOBAL_MEM_FENCE | CLK_CHANNEL_MEM_FENCE);
      // mem_fence(CLK_CHANNEL_MEM_FENCE);
 

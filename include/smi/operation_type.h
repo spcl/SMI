@@ -4,6 +4,7 @@
 
 #ifndef OPERATION_TYPE_H
 #define OPERATION_TYPE_H
+#pragma OPENCL EXTENSION cl_khr_fp64 : enable
 /**
     Type of operation performed
 */
