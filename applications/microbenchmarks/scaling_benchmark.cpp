@@ -76,13 +76,13 @@ int main(int argc, char *argv[])
     fpga = rank % 2; // in this case is ok, pay attention
     //fpga=0; //executed on 15 and 16
     std::cout << "Rank: " << rank << " out of " << rank_count << " ranks, executing on fpga " <<fpga<< std::endl;
-   /* if(rank==0)
+    if(rank==0)
         program_path = replace(program_path, "<rank>", std::string("0"));
     else
         program_path = replace(program_path, "<rank>", std::string("1"));
-*/
+
     //for emulation
-    program_path = replace(program_path, "<rank>", std::to_string(rank));
+    //program_path = replace(program_path, "<rank>", std::to_string(rank));
     std::cout << "Program: " << program_path << std::endl;
     char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);
@@ -199,11 +199,20 @@ int main(int argc, char *argv[])
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
         if(rank==recv_rank)
         {
+            ulong min_start=4294967295, max_end=0;
             ulong end, start;
-            events[0].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
-            events[0].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
-            double time= (double)((end-start)/1000.0f);
-            times.push_back(time);
+            for(int i=0;i<2;i++)
+            {
+                events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
+                events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
+                if(i==0)
+                    min_start=start;
+                if(start<min_start)
+                    min_start=start;
+                if(end>max_end)
+                    max_end=end;
+            }
+            times.push_back((double)((max_end-min_start)/1000.0f));
 
             //check
             char res,res2;
