@@ -97,6 +97,7 @@ int main(int argc, char *argv[])
     std::vector<std::string> kernel_names;
 
     kernel_names.push_back("app");
+    kernel_names.push_back("app_1");
     kernel_names.push_back("CK_S_0");
     kernel_names.push_back("CK_S_1");
     kernel_names.push_back("CK_S_2");
@@ -111,7 +112,8 @@ int main(int argc, char *argv[])
     IntelFPGAOCLUtils::initEnvironment(platform,device,fpga,context,program,program_path,kernel_names, kernels,queues);
 
     //create memory buffers
-    const char tags=1;
+    const char tags=2;
+    std::cout << "Version with " <<(int)tags<< " tags" << std::endl;
     cl::Buffer routing_table_ck_s_0(context,CL_MEM_READ_ONLY,rank_count);
     cl::Buffer routing_table_ck_s_1(context,CL_MEM_READ_ONLY,rank_count);
     cl::Buffer routing_table_ck_s_2(context,CL_MEM_READ_ONLY,rank_count);
@@ -121,11 +123,13 @@ int main(int argc, char *argv[])
     cl::Buffer routing_table_ck_r_2(context,CL_MEM_READ_ONLY,tags);
     cl::Buffer routing_table_ck_r_3(context,CL_MEM_READ_ONLY,tags);
     cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
+    cl::Buffer check2(context,CL_MEM_WRITE_ONLY,1);
+
     //load routing tables
     char routing_tables_ckr[4][tags]; //only one tag
     char routing_tables_cks[4][rank_count]; //4 ranks
     for (int i = 0; i < kChannelsPerRank; ++i) {
-        LoadRoutingTable<char>(rank, i, 1, ROUTING_DIR, "ckr", &routing_tables_ckr[i][0]);
+        LoadRoutingTable<char>(rank, i, tags, ROUTING_DIR, "ckr", &routing_tables_ckr[i][0]);
         LoadRoutingTable<char>(rank, i, rank_count, ROUTING_DIR, "cks", &routing_tables_cks[i][0]);
     }
 
@@ -144,27 +148,31 @@ int main(int argc, char *argv[])
         char dest=(char)recv_rank;
         kernels[0].setArg(0,sizeof(int),&n);
         kernels[0].setArg(1,sizeof(char),&dest);
+        kernels[1].setArg(0,sizeof(int),&n);
+        kernels[1].setArg(1,sizeof(char),&dest);
     }
     else
     {
         kernels[0].setArg(0,sizeof(cl_mem),&check);
         kernels[0].setArg(1,sizeof(int),&n);
+        kernels[1].setArg(0,sizeof(cl_mem),&check2);
+        kernels[1].setArg(1,sizeof(int),&n);
     }
     //args for the CK_Ss
-    kernels[1].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
-    kernels[2].setArg(0,sizeof(cl_mem),&routing_table_ck_s_1);
-    kernels[3].setArg(0,sizeof(cl_mem),&routing_table_ck_s_2);
-    kernels[4].setArg(0,sizeof(cl_mem),&routing_table_ck_s_3);
+    kernels[2].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
+    kernels[3].setArg(0,sizeof(cl_mem),&routing_table_ck_s_1);
+    kernels[4].setArg(0,sizeof(cl_mem),&routing_table_ck_s_2);
+    kernels[5].setArg(0,sizeof(cl_mem),&routing_table_ck_s_3);
 
     //args for the CK_Rs
-    kernels[5].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
-    kernels[5].setArg(1,sizeof(char),&rank);
-    kernels[6].setArg(0,sizeof(cl_mem),&routing_table_ck_r_1);
+    kernels[6].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
     kernels[6].setArg(1,sizeof(char),&rank);
-    kernels[7].setArg(0,sizeof(cl_mem),&routing_table_ck_r_2);
+    kernels[7].setArg(0,sizeof(cl_mem),&routing_table_ck_r_1);
     kernels[7].setArg(1,sizeof(char),&rank);
-    kernels[8].setArg(0,sizeof(cl_mem),&routing_table_ck_r_3);
+    kernels[8].setArg(0,sizeof(cl_mem),&routing_table_ck_r_2);
     kernels[8].setArg(1,sizeof(char),&rank);
+    kernels[9].setArg(0,sizeof(cl_mem),&routing_table_ck_r_3);
+    kernels[9].setArg(1,sizeof(char),&rank);
 
     //start the CKs
     const int num_kernels=kernel_names.size();
@@ -183,8 +191,10 @@ int main(int argc, char *argv[])
         if(rank==0 || rank==recv_rank)
         {
             queues[0].enqueueTask(kernels[0],nullptr,&events[0]);
+            queues[1].enqueueTask(kernels[1],nullptr,&events[1]);
 
             queues[0].finish();
+            queues[1].finish();
         }
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
         if(rank==recv_rank)
@@ -196,9 +206,10 @@ int main(int argc, char *argv[])
             times.push_back(time);
 
             //check
-            char res;
+            char res,res2;
             queues[0].enqueueReadBuffer(check,CL_TRUE,0,1,&res);
-            if(res==1)
+            queues[0].enqueueReadBuffer(check2,CL_TRUE,0,1,&res2);
+            if(res==1 && res2==1)
                 cout << "Result is Ok!"<<endl;
             else
                 cout << "Error!!!!"<<endl;

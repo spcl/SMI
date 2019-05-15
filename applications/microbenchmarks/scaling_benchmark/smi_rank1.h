@@ -57,11 +57,11 @@ channel SMI_Network_message io_in_3 __attribute__((depth(16))) __attribute__((io
 #endif
 
 // internal routing tables
-__constant char internal_sender_rt[1] = { 0 };
-__constant char internal_receiver_rt[1] = { 0 };
+//__constant char internal_sender_rt[2] = { 0, 1 };
+__constant char internal_receiver_rt[2] = { 0, 1 };
 
-//channel SMI_Network_message channels_to_ck_s[1] __attribute__((depth(16)));
-channel SMI_Network_message channels_from_ck_r[1] __attribute__((depth(16)));
+//channel SMI_Network_message channels_to_ck_s[2] __attribute__((depth(16)));
+channel SMI_Network_message channels_from_ck_r[2] __attribute__((depth(16)));
 
 __constant char QSFP_COUNT = 4;
 
@@ -78,6 +78,8 @@ channel SMI_Network_message channels_interconnect_ck_s_to_ck_r[QSFP_COUNT] __att
 channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __attribute__((depth(16)));
 
 #include "smi/pop.h"
+//#include "smi/push.h"
+
 __constant char READS_LIMIT=16;
 
 __kernel void CK_S_0(__global volatile char *restrict rt)
@@ -95,6 +97,7 @@ __kernel void CK_S_0(__global volatile char *restrict rt)
 
     while(1)
     {
+
         int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
@@ -160,8 +163,8 @@ __kernel void CK_S_0(__global volatile char *restrict rt)
 }
 __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
 {
-    char external_routing_table[1 /* tag count */];
-    for (int i = 0; i < 1 /* tag count */; i++)
+    char external_routing_table[2 /* tag count */];
+    for (int i = 0; i < 2 /* tag count */; i++)
     {
         external_routing_table[i] = rt[i];
     }
@@ -252,7 +255,7 @@ __kernel void CK_S_1(__global volatile char *restrict rt)
         external_routing_table[i] = rt[i];
     }
 
-    // number of CK_S - 1 + CK_R + 0 tags
+    // number of CK_S - 1 + CK_R + 1 tags
     const char num_sender = 4;
     char sender_id = 0;
     SMI_Network_message message;
@@ -279,6 +282,7 @@ __kernel void CK_S_1(__global volatile char *restrict rt)
                 // receive from CK_R_1
                 message = read_channel_nb_intel(channels_interconnect_ck_r_to_ck_s[1], &valid);
                 break;
+
         }
 
         if (valid)
@@ -323,8 +327,8 @@ __kernel void CK_S_1(__global volatile char *restrict rt)
 }
 __kernel void CK_R_1(__global volatile char *restrict rt, const char rank)
 {
-    char external_routing_table[1 /* tag count */];
-    for (int i = 0; i < 1 /* tag count */; i++)
+    char external_routing_table[2 /* tag count */];
+    for (int i = 0; i < 2 /* tag count */; i++)
     {
         external_routing_table[i] = rt[i];
     }
@@ -388,6 +392,10 @@ __kernel void CK_R_1(__global volatile char *restrict rt, const char rank)
                 case 3:
                     // send to CK_R_3
                     write_channel_intel(channels_interconnect_ck_r[10], message);
+                    break;
+                case 4:
+                    // send to app channel with tag 1
+                    write_channel_intel(channels_from_ck_r[internal_receiver_rt[1]], message);
                     break;
             }
         }
@@ -482,8 +490,8 @@ __kernel void CK_S_2(__global volatile char *restrict rt)
 }
 __kernel void CK_R_2(__global volatile char *restrict rt, const char rank)
 {
-    char external_routing_table[1 /* tag count */];
-    for (int i = 0; i < 1 /* tag count */; i++)
+    char external_routing_table[2 /* tag count */];
+    for (int i = 0; i < 2 /* tag count */; i++)
     {
         external_routing_table[i] = rt[i];
     }
@@ -577,8 +585,8 @@ __kernel void CK_S_3(__global volatile char *restrict rt)
 
     while(1)
     {
-        bool valid = false;
         int contiguos_reads=0;
+        bool valid = false;
         switch (sender_id)
         {
             case 0:
@@ -641,8 +649,8 @@ __kernel void CK_S_3(__global volatile char *restrict rt)
 }
 __kernel void CK_R_3(__global volatile char *restrict rt, const char rank)
 {
-    char external_routing_table[1 /* tag count */];
-    for (int i = 0; i < 1 /* tag count */; i++)
+    char external_routing_table[2 /* tag count */];
+    for (int i = 0; i < 2 /* tag count */; i++)
     {
         external_routing_table[i] = rt[i];
     }
@@ -654,8 +662,8 @@ __kernel void CK_R_3(__global volatile char *restrict rt, const char rank)
 
     while(1)
     {
-        bool valid = false;
         int contiguos_reads=0;
+        bool valid = false;
         switch (sender_id)
         {
             case 0:
