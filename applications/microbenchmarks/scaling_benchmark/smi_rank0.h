@@ -79,7 +79,7 @@ channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __att
 
 #include "smi/push.h"
 
-__constant char READS_LIMIT=16;
+__constant char READS_LIMIT=8;
 
 __kernel void CK_S_0(__global volatile char *restrict rt)
 {

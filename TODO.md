@@ -2,11 +2,10 @@
 
 ## Implementation
 
-- unrolling in `push` primitives: into the code there is an unrolled loop to memcpy the datum.
-	The number of loop iterations depends on the data size, which is stored into the 
-	channel descriptor. Apparetenly, v 18.1.1 of the compiler is not able to unroll this.
-	If this is confirmed, one can explictly have multiple `if` with the unrolling
+- unrolling `push`/`pop` primitives: it works but the compiler inserts SERIAL EXE in some loop
+	resulting in a slow execution time
 
+- broadcast: doesnt' act as a barrier. Could it be a problem? Consider the MM case
 
 - quitter: how to stop CK_S and CK_R. Currently they are a sort of autorun kernel (they run with a `while(1)`)
 	but this can not prevent the host application to stop before all the data has been sent?
@@ -18,3 +17,7 @@
 
 
 - code generation MPMD: if the ranks are asymettric (e.g. one send and the other receive) we need to differentiate between "sending" and "receiving" tags
+
+- API: uniform everything with channel_id
+
+- CK_S/CK_R: keep reading from the same interface

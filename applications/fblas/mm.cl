@@ -4,7 +4,7 @@
 
 #define CTILE_ROWS 32
 #define CTILE_COLS 16
-#define MTILE 32
+#define MTILE 1024
 #define KERNEL_NAME sgemm
 #define CHANNEL_MATRIX_A channel_in_matrix_A_0
 #define CHANNEL_MATRIX_B channel_in_matrix_B_0
@@ -15,11 +15,11 @@
 #define __STRATIX_10__
 
 #include <commons.h>
-
 channel TYPE_T CHANNEL_MATRIX_A __attribute__((depth(CTILE_ROWS)));
 channel TYPE_T CHANNEL_MATRIX_B __attribute__((depth(CTILE_COLS)));
 channel TYPE_T CHANNEL_MATRIX_OUT __attribute__((depth(CTILE_COLS)));
 
+#include "smi_mm.h"
 
 /**
   Computes the GEMM. A and B are received through input channels.
@@ -38,7 +38,7 @@ __kernel void KERNEL_NAME(const int N, const int M, const int K, const TYPE_T al
     const int OuterBlocksM = 1 + (int)((M-1) / MTILE);
     const int InnerBlocksN = MTILE / CTILE_ROWS;
     const int InnerBlocksM = MTILE / CTILE_COLS;
-    __local TYPE_T __attribute__((memory)) localC[MTILE/CTILE_ROWS][MTILE/CTILE_COLS][CTILE_ROWS][CTILE_COLS];
+    /*__local*/ TYPE_T /*__attribute__((memory))*/ localC[MTILE/CTILE_ROWS][MTILE/CTILE_COLS][CTILE_ROWS][CTILE_COLS];
 
     //GEMM with outer product
 
@@ -114,7 +114,7 @@ __kernel void KERNEL_NAME(const int N, const int M, const int K, const TYPE_T al
 
 
 
-__kernel void READ_MATRIX_A(__global volatile TYPE_T * restrict A, const unsigned int N, const unsigned int K, const unsigned int M, const unsigned int lda)
+__kernel void READ_MATRIX_A(__global volatile TYPE_T * restrict A, const unsigned int N, const unsigned int K, const unsigned int M, const unsigned int lda, const char my_rank, const char num_ranks)
 {
     //double level of tiling
     const int OuterBlocksN = 1 + (int)((N-1) / MTILE);
@@ -124,33 +124,57 @@ __kernel void READ_MATRIX_A(__global volatile TYPE_T * restrict A, const unsigne
     const int BlocksK=(int)(K/MTILE);
 
     TYPE_T localA[MTILE];
-    for(int ti=0; ti< OuterBlocksN;ti++)
+
+    //I have to repeat the injection of A for num_ranks time
+    //and broadcast each time
+
+    for(char r=0;r<num_ranks;r++)
     {
-
-        //resend this tile a number of times equal to the number of column tiles of the matrix B
-        for(int tj=0;tj<OuterBlocksM;tj++)
+        for(int ti=0; ti< OuterBlocksN;ti++)
         {
-            for(int k=0;k<K;k++)
+
+            //resend this tile a number of times equal to the number of column tiles of the matrix B
+            for(int tj=0;tj<OuterBlocksM;tj++)
             {
-                //load A
-                #pragma unroll 8
-                for(int i=0;i<MTILE;i++)
+                for(int k=0;k<K;k++)
                 {
-                    if(ti*MTILE+i < N)
-                        localA[i]=A[(ti*MTILE+i)*lda+k];
-                    else
-                        localA[i]=0;
-                }
-
-                //now we have to iterates over the inner tiles of size CTILE_ROWS x MTILE
-                //each of them will be sent only once (and will be reused InnerBlocksM times)
-                for(int tti=0; tti<InnerBlocksN;tti++)
-                {
-
-                    #pragma unroll
-                    for(int i=0;i<CTILE_ROWS;i++)
+                    SMI_BChannel  __attribute__((register)) chan= SMI_Open_bcast_channel(MTILE, SMI_FLOAT, r,my_rank,num_ranks);
+                    //load A
+                    if(r==my_rank)
                     {
-                        write_channel_intel(CHANNEL_MATRIX_A,localA[tti*CTILE_ROWS+i]);
+                        #pragma unroll 8
+                        for(int i=0;i<MTILE;i++)
+                        {
+                            if(ti*MTILE+i < N)
+                                localA[i]=A[(ti*MTILE+i)*lda+k];
+                            else
+                                localA[i]=0;
+                        }
+                    }
+                    //Broadcast it
+
+                    //if(my_rank==3)
+                     //   printf("From rank %d: ",r);
+                    for(int i=0;i<MTILE;i++)
+                    {
+                        SMI_Bcast(&chan,&(localA[i]));
+                       // if(my_rank==3)
+                         //   printf("%.0f ",localA[i]);
+                    }
+                    //if(my_rank==3)
+                      //  printf("\n");
+
+
+                    //now we have to iterates over the inner tiles of size CTILE_ROWS x MTILE
+                    //each of them will be sent only once (and will be reused InnerBlocksM times)
+                    for(int tti=0; tti<InnerBlocksN;tti++)
+                    {
+
+                        #pragma unroll
+                        for(int i=0;i<CTILE_ROWS;i++)
+                        {
+                            write_channel_intel(CHANNEL_MATRIX_A,localA[tti*CTILE_ROWS+i]);
+                        }
                     }
                 }
             }
