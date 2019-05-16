@@ -249,7 +249,7 @@ int main(int argc, char *argv[])
 
         //save the info into output file
         std::ostringstream filename;
-        filename << "smi_scaling_"<<rank_count-1 <<"_hops_"<< kb << ".dat";
+        filename << "smi_scaling_"<<rank_count-1 <<"_hops_"<< kb << "KB.dat";
         std::cout << "Saving info into: "<<filename.str()<<std::endl;
         ofstream fout(filename.str());
         fout << "#Sent (KB) = "<<data_sent_KB<<", Runs = "<<runs<<endl;
