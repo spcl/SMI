@@ -333,35 +333,38 @@ int main(int argc, char *argv[])
 
 #endif
 
-    //compute the average and standard deviation of times
-    double mean=0;
-    for(auto t:times)
-        mean+=t;
-    mean/=runs;
-    //report the mean in usecs
+    if(rank==0)
+    {
+        //compute the average and standard deviation of times
+        double mean=0;
+        for(auto t:times)
+            mean+=t;
+        mean/=runs;
+        //report the mean in usecs
 
-    double stddev=0;
-    for(auto t:times)
-        stddev+=((t-mean)*(t-mean));
-    stddev=sqrt(stddev/runs);
+        double stddev=0;
+        for(auto t:times)
+            stddev+=((t-mean)*(t-mean));
+        stddev=sqrt(stddev/runs);
 
-    double computation_gops=((double)(m)*n*(2*p-1)+m*n)/1000000000;
-    double measured_gops=computation_gops/((mean)/1000000.0);
-    cout << std::fixed;
-    cout << "FPGA Computation time (usec): " << mean << " (sttdev: " << stddev<<")"<<endl;
-    std::cout << "FPGA GOps/s: " << measured_gops<<std::endl;
+        double computation_gops=((double)(m)*n*(2*p-1)+m*n)/1000000000;
+        double measured_gops=computation_gops/((mean)/1000000.0);
+        cout << std::fixed;
+        cout << "FPGA Computation time (usec): " << mean << " (sttdev: " << stddev<<")"<<endl;
+        std::cout << "FPGA GOps/s: " << measured_gops<<std::endl;
 
-    //save the info into output file
-    ofstream fout("output.dat");
-    fout << "#N = "<<n<<", Runs = "<<runs<<endl;
-    fout << std::fixed;
-    fout << "#Average Computation time (usecs): "<<mean<<endl;
-    fout << "#Standard deviation (usecs): "<<stddev<<endl;
-    fout << "#GOPS/s: "<<measured_gops<<endl;
-    fout << "#Execution times (usecs):"<<endl;
-    for(auto t:times)
-        fout << t << endl;
-    fout.close();
+        //save the info into output file
+        ofstream fout("output.dat");
+        fout << "#N = "<<n<<", Runs = "<<runs<<endl;
+        fout << std::fixed;
+        fout << "#Average Computation time (usecs): "<<mean<<endl;
+        fout << "#Standard deviation (usecs): "<<stddev<<endl;
+        fout << "#GOPS/s: "<<measured_gops<<endl;
+        fout << "#Execution times (usecs):"<<endl;
+        for(auto t:times)
+            fout << t << endl;
+        fout.close();
+    }
 
 
 

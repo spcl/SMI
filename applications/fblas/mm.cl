@@ -2,9 +2,9 @@
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 
-#define CTILE_ROWS 8
-#define CTILE_COLS 8
-#define MTILE 32
+#define CTILE_ROWS 16
+#define CTILE_COLS 16
+#define MTILE 512
 #define KERNEL_NAME sgemm
 #define CHANNEL_MATRIX_A channel_in_matrix_A_0
 #define CHANNEL_MATRIX_B channel_in_matrix_B_0
