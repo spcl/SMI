@@ -3,7 +3,7 @@
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 
-#include "scaling_benchmark/smi_rank0.h"
+#include "scaling_benchmark/smi_rank1.h"
 
 
 

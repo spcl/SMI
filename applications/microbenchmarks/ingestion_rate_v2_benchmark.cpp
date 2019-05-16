@@ -63,13 +63,13 @@ int main(int argc, char *argv[])
     CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
     fpga = rank % 2; // in this case is ok, pay attention
     std::cout << "Rank: " << rank << " out of " << rank_count << " ranks" << std::endl;
-    if(rank==0)
+    /*if(rank==0)
         program_path = replace(program_path, "<rank>", std::string("0"));
     else
         program_path = replace(program_path, "<rank>", std::string("1"));
-
+*/
     //for emulation
-    //program_path = replace(program_path, "<rank>", std::to_string(rank));
+    program_path = replace(program_path, "<rank>", std::to_string(rank));
     std::cout << "Program: " << program_path << std::endl;
     char hostname[256];
     gethostname(hostname, 256);
@@ -128,6 +128,22 @@ int main(int argc, char *argv[])
     queues[0].enqueueWriteBuffer(routing_table_ck_r_2, CL_TRUE,0,tags,&routing_tables_ckr[2][0]);
     queues[0].enqueueWriteBuffer(routing_table_ck_r_3, CL_TRUE,0,tags,&routing_tables_ckr[3][0]);
 
+    kernels[0].setArg(0,sizeof(int),&n);
+    //args for the CK_Ss
+    kernels[1].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
+    kernels[2].setArg(0,sizeof(cl_mem),&routing_table_ck_s_1);
+    kernels[3].setArg(0,sizeof(cl_mem),&routing_table_ck_s_2);
+    kernels[4].setArg(0,sizeof(cl_mem),&routing_table_ck_s_3);
+
+    //args for the CK_Rs
+    kernels[5].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
+    kernels[5].setArg(1,sizeof(char),&rank);
+    kernels[6].setArg(0,sizeof(cl_mem),&routing_table_ck_r_1);
+    kernels[6].setArg(1,sizeof(char),&rank);
+    kernels[7].setArg(0,sizeof(cl_mem),&routing_table_ck_r_2);
+    kernels[7].setArg(1,sizeof(char),&rank);
+    kernels[8].setArg(0,sizeof(cl_mem),&routing_table_ck_r_3);
+    kernels[8].setArg(1,sizeof(char),&rank);
 
     const int num_kernels=kernel_names.size();
     for(int i=num_kernels-1;i>=num_kernels-8;i--)
