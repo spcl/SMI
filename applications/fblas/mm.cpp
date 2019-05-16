@@ -281,7 +281,7 @@ int main(int argc, char *argv[])
     //fcopy back to host the C partition computed in this FPGA
 #if defined(CHECK)
     queues[0].enqueueReadBuffer(output_C,CL_TRUE,0,n*mcol_partition*sizeof(float),fpgaC);
-    usleep(100000*rank);
+   /* usleep(100000*rank);
     printf("RANK: %d\n",rank);
     for(int i=0;i<n;i++)
     {
@@ -289,7 +289,7 @@ int main(int argc, char *argv[])
             printf("%.0f ",fpgaC[i*mcol_partition+j]);
         printf("\n");
     }
-
+*/
     //gather it
 
     for(int i=0;i<n;i++)

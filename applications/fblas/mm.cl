@@ -2,9 +2,9 @@
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 
-#define CTILE_ROWS 32
-#define CTILE_COLS 16
-#define MTILE 1024
+#define CTILE_ROWS 4
+#define CTILE_COLS 4
+#define MTILE 32
 #define KERNEL_NAME sgemm
 #define CHANNEL_MATRIX_A channel_in_matrix_A_0
 #define CHANNEL_MATRIX_B channel_in_matrix_B_0
@@ -123,22 +123,24 @@ __kernel void READ_MATRIX_A(__global volatile TYPE_T * restrict A, const unsigne
     const int InnerBlocksM = MTILE / CTILE_COLS;
     const int BlocksK=(int)(K/MTILE);
 
-    TYPE_T localA[MTILE];
 
     //I have to repeat the injection of A for num_ranks time
     //and broadcast each time
-
+   
     for(char r=0;r<num_ranks;r++)
     {
+
+
         for(int ti=0; ti< OuterBlocksN;ti++)
         {
 
             //resend this tile a number of times equal to the number of column tiles of the matrix B
             for(int tj=0;tj<OuterBlocksM;tj++)
             {
+                TYPE_T localA[MTILE];
+                 SMI_BChannel  __attribute__((register)) chan= SMI_Open_bcast_channel(K*MTILE, SMI_FLOAT, r,my_rank,num_ranks);
                 for(int k=0;k<K;k++)
                 {
-                    SMI_BChannel  __attribute__((register)) chan= SMI_Open_bcast_channel(MTILE, SMI_FLOAT, r,my_rank,num_ranks);
                     //load A
                     if(r==my_rank)
                     {
@@ -177,6 +179,7 @@ __kernel void READ_MATRIX_A(__global volatile TYPE_T * restrict A, const unsigne
                         }
                     }
                 }
+                mem_fence( CLK_CHANNEL_MEM_FENCE);
             }
         }
     }

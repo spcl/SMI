@@ -51,23 +51,23 @@ SMI_BChannel SMI_Open_bcast_channel(uint count, SMI_Datatype data_type, char roo
     chan.root_rank=root;
     chan.num_rank=num_ranks;
     switch(data_type)
-    {
+    {/*
         case(SMI_INT):
             chan.size_of_type=4;
             chan.elements_per_packet=7;
-            break;
+            break;*/
         case (SMI_FLOAT):
             chan.size_of_type=4;
             chan.elements_per_packet=7;
             break;
-        case (SMI_DOUBLE):
+       /* case (SMI_DOUBLE):
             chan.size_of_type=8;
             chan.elements_per_packet=3;
             break;
         case (SMI_CHAR):
             chan.size_of_type=1;
             chan.elements_per_packet=28;
-            break;
+            break;*/
          //TODO add more data types
     }
 
@@ -103,10 +103,10 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
       // const char chan_idx_out=internal_sender_rt[chan->tag_out];  //This should be properly code generated, good luck
         switch(chan->data_type)
         {
-            case SMI_CHAR:
+            /*case SMI_CHAR:
                 data_snd[chan->packet_element_id]=*conv;
             break;
-            case SMI_INT:
+            case SMI_INT:*/
             case SMI_FLOAT:
                 #pragma unroll
                 for(int jj=0;jj<4;jj++) //copy the data
@@ -160,7 +160,7 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
         char *data_rcv=chan->net_2.data;
         switch(chan->data_type)
         {
-            case SMI_CHAR:
+            /*case SMI_CHAR:
             {
                 char * ptr=data_rcv;
                 *(char *)data= *(char*)(ptr);
@@ -171,7 +171,7 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
                  char * ptr=data_rcv+(chan->packet_element_id_rcv)*4;
                  *(int *)data= *(int*)(ptr);
                 break;
-            }
+            }*/
             case SMI_FLOAT:
             {
                  char * ptr=data_rcv+(chan->packet_element_id_rcv)*4;
