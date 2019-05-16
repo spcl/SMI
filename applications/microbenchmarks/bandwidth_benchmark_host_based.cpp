@@ -142,8 +142,7 @@ int main(int argc, char *argv[])
        
         
     }
-    for(auto d:transfers)
-        printf("Rank %d, trasfer: %.3f\n",rank,d);
+
     if(rank==1)
     {
 
@@ -152,6 +151,11 @@ int main(int argc, char *argv[])
         for(auto t:times)
             mean+=t;
         mean/=runs;
+        //compute the average transfer time for this rank. Experimentally, the times are the same for both ranks
+        double transfer_time=0;
+        for(auto t:transfers)
+            transfer_time+=t;
+        transfer_time/=runs;
         //report the mean in usecs
         double stddev=0;
         for(auto t:times)
@@ -162,8 +166,10 @@ int main(int argc, char *argv[])
         cout << "Computation time (usec): " << mean << " (sttdev: " << stddev<<")"<<endl;
         cout << "Conf interval 99: "<<conf_interval_99<<endl;
         cout << "Conf interval 99 within " <<(conf_interval_99/mean)*100<<"% from mean" <<endl;
+        cout << "Average transfer time (usec): " << 2*transfer_time << endl;
         cout << "Sent (KB): " <<data_sent_KB<<endl;
         cout << "Average bandwidth (Gbit/s): " <<  (data_sent_KB*8/(mean/1000000.0))/(1024*1024) << endl;
+        cout << "Average bandwidth without PCI-e(Gbit/s): " <<  (data_sent_KB*8/((mean-2*transfer_time)/1000000.0))/(1024*1024) << endl;
 
         //save the info into output file
         std::ostringstream filename;
@@ -175,6 +181,8 @@ int main(int argc, char *argv[])
         fout << "#Confidence interval 99%: +- "<<conf_interval_99<<endl;
         fout << "#Execution times (usecs):"<<endl;
         fout << "#Average bandwidth (Gbit/s): " <<  (data_sent_KB*8/(mean/1000000.0))/(1024*1024) << endl;
+        fout << "#Average bandwidth without PCI-E (Gbit/s): " <<  (data_sent_KB*8/((mean-2*transfer_time)/1000000.0))/(1024*1024) << endl;
+
         for(auto t:times)
             fout << t << endl;
         fout.close();
