@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
         {
             case 'k':
                 kb=atoi(optarg);
-                n=(int)kn*54.8571; //the payload of each network packet is 28B, on each packet there is space for 3 doubles
+                n=(int)kb*54.8571; //the payload of each network packet is 28B, on each packet there is space for 3 doubles
                 break;
             case 'i':
                 runs=atoi(optarg);
