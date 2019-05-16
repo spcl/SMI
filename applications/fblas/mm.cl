@@ -2,8 +2,8 @@
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 
-#define CTILE_ROWS 4
-#define CTILE_COLS 4
+#define CTILE_ROWS 8
+#define CTILE_COLS 8
 #define MTILE 32
 #define KERNEL_NAME sgemm
 #define CHANNEL_MATRIX_A channel_in_matrix_A_0
@@ -159,7 +159,9 @@ __kernel void READ_MATRIX_A(__global volatile TYPE_T * restrict A, const unsigne
                      //   printf("From rank %d: ",r);
                     for(int i=0;i<MTILE;i++)
                     {
-                        SMI_Bcast(&chan,&(localA[i]));
+                        float value=localA[i];
+                        SMI_Bcast(&chan,&(value));
+                        localA[i]=value;
                        // if(my_rank==3)
                          //   printf("%.0f ",localA[i]);
                     }
