@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     if(argc<9)
     {
         cerr << "Send/Receiver tester " <<endl;
-        cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <length> -r <rank on which run the receiver> -i <number of runs>"<<endl;
+        cerr << "Usage: "<< argv[0]<<" -b <binary file> -k <KB> -r <rank on which run the receiver> -i <number of runs>"<<endl;
         exit(-1);
     }
     int n;
@@ -37,11 +37,13 @@ int main(int argc, char *argv[])
     int recv_rank;
     int fpga,runs;
     int rank;
-    while ((c = getopt (argc, argv, "n:b:r:f:i:")) != -1)
+    int kb;
+    while ((c = getopt (argc, argv, "k:b:r:f:i:")) != -1)
         switch (c)
         {
-            case 'n':
-                n=atoi(optarg);
+            case 'k':
+                kb=atoi(optarg);
+                n=(int)kn*54.8571; //the payload of each network packet is 28B, on each packet there is space for 3 doubles
                 break;
             case 'i':
                 runs=atoi(optarg);
@@ -69,7 +71,7 @@ int main(int argc, char *argv[])
                 exit(-1);
         }
 
-    cout << "Performing send/receive test with "<<n<<" elements"<<endl;
+    cout << "Performing scaling test with "<<n<<" elements per app"<<endl;
     int rank_count;
     CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &rank_count));
     CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
@@ -238,18 +240,24 @@ int main(int argc, char *argv[])
             stddev+=((t-mean)*(t-mean));
         stddev=sqrt(stddev/runs);
         double conf_interval_99=2.58*stddev/sqrt(runs);
-        cout << "Average Latency (usec): " << mean << " (sttdev: " << stddev<<")"<<endl;
+        double data_sent_KB=kb;
+        cout << "Computation time (usec): " << mean << " (sttdev: " << stddev<<")"<<endl;
         cout << "Conf interval 99: "<<conf_interval_99<<endl;
         cout << "Conf interval 99 within " <<(conf_interval_99/mean)*100<<"% from mean" <<endl;
+        cout << "Sent (KB): " <<data_sent_KB<<endl;
+        cout << "Average bandwidth (Gbit/s): " <<  (data_sent_KB*8/(mean/1000000.0))/(1024*1024) << endl;
 
         //save the info into output file
         std::ostringstream filename;
-        filename << "latency.dat";
+        filename << "smi_scaling_"<<rank_count <<"_"<< n << ".dat";
+        std::cout << "Saving info into: "<<filename.str()<<std::endl;
         ofstream fout(filename.str());
-        fout << "#Average Latency (usecs): "<<mean<<endl;
+        fout << "#Sent (KB) = "<<data_sent_KB<<", Runs = "<<runs<<endl;
+        fout << "#Average Computation time (usecs): "<<mean<<endl;
         fout << "#Standard deviation (usecs): "<<stddev<<endl;
         fout << "#Confidence interval 99%: +- "<<conf_interval_99<<endl;
         fout << "#Execution times (usecs):"<<endl;
+        fout << "#Average bandwidth (Gbit/s): " <<  (data_sent_KB*8/(mean/1000000.0))/(1024*1024) << endl;
         for(auto t:times)
             fout << t << endl;
         fout.close();
