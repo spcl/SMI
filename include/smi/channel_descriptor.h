@@ -1,5 +1,6 @@
 #ifndef CHANNEL_DESCRIPTOR_H
 #define CHANNEL_DESCRIPTOR_H
+#pragma OPENCL EXTENSION cl_intel_channels : enable
 #include "network_message.h"
 #include "operation_type.h"
 #include "data_types.h"

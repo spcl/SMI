@@ -17,8 +17,8 @@
 #include <CL/cl.h>
 #endif
 
-#include "common/opencl_util.h"
-#include "common/timer.h"
+#include "../common/opencl_util.h"
+#include "../common/timer.h"
 
 #ifdef NO_INTERLEAVE
 #include "CL/cl_ext.h"
@@ -280,7 +280,7 @@ int main(int argc, char **argv) {
   // get name of kernel file based on version
   char *kernel_file_path =
       getVersionedKernelName2("./nw_kernel", version_string);
-  char *source = read_kernel(kernel_file_path, &sourcesize);
+  char *source = read_kernel("bin/v1.aocx", &sourcesize);
 
   // read the kernel core source
   char const *kernel_nw1 = "nw_kernel1";

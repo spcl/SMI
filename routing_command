@@ -1,0 +1,2 @@
+python routing/main.py build <fpga-connection-file> <output-dir> <number-of-tags>
+

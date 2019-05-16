@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
-
+#define ALTERA
 #if defined(NV) //NVIDIA
 	#include <oclUtils.h>
 #elif defined(__APPLE__)
