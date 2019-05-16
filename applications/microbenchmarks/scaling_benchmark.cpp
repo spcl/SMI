@@ -240,7 +240,7 @@ int main(int argc, char *argv[])
             stddev+=((t-mean)*(t-mean));
         stddev=sqrt(stddev/runs);
         double conf_interval_99=2.58*stddev/sqrt(runs);
-        double data_sent_KB=kb;
+        double data_sent_KB=(n/3)*2*28/1024; //the real amount of data sent
         cout << "Computation time (usec): " << mean << " (sttdev: " << stddev<<")"<<endl;
         cout << "Conf interval 99: "<<conf_interval_99<<endl;
         cout << "Conf interval 99 within " <<(conf_interval_99/mean)*100<<"% from mean" <<endl;
@@ -249,7 +249,7 @@ int main(int argc, char *argv[])
 
         //save the info into output file
         std::ostringstream filename;
-        filename << "smi_scaling_"<<rank_count <<"_"<< n << ".dat";
+        filename << "smi_scaling_"<<rank_count <<"_"<< kb << ".dat";
         std::cout << "Saving info into: "<<filename.str()<<std::endl;
         ofstream fout(filename.str());
         fout << "#Sent (KB) = "<<data_sent_KB<<", Runs = "<<runs<<endl;
