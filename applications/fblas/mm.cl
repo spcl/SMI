@@ -2,9 +2,9 @@
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 
-#define CTILE_ROWS 16
-#define CTILE_COLS 16
-#define MTILE 512
+#define CTILE_ROWS 4
+#define CTILE_COLS 4
+#define MTILE 128
 #define KERNEL_NAME sgemm
 #define CHANNEL_MATRIX_A channel_in_matrix_A_0
 #define CHANNEL_MATRIX_B channel_in_matrix_B_0
@@ -15,7 +15,7 @@
 #define __STRATIX_10__
 
 #include <commons.h>
-channel TYPE_T CHANNEL_MATRIX_A __attribute__((depth(CTILE_ROWS)));
+channel TYPE_T CHANNEL_MATRIX_A __attribute__((depth(MTILE)));
 channel TYPE_T CHANNEL_MATRIX_B __attribute__((depth(CTILE_COLS)));
 channel TYPE_T CHANNEL_MATRIX_OUT __attribute__((depth(CTILE_COLS)));
 
@@ -157,14 +157,14 @@ __kernel void READ_MATRIX_A(__global volatile TYPE_T * restrict A, const unsigne
 
                     //if(my_rank==3)
                      //   printf("From rank %d: ",r);
-                    for(int i=0;i<MTILE;i++)
+                   /* for(int i=0;i<MTILE;i++)
                     {
                         float value=localA[i];
                         SMI_Bcast(&chan,&(value));
                         localA[i]=value;
                        // if(my_rank==3)
                          //   printf("%.0f ",localA[i]);
-                    }
+                    }*/
                     //if(my_rank==3)
                       //  printf("\n");
 
@@ -177,11 +177,14 @@ __kernel void READ_MATRIX_A(__global volatile TYPE_T * restrict A, const unsigne
                         #pragma unroll
                         for(int i=0;i<CTILE_ROWS;i++)
                         {
-                            write_channel_intel(CHANNEL_MATRIX_A,localA[tti*CTILE_ROWS+i]);
+                            float value=localA[tti*CTILE_ROWS+i];
+                            SMI_Bcast(&chan,&(value));
+                            /*localA[i]=value;*/
+                            write_channel_intel(CHANNEL_MATRIX_A,/*localA[tti*CTILE_ROWS+i]*/value);
                         }
                     }
                 }
-                mem_fence( CLK_CHANNEL_MEM_FENCE);
+                //mem_fence( CLK_CHANNEL_MEM_FENCE);
             }
         }
     }
