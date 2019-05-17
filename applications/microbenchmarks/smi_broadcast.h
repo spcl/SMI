@@ -66,6 +66,8 @@ channel SMI_Network_message channels_to_ck_s[1] __attribute__((depth(16)));
 channel SMI_Network_message channels_from_ck_r[1] __attribute__((depth(16)));
 
 __constant char QSFP_COUNT = 4;
+__constant char READS_LIMIT=8;
+
 
 // connect all CK_S together
 channel SMI_Network_message channels_interconnect_ck_s[QSFP_COUNT*(QSFP_COUNT-1)] __attribute__((depth(16)));
@@ -83,7 +85,7 @@ channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __att
 
 __kernel void CK_S_0(__global volatile char *restrict rt)
 {
-    char external_routing_table[256];
+    char external_routing_table[RANK_COUNT];
     for (int i = 0; i < RANK_COUNT; i++)
     {
         external_routing_table[i] = rt[i];
@@ -93,8 +95,11 @@ __kernel void CK_S_0(__global volatile char *restrict rt)
     const char num_sender = 5;
     char sender_id = 0;
     SMI_Network_message message;
+
     while(1)
     {
+
+        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -122,6 +127,7 @@ __kernel void CK_S_0(__global volatile char *restrict rt)
 
         if (valid)
         {
+            contiguos_reads++;
             char idx = external_routing_table[GET_HEADER_DST(message.header)];
             switch (idx)
             {
@@ -148,17 +154,22 @@ __kernel void CK_S_0(__global volatile char *restrict rt)
             }
         }
 
-        sender_id++;
-        if (sender_id == num_sender)
+        if(!valid || contiguos_reads==READS_LIMIT)
         {
-            sender_id = 0;
+            contiguos_reads=0;
+            sender_id++;
+            if (sender_id == num_sender)
+            {
+                sender_id = 0;
+            }
         }
     }
 }
+
 __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
 {
-    char external_routing_table[256];
-    for (int i = 0; i < 2 /* tag count */; i++)
+    char external_routing_table[1 /* tag count */];
+    for (int i = 0; i < 1 /* tag count */; i++)
     {
         external_routing_table[i] = rt[i];
     }
@@ -170,6 +181,7 @@ __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
 
     while(1)
     {
+        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -197,6 +209,7 @@ __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
 
         if (valid)
         {
+            contiguos_reads++;
             char dest;
             if (GET_HEADER_DST(message.header) != rank)
             {
@@ -228,28 +241,34 @@ __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
             }
         }
 
-        sender_id++;
-        if (sender_id == num_sender)
+        if(!valid || contiguos_reads==READS_LIMIT)
         {
-            sender_id = 0;
+            contiguos_reads=0;
+            sender_id++;
+            if (sender_id == num_sender)
+            {
+                sender_id = 0;
+            }
         }
     }
 }
+
 __kernel void CK_S_1(__global volatile char *restrict rt)
 {
-    char external_routing_table[256];
+    char external_routing_table[RANK_COUNT];
     for (int i = 0; i < RANK_COUNT; i++)
     {
         external_routing_table[i] = rt[i];
     }
 
-    // number of CK_S - 1 + CK_R
+    // number of CK_S - 1 + CK_R + 1 tags
     const char num_sender = 4;
     char sender_id = 0;
     SMI_Network_message message;
 
     while(1)
     {
+        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -269,10 +288,12 @@ __kernel void CK_S_1(__global volatile char *restrict rt)
                 // receive from CK_R_1
                 message = read_channel_nb_intel(channels_interconnect_ck_r_to_ck_s[1], &valid);
                 break;
+
         }
 
         if (valid)
         {
+            contiguos_reads++;
             char idx = external_routing_table[GET_HEADER_DST(message.header)];
             switch (idx)
             {
@@ -299,28 +320,34 @@ __kernel void CK_S_1(__global volatile char *restrict rt)
             }
         }
 
-        sender_id++;
-        if (sender_id == num_sender)
+        if(!valid || contiguos_reads==READS_LIMIT)
         {
-            sender_id = 0;
+            contiguos_reads=0;
+            sender_id++;
+            if (sender_id == num_sender)
+            {
+                sender_id = 0;
+            }
         }
     }
 }
+
 __kernel void CK_R_1(__global volatile char *restrict rt, const char rank)
 {
-    char external_routing_table[256];
-    for (int i = 0; i < 2 /* tag count */; i++)
+    char external_routing_table[1 /* tag count */];
+    for (int i = 0; i < 1 /* tag count */; i++)
     {
         external_routing_table[i] = rt[i];
     }
 
     // QSFP + number of CK_Rs - 1 + CK_S
-    const char num_sender = 5;
+    const char num_sender = 4;
     char sender_id = 0;
     SMI_Network_message message;
 
     while(1)
     {
+        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -348,6 +375,7 @@ __kernel void CK_R_1(__global volatile char *restrict rt, const char rank)
 
         if (valid)
         {
+            contiguos_reads++;
             char dest;
             if (GET_HEADER_DST(message.header) != rank)
             {
@@ -372,20 +400,23 @@ __kernel void CK_R_1(__global volatile char *restrict rt, const char rank)
                     // send to CK_R_3
                     write_channel_intel(channels_interconnect_ck_r[10], message);
                     break;
-
             }
         }
 
-        sender_id++;
-        if (sender_id == num_sender)
+        if(!valid || contiguos_reads==READS_LIMIT)
         {
-            sender_id = 0;
+            contiguos_reads=0;
+            sender_id++;
+            if (sender_id == num_sender)
+            {
+                sender_id = 0;
+            }
         }
     }
 }
 __kernel void CK_S_2(__global volatile char *restrict rt)
 {
-    char external_routing_table[256];
+    char external_routing_table[RANK_COUNT];
     for (int i = 0; i < RANK_COUNT; i++)
     {
         external_routing_table[i] = rt[i];
@@ -398,6 +429,7 @@ __kernel void CK_S_2(__global volatile char *restrict rt)
 
     while(1)
     {
+        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -421,6 +453,7 @@ __kernel void CK_S_2(__global volatile char *restrict rt)
 
         if (valid)
         {
+            contiguos_reads++;
             char idx = external_routing_table[GET_HEADER_DST(message.header)];
             switch (idx)
             {
@@ -447,17 +480,21 @@ __kernel void CK_S_2(__global volatile char *restrict rt)
             }
         }
 
-        sender_id++;
-        if (sender_id == num_sender)
+        if(!valid || contiguos_reads==READS_LIMIT)
         {
-            sender_id = 0;
+            contiguos_reads=0;
+            sender_id++;
+            if (sender_id == num_sender)
+            {
+                sender_id = 0;
+            }
         }
     }
 }
 __kernel void CK_R_2(__global volatile char *restrict rt, const char rank)
 {
-    char external_routing_table[256];
-    for (int i = 0; i < 2 /* tag count */; i++)
+    char external_routing_table[1 /* tag count */];
+    for (int i = 0; i < 1 /* tag count */; i++)
     {
         external_routing_table[i] = rt[i];
     }
@@ -469,6 +506,7 @@ __kernel void CK_R_2(__global volatile char *restrict rt, const char rank)
 
     while(1)
     {
+        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -496,6 +534,7 @@ __kernel void CK_R_2(__global volatile char *restrict rt, const char rank)
 
         if (valid)
         {
+            contiguos_reads++;
             char dest;
             if (GET_HEADER_DST(message.header) != rank)
             {
@@ -523,16 +562,20 @@ __kernel void CK_R_2(__global volatile char *restrict rt, const char rank)
             }
         }
 
-        sender_id++;
-        if (sender_id == num_sender)
+        if(!valid || contiguos_reads==READS_LIMIT)
         {
-            sender_id = 0;
+            contiguos_reads=0;
+            sender_id++;
+            if (sender_id == num_sender)
+            {
+                sender_id = 0;
+            }
         }
     }
 }
 __kernel void CK_S_3(__global volatile char *restrict rt)
 {
-    char external_routing_table[256];
+    char external_routing_table[RANK_COUNT];
     for (int i = 0; i < RANK_COUNT; i++)
     {
         external_routing_table[i] = rt[i];
@@ -545,6 +588,7 @@ __kernel void CK_S_3(__global volatile char *restrict rt)
 
     while(1)
     {
+        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -568,6 +612,7 @@ __kernel void CK_S_3(__global volatile char *restrict rt)
 
         if (valid)
         {
+            contiguos_reads++;
             char idx = external_routing_table[GET_HEADER_DST(message.header)];
             switch (idx)
             {
@@ -594,17 +639,21 @@ __kernel void CK_S_3(__global volatile char *restrict rt)
             }
         }
 
-        sender_id++;
-        if (sender_id == num_sender)
+        if(!valid || contiguos_reads==READS_LIMIT)
         {
-            sender_id = 0;
+            contiguos_reads=0;
+            sender_id++;
+            if (sender_id == num_sender)
+            {
+                sender_id = 0;
+            }
         }
     }
 }
 __kernel void CK_R_3(__global volatile char *restrict rt, const char rank)
 {
-    char external_routing_table[256];
-    for (int i = 0; i < 2 /* tag count */; i++)
+    char external_routing_table[1 /* tag count */];
+    for (int i = 0; i < 1 /* tag count */; i++)
     {
         external_routing_table[i] = rt[i];
     }
@@ -616,6 +665,7 @@ __kernel void CK_R_3(__global volatile char *restrict rt, const char rank)
 
     while(1)
     {
+        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -643,6 +693,7 @@ __kernel void CK_R_3(__global volatile char *restrict rt, const char rank)
 
         if (valid)
         {
+            contiguos_reads++;
             char dest;
             if (GET_HEADER_DST(message.header) != rank)
             {
@@ -670,10 +721,14 @@ __kernel void CK_R_3(__global volatile char *restrict rt, const char rank)
             }
         }
 
-        sender_id++;
-        if (sender_id == num_sender)
+        if(!valid || contiguos_reads==READS_LIMIT)
         {
-            sender_id = 0;
+            contiguos_reads=0;
+            sender_id++;
+            if (sender_id == num_sender)
+            {
+                sender_id = 0;
+            }
         }
     }
 }
