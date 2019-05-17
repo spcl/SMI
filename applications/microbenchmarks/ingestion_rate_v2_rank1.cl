@@ -18,3 +18,16 @@ __kernel void app_0(const int N)
             printf("App_1, what a shame I was expecting %d and instead I received %d\n",i,rcv);
     }
 }
+
+__kernel void app_1(const int N)
+{
+    //dummy, not used
+    int rcv;
+    for(int i=0;i<N;i++)
+    {
+        SMI_Channel chan_receive=SMI_Open_receive_channel(1,SMI_INT,0,1);
+        SMI_Pop(&chan_receive,&rcv);
+        if(rcv!=i)
+            printf("App_1, what a shame I was expecting %d and instead I received %d\n",i,rcv);
+    }
+}

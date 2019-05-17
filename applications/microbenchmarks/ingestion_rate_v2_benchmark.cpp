@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
     IntelFPGAOCLUtils::initEnvironment(platform,device,fpga,context,program,program_path,kernel_names, kernels,queues);
 
     //create memory buffers
-    const char tags=2;
+    const char tags=1;
     std::cout << "Version with " <<(int)tags<< " tags" << std::endl;
     cl::Buffer routing_table_ck_s_0(context,CL_MEM_READ_ONLY,rank_count);
     cl::Buffer routing_table_ck_s_1(context,CL_MEM_READ_ONLY,rank_count);
@@ -129,6 +129,9 @@ int main(int argc, char *argv[])
     queues[0].enqueueWriteBuffer(routing_table_ck_r_3, CL_TRUE,0,tags,&routing_tables_ckr[3][0]);
 
     kernels[0].setArg(0,sizeof(int),&n);
+    if(rank==0)
+        kernels[0].setArg(1,sizeof(char),&recv_rank);
+
     //args for the CK_Ss
     kernels[1].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
     kernels[2].setArg(0,sizeof(cl_mem),&routing_table_ck_s_1);
@@ -176,8 +179,12 @@ int main(int argc, char *argv[])
             queues[i].finish();
         */
         //single QSFP version
-        queues[0].enqueueTask(kernels[0],nullptr,&events[0]);
-        queues[0].finish();
+        if(rank==0 || rank==recv_rank)
+        {
+            printf("Rank %d starting the application\n",rank);
+            queues[0].enqueueTask(kernels[0],nullptr,&events[0]);
+            queues[0].finish();
+        }
         timestamp_t end=current_time_usecs();
 
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
@@ -191,6 +198,7 @@ int main(int argc, char *argv[])
             times.push_back(time);
         }
     }
+    printf("Rank %d finished\n",rank);
     if(rank==0)
     {
 
