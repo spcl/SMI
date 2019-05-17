@@ -186,7 +186,11 @@ int main(int argc, char *argv[])
 
         cl::Event events[1]; //this defination must stay here
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-
+        //ATTENTION: If you are executing on the same host
+        //since the PCIe is shared that could be problems in taking times
+        //This mini sleep should resolve
+        if(rank==recv_rank)
+            usleep(1000);
         //only rank 0 and the recv rank start the app kernels
         timestamp_t startt=current_time_usecs();
         //
