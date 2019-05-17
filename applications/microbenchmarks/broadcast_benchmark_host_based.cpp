@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
     kernels[0].setArg(0,sizeof(cl_mem),&mem);
     kernels[0].setArg(1,sizeof(int),&n);
 
-    std::vector<double> times;
+    std::vector<double> times, transfers;
     timestamp_t startt,endt;
     //Program startup
     for(int i=0;i<runs;i++)
@@ -115,14 +115,18 @@ int main(int argc, char *argv[])
             queues[0].enqueueTask(kernels[0],nullptr,&events[0]);
             queues[0].finish();
             //get the result and send it  to rank 1
+            timestamp_t transf_start=current_time_usecs();
             queues[0].enqueueReadBuffer(mem,CL_TRUE,0,n*sizeof(float),host_data);
+            transfers.push_back(current_time_usecs()-transf_start);
             MPI_Bcast(host_data, n, MPI_FLOAT, 0, MPI_COMM_WORLD);
         }
         else
         {
             MPI_Bcast(host_data, n, MPI_FLOAT, 0, MPI_COMM_WORLD);
             //copy and start axpy
+            timestamp_t transf_start=current_time_usecs();
             queues[0].enqueueWriteBuffer(mem,CL_TRUE,0,n*sizeof(float),host_data);
+            transfers.push_back(current_time_usecs()-transf_start);
             queues[0].enqueueTask(kernels[0],nullptr,&events[0]);
             queues[0].finish();
             endt=current_time_usecs();
@@ -140,6 +144,11 @@ int main(int argc, char *argv[])
         for(auto t:times)
             mean+=t;
         mean/=runs;
+        //compute the average transfer time for this rank. Experimentally, the times are the same for both ranks
+        double transfer_time=0;
+        for(auto t:transfers)
+            transfer_time+=t;
+        transfer_time/=runs;
         //report the mean in usecs
         double stddev=0;
         for(auto t:times)
@@ -147,11 +156,15 @@ int main(int argc, char *argv[])
         stddev=sqrt(stddev/runs);
         double conf_interval_99=2.58*stddev/sqrt(runs);
         double data_sent_KB=KB;
+        double comp_time_no_pcie=mean-2*transfer_time;
         cout << "Computation time (usec): " << mean << " (sttdev: " << stddev<<")"<<endl;
         cout << "Conf interval 99: "<<conf_interval_99<<endl;
         cout << "Conf interval 99 within " <<(conf_interval_99/mean)*100<<"% from mean" <<endl;
+        cout << "Average transfer time PCI-E (usecs): "<<transfer_time*2<<endl;
+        cout << "Computation time without PCI-E (usec): " <<comp_time_no_pcie<< " (sttdev: " << stddev<<")"<<endl;
         cout << "Sent (KB): " <<data_sent_KB<<endl;
         cout << "Average bandwidth (Gbit/s): " <<  (data_sent_KB*8/(mean/1000000.0))/(1024*1024) << endl;
+        cout << "Average bandwidth without PCI-e(Gbit/s): " <<  (data_sent_KB*8/((comp_time_no_pcie)/1000000.0))/(1024*1024) << endl;
 
         //save the info into output file
         std::ostringstream filename;
@@ -162,8 +175,12 @@ int main(int argc, char *argv[])
         fout << "#Average Computation time (usecs): "<<mean<<endl;
         fout << "#Standard deviation (usecs): "<<stddev<<endl;
         fout << "#Confidence interval 99%: +- "<<conf_interval_99<<endl;
-        fout << "#Execution times (usecs):"<<endl;
+        fout << "#Average transfer time PCI-E (usecs): "<<transfer_time*2<<endl;
+        fout << "#Computation time without PCI-E (usec): " << comp_time_no_pcie<< " (sttdev: " << stddev<<")"<<endl;
         fout << "#Average bandwidth (Gbit/s): " <<  (data_sent_KB*8/(mean/1000000.0))/(1024*1024) << endl;
+        fout << "#Average bandwidth without PCI-e(Gbit/s): " <<  (data_sent_KB*8/((comp_time_no_pcie)/1000000.0))/(1024*1024) << endl;
+
+        fout << "#Execution times (usecs):"<<endl;
         for(auto t:times)
             fout << t << endl;
         fout.close();
