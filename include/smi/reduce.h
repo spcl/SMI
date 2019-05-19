@@ -161,22 +161,25 @@ __kernel void kernel_reduce(const char num_rank)
     bool init=true;
     char sender_id=0;
     const char credits_flow_control=5;
+    const char max_num_ranks=16;
     int reduce_result[credits_flow_control];
     char data_recvd[credits_flow_control];
     bool send_credits=false;//true if (the root) has to send reduce request
     char credits=credits_flow_control; //the number of credits that I have
     char send_to=0;
-    char __attribute__((register)) add_to[16];   //for each rank tells to what element in the buffer we should add the received item
+    char __attribute__((register)) add_to[max_num_ranks];   //for each rank tells to what element in the buffer we should add the received item
     for(int i=0;i<credits_flow_control;i++)
         data_recvd[i]=0;
 
-    for(int i=0;i<256;i++)
+    for(int i=0;i<max_num_ranks;i++)
         add_to[i]=0;
     char current_buffer_element=0;
     char add_to_root=0;
+    const int READS_LIMIT=8;
     while(true)
     {
         bool valid=false;
+        int contiguos_reads=0; //this is used only for reading from CK_R
         if(!send_credits)
         {
             switch(sender_id)
@@ -203,7 +206,7 @@ __kernel void kernel_reduce(const char num_rank)
                     char * ptr=mess.data;
                     int data= *(int*)(ptr);
                     reduce_result[add_to_root]+=data;        //SMI_ADD
-                    //printf("Reduce kernel received from app, root. Adding it to: %d \n",add_to_root);
+                   // printf("Reduce kernel received from app, root. Adding it to: %d \n",add_to_root);
                     data_recvd[add_to_root]++;
                     a=add_to_root;
                     send_credits=init;      //the first reduce, we send this
@@ -211,12 +214,12 @@ __kernel void kernel_reduce(const char num_rank)
                     add_to_root++;
                     if(add_to_root==credits_flow_control)
                         add_to_root=0;
-
                     //add_to[rank]=addto;
 
                 }
                 else
                 {
+                    contiguos_reads++;
                     //received from CK_R,
                     //apply reduce
                     //   printf("Reduce kernel, received from remote\n");
@@ -276,7 +279,11 @@ __kernel void kernel_reduce(const char num_rank)
             if(sender_id==0)
                 sender_id=1;
             else
-                sender_id=0;
+                if(!valid || contiguos_reads==READS_LIMIT)
+                {
+                    sender_id=0;
+                    contiguos_reads=0;
+                }
         }
         else
         {

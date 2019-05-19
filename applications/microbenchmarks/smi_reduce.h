@@ -78,7 +78,7 @@ channel SMI_Network_message channels_interconnect_ck_s_to_ck_r[QSFP_COUNT] __att
 channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __attribute__((depth(16)));
 
 #include "smi/reduce.h"
-
+__constant char READS_LIMIT=8;
 __kernel void CK_S_0(__global volatile char *restrict rt)
 {
     char external_routing_table[RANK_COUNT];
@@ -94,6 +94,7 @@ __kernel void CK_S_0(__global volatile char *restrict rt)
 
     while(1)
     {
+        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -121,6 +122,7 @@ __kernel void CK_S_0(__global volatile char *restrict rt)
 
         if (valid)
         {
+            contiguos_reads++;
             char idx = external_routing_table[GET_HEADER_DST(message.header)];
             switch (idx)
             {
@@ -147,10 +149,14 @@ __kernel void CK_S_0(__global volatile char *restrict rt)
             }
         }
 
-        sender_id++;
-        if (sender_id == num_sender)
+        if(!valid || contiguos_reads==READS_LIMIT)
         {
-            sender_id = 0;
+            contiguos_reads=0;
+            sender_id++;
+            if (sender_id == num_sender)
+            {
+                sender_id = 0;
+            }
         }
     }
 }
@@ -169,6 +175,7 @@ __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
 
     while(1)
     {
+        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -196,6 +203,7 @@ __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
 
         if (valid)
         {
+            contiguos_reads++;
             char dest;
             if (GET_HEADER_DST(message.header) != rank)
             {
@@ -227,10 +235,14 @@ __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
             }
         }
 
-        sender_id++;
-        if (sender_id == num_sender)
+        if(!valid || contiguos_reads==READS_LIMIT)
         {
-            sender_id = 0;
+            contiguos_reads=0;
+            sender_id++;
+            if (sender_id == num_sender)
+            {
+                sender_id = 0;
+            }
         }
     }
 }
@@ -249,6 +261,7 @@ __kernel void CK_S_1(__global volatile char *restrict rt)
 
     while(1)
     {
+        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -276,6 +289,7 @@ __kernel void CK_S_1(__global volatile char *restrict rt)
 
         if (valid)
         {
+            contiguos_reads++;
             char idx = external_routing_table[GET_HEADER_DST(message.header)];
             switch (idx)
             {
@@ -302,10 +316,14 @@ __kernel void CK_S_1(__global volatile char *restrict rt)
             }
         }
 
-        sender_id++;
-        if (sender_id == num_sender)
+        if(!valid || contiguos_reads==READS_LIMIT)
         {
-            sender_id = 0;
+            contiguos_reads=0;
+            sender_id++;
+            if (sender_id == num_sender)
+            {
+                sender_id = 0;
+            }
         }
     }
 }
@@ -324,6 +342,7 @@ __kernel void CK_R_1(__global volatile char *restrict rt, const char rank)
 
     while(1)
     {
+        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -351,6 +370,7 @@ __kernel void CK_R_1(__global volatile char *restrict rt, const char rank)
 
         if (valid)
         {
+            contiguos_reads++;
             char dest;
             if (GET_HEADER_DST(message.header) != rank)
             {
@@ -375,17 +395,21 @@ __kernel void CK_R_1(__global volatile char *restrict rt, const char rank)
                     // send to CK_R_3
                     write_channel_intel(channels_interconnect_ck_r[10], message);
                     break;
-               // case 4:
-               //     // send to app channel with tag 1
-               //     write_channel_intel(channels_from_ck_r[internal_receiver_rt[1]], message);
-               //     break;
+                /*case 4:
+                    // send to app channel with tag 1
+                    write_channel_intel(channels_from_ck_r[internal_receiver_rt[1]], message);
+                    break;*/
             }
         }
 
-        sender_id++;
-        if (sender_id == num_sender)
+        if(!valid || contiguos_reads==READS_LIMIT)
         {
-            sender_id = 0;
+            contiguos_reads=0;
+            sender_id++;
+            if (sender_id == num_sender)
+            {
+                sender_id = 0;
+            }
         }
     }
 }
@@ -404,6 +428,7 @@ __kernel void CK_S_2(__global volatile char *restrict rt)
 
     while(1)
     {
+        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -427,6 +452,7 @@ __kernel void CK_S_2(__global volatile char *restrict rt)
 
         if (valid)
         {
+            contiguos_reads++;
             char idx = external_routing_table[GET_HEADER_DST(message.header)];
             switch (idx)
             {
@@ -453,10 +479,14 @@ __kernel void CK_S_2(__global volatile char *restrict rt)
             }
         }
 
-        sender_id++;
-        if (sender_id == num_sender)
+        if(!valid || contiguos_reads==READS_LIMIT)
         {
-            sender_id = 0;
+            contiguos_reads=0;
+            sender_id++;
+            if (sender_id == num_sender)
+            {
+                sender_id = 0;
+            }
         }
     }
 }
@@ -475,6 +505,7 @@ __kernel void CK_R_2(__global volatile char *restrict rt, const char rank)
 
     while(1)
     {
+        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -502,6 +533,7 @@ __kernel void CK_R_2(__global volatile char *restrict rt, const char rank)
 
         if (valid)
         {
+            contiguos_reads++;
             char dest;
             if (GET_HEADER_DST(message.header) != rank)
             {
@@ -529,10 +561,14 @@ __kernel void CK_R_2(__global volatile char *restrict rt, const char rank)
             }
         }
 
-        sender_id++;
-        if (sender_id == num_sender)
+        if(!valid || contiguos_reads==READS_LIMIT)
         {
-            sender_id = 0;
+            contiguos_reads=0;
+            sender_id++;
+            if (sender_id == num_sender)
+            {
+                sender_id = 0;
+            }
         }
     }
 }
@@ -551,6 +587,7 @@ __kernel void CK_S_3(__global volatile char *restrict rt)
 
     while(1)
     {
+        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -574,6 +611,7 @@ __kernel void CK_S_3(__global volatile char *restrict rt)
 
         if (valid)
         {
+            contiguos_reads++;
             char idx = external_routing_table[GET_HEADER_DST(message.header)];
             switch (idx)
             {
@@ -600,10 +638,14 @@ __kernel void CK_S_3(__global volatile char *restrict rt)
             }
         }
 
-        sender_id++;
-        if (sender_id == num_sender)
+        if(!valid || contiguos_reads==READS_LIMIT)
         {
-            sender_id = 0;
+            contiguos_reads=0;
+            sender_id++;
+            if (sender_id == num_sender)
+            {
+                sender_id = 0;
+            }
         }
     }
 }
@@ -622,6 +664,7 @@ __kernel void CK_R_3(__global volatile char *restrict rt, const char rank)
 
     while(1)
     {
+        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -649,6 +692,7 @@ __kernel void CK_R_3(__global volatile char *restrict rt, const char rank)
 
         if (valid)
         {
+            contiguos_reads++;
             char dest;
             if (GET_HEADER_DST(message.header) != rank)
             {
@@ -676,10 +720,14 @@ __kernel void CK_R_3(__global volatile char *restrict rt, const char rank)
             }
         }
 
-        sender_id++;
-        if (sender_id == num_sender)
+        if(!valid || contiguos_reads==READS_LIMIT)
         {
-            sender_id = 0;
+            contiguos_reads=0;
+            sender_id++;
+            if (sender_id == num_sender)
+            {
+                sender_id = 0;
+            }
         }
     }
 }
