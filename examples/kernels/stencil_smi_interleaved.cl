@@ -1,5 +1,5 @@
 #include "stencil.h"
-#include "smi_rank0.h"
+#include "smi.h"
 
 #if PX * PY != RANK_COUNT
 #error "Incompatible number of stencil processes and number of communication ranks."

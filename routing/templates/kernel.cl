@@ -12,8 +12,10 @@ __kernel void CK_S_{{ channel.index }}(__global volatile char *restrict rt)
     char sender_id = 0;
     SMI_Network_message message;
 
+    const int READS_LIMIT=8;
     while(1)
     {
+        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -37,6 +39,7 @@ __kernel void CK_S_{{ channel.index }}(__global volatile char *restrict rt)
 
         if (valid)
         {
+            contiguos_reads++;
             char idx = external_routing_table[GET_HEADER_DST(message.header)];
             switch (idx)
             {
@@ -56,11 +59,14 @@ __kernel void CK_S_{{ channel.index }}(__global volatile char *restrict rt)
                 {% endfor %}
             }
         }
-
-        sender_id++;
-        if (sender_id == num_sender)
+        if(!valid || contiguos_reads==READS_LIMIT)
         {
-            sender_id = 0;
+            contiguos_reads=0;
+            sender_id++;
+            if (sender_id == num_sender)
+            {
+                sender_id = 0;
+            }
         }
     }
 }
@@ -79,9 +85,10 @@ __kernel void CK_R_{{ channel.index }}(__global volatile char *restrict rt, cons
     const char num_sender = {{ channel_count + 1 }};
     char sender_id = 0;
     SMI_Network_message message;
-
+    const int READS_LIMIT=8;
     while(1)
     {
+        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -103,6 +110,7 @@ __kernel void CK_R_{{ channel.index }}(__global volatile char *restrict rt, cons
 
         if (valid)
         {
+            contiguos_reads++;
             char dest;
             if (GET_HEADER_DST(message.header) != rank)
             {
@@ -130,10 +138,14 @@ __kernel void CK_R_{{ channel.index }}(__global volatile char *restrict rt, cons
             }
         }
 
-        sender_id++;
-        if (sender_id == num_sender)
+       if(!valid || contiguos_reads==READS_LIMIT)
         {
-            sender_id = 0;
+            contiguos_reads=0;
+            sender_id++;
+            if (sender_id == num_sender)
+            {
+                sender_id = 0;
+            }
         }
     }
 }

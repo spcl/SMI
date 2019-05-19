@@ -1,10 +1,10 @@
 # Configuration 
-set(SMI_STENCIL_SIZE_X 256 CACHE STRING "Vertical size of domain.")
-set(SMI_STENCIL_SIZE_Y 256 CACHE STRING "Horizontal size of domain.")
+set(SMI_STENCIL_SIZE_X 512 CACHE STRING "Vertical size of domain.")
+set(SMI_STENCIL_SIZE_Y 512 CACHE STRING "Horizontal size of domain.")
 set(SMI_DATATYPE float CACHE STRING "Data type of computations.")
 set(SMI_VECTORIZATION_WIDTH 16 CACHE STRING "Width for exploiting vector parallelism.")
 set(SMI_STENCIL_NUM_PROCS_X 2 CACHE STRING "Number of processes in X dimension.")
-set(SMI_STENCIL_NUM_PROCS_Y 1 CACHE STRING "Number of processes in Y dimension.")
+set(SMI_STENCIL_NUM_PROCS_Y 2 CACHE STRING "Number of processes in Y dimension.")
 math(EXPR SMI_STENCIL_NUM_PROCS "${SMI_STENCIL_NUM_PROCS_X} * ${SMI_STENCIL_NUM_PROCS_Y}")
 
 if(SMI_DATATYPE STREQUAL "float")
@@ -31,6 +31,6 @@ if(PythonInterp_FOUND)
   add_smi_executable("stencil_smi_interleaved")
   # Rodinia hotspot kernel
   configure_file(include/hotspot.h.in hotspot.h)
-  add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/hotspot_smi.cl" OFF ${SMI_STENCIL_NUM_PROCS} 2)
+  add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/hotspot_smi.cl" OFF ${SMI_STENCIL_NUM_PROCS} 4)
   add_smi_executable("hotspot_smi")
 endif()
