@@ -4,6 +4,7 @@
 
 #include "data_types.h"
 #include "header_message.h"
+#include "operation_type.h"
 #include "network_message.h"
 
 //temp here, then need to move
@@ -97,6 +98,7 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
     const char elem_per_packet=chan->elements_per_packet;
     if(chan->my_rank==chan->root_rank)//I'm the root
     {
+
         //char pack_elem_id_snd=chan->packet_element_id;
         char *conv=(char*)data;
         char *data_snd=chan->net.data;
@@ -139,6 +141,14 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
                 }
             }*/
             //offload to bcast kernel
+            if(chan->beginning) //at the beginning we have to indicate
+            {
+                SET_HEADER_OP(chan->net.header,SMI_REQUEST);
+                chan->beginning=false;
+            }
+            else
+                 SET_HEADER_OP(chan->net.header,SMI_BROADCAST);
+
             write_channel_intel(channel_bcast_send,chan->net);
             chan->packet_element_id=0;
             //chan->packet_element_id=0;
@@ -150,13 +160,22 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
     }
     else //I have to receive
     {
+        if(chan->beginning)//at the beginning we have to send the request
+        {
+            //const char chan_idx=internal_receiver_rt[chan->tag_in];
+            SET_HEADER_OP(chan->net_2.header,SMI_REQUEST);
+            SET_HEADER_DST(chan->net_2.header,chan->root_rank);
+            write_channel_intel(channels_to_ck_s[1],chan->net_2); //TODO to fix
+            chan->beginning=false;
+        }
+
         //chan->net=read_channel_intel(channels_from_ck_r[0]);
         //in this case we have to copy the data into the target variable
         //char pack_elem_id_rcv=chan->packet_element_id_rcv;
         if(chan->packet_element_id_rcv==0)
         {
             const char chan_idx=internal_receiver_rt[chan->tag_in];
-            chan->net_2=read_channel_intel(channels_from_ck_r[chan_idx]);
+            chan->net_2=read_channel_intel(channels_from_ck_r[1]);
         }
         //char * ptr=chan->net_2.data+(chan->packet_element_id_rcv);
         char *data_rcv=chan->net_2.data;
@@ -224,29 +243,48 @@ __kernel void kernel_bcast(char num_rank)
     //decide whether we keep this argument or not
     //otherwise we have to decide where to put it
     bool external=true;
+    bool wait_for_requests=false;
     char rcv;
     char root;
+    char received_request=0; //how many ranks are ready to receive
+    const char num_requests=num_rank-1;
     SMI_Network_message mess;
     while(true)
     {
         if(external)
         {
             mess=read_channel_intel(channel_bcast_send);
+            if(GET_HEADER_OP(mess.header)==SMI_REQUEST)
+            {
+                wait_for_requests=true;
+                received_request=num_requests;
+            }
             rcv=0;
             external=false;
             root=GET_HEADER_SRC(mess.header);
         }
-
-        if(rcv!=root) //it's not me
+        else
         {
-            SET_HEADER_DST(mess.header,rcv);
-            write_channel_intel(channels_to_ck_s[0],mess);
-        }
-        rcv++;
-        if(rcv==num_rank)
-        {
-            external=true;
-            //rcv=0;
+            if(received_request>0)
+            {
+                SMI_Network_message req=read_channel_intel(channels_from_ck_r[0]);
+                received_request--;
+               // wait_for_requests=(received_request==num_requests);
+            }
+            else
+            {
+                if(rcv!=root) //it's not me
+                {
+                    SET_HEADER_DST(mess.header,rcv);
+                    write_channel_intel(channels_to_ck_s[0],mess);
+                }
+                rcv++;
+                if(rcv==num_rank)
+                {
+                    external=true;
+                    //rcv=0;
+                }
+            }
         }
     }
 

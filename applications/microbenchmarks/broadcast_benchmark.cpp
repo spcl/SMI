@@ -15,7 +15,7 @@
 #include "../../include/utils/ocl_utils.hpp"
 #include "../../include/utils/utils.hpp"
 #include "../../include/utils/smi_utils.hpp"
-#define ROUTING_DIR "applications/microbenchmarks/broadcast_routing/"
+#define ROUTING_DIR "applications/microbenchmarks/broadcast_routing_2tags/"
 //#define CHECK
 using namespace std;
 int main(int argc, char *argv[])
