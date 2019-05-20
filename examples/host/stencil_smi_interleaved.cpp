@@ -338,7 +338,7 @@ int main(int argc, char **argv) {
     // Don't exit immediately, such that MPI will not exit other ranks that are
     // currently reconfiguring the FPGA.
     std::this_thread::sleep_for(std::chrono::seconds(30));
-    throw;
+    return 1;
   }
 
   MPIStatus(mpi_rank, "De-interleaving memory...\n");
