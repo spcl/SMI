@@ -340,9 +340,9 @@ __kernel void CK_R_1(__global volatile char *restrict rt, const char rank)
     char sender_id = 0;
     SMI_Network_message message;
     const int READS_LIMIT=8;
+    int contiguos_reads=0;
     while(1)
     {
-        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {

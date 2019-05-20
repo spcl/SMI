@@ -79,7 +79,7 @@ channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __att
 
 #include "smi/push.h"
 
-__constant char READS_LIMIT=8;
+__constant char READS_LIMIT=4;
 
 __kernel void CK_S_0(__global volatile char *restrict rt)
 {
@@ -94,10 +94,10 @@ __kernel void CK_S_0(__global volatile char *restrict rt)
     char sender_id = 0;
     SMI_Network_message message;
 
+    char contiguos_reads=0;
     while(1)
     {
 
-        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -176,9 +176,9 @@ __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
     char sender_id = 0;
     SMI_Network_message message;
 
+    char contiguos_reads=0;
     while(1)
     {
-        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -258,9 +258,9 @@ __kernel void CK_S_1(__global volatile char *restrict rt)
     char sender_id = 0;
     SMI_Network_message message;
 
+    char contiguos_reads=0;
     while(1)
     {
-        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -339,9 +339,9 @@ __kernel void CK_R_1(__global volatile char *restrict rt, const char rank)
     char sender_id = 0;
     SMI_Network_message message;
 
+    char contiguos_reads=0;
     while(1)
     {
-        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -422,9 +422,9 @@ __kernel void CK_S_2(__global volatile char *restrict rt)
     char sender_id = 0;
     SMI_Network_message message;
 
+    char contiguos_reads=0;
     while(1)
     {
-        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -499,9 +499,9 @@ __kernel void CK_R_2(__global volatile char *restrict rt, const char rank)
     char sender_id = 0;
     SMI_Network_message message;
 
+    char contiguos_reads=0;
     while(1)
     {
-        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -581,9 +581,9 @@ __kernel void CK_S_3(__global volatile char *restrict rt)
     char sender_id = 0;
     SMI_Network_message message;
 
+    char contiguos_reads=0;
     while(1)
     {
-        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -658,9 +658,9 @@ __kernel void CK_R_3(__global volatile char *restrict rt, const char rank)
     char sender_id = 0;
     SMI_Network_message message;
 
+    char contiguos_reads=0;
     while(1)
     {
-        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {

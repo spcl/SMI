@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
     IntelFPGAOCLUtils::initEnvironment(platform,device,fpga,context,program,program_path,kernel_names, kernels,queues);
 
     //create memory buffers
-    char tags=1;
+    char tags=2;
     cl::Buffer routing_table_ck_s_0(context,CL_MEM_READ_ONLY,rank_count);
     cl::Buffer routing_table_ck_s_1(context,CL_MEM_READ_ONLY,rank_count);
     cl::Buffer routing_table_ck_s_2(context,CL_MEM_READ_ONLY,rank_count);
@@ -105,10 +105,11 @@ int main(int argc, char *argv[])
     cl::Buffer routing_table_ck_r_3(context,CL_MEM_READ_ONLY,tags);
 
     //load ck_r
-    char routing_tables_ckr[4]; //only one tag
+    std::cout << "Using "<<tags<<" tags"<<std::endl;
+    char routing_tables_ckr[4][tags]; //only one tag
     char routing_tables_cks[4][rank_count]; //4 ranks
     for (int i = 0; i < kChannelsPerRank; ++i) {
-        LoadRoutingTable<char>(rank, i, 1, ROUTING_DIR, "ckr", &routing_tables_ckr[i]);
+        LoadRoutingTable<char>(rank, i, tags, ROUTING_DIR, "ckr", &routing_tables_ckr[i][0]);
         LoadRoutingTable<char>(rank, i, rank_count, ROUTING_DIR, "cks", &routing_tables_cks[i][0]);
     }
     //std::cout << "Rank: "<< rank<<endl;
@@ -121,10 +122,10 @@ int main(int argc, char *argv[])
     queues[0].enqueueWriteBuffer(routing_table_ck_s_2, CL_TRUE,0,rank_count,&routing_tables_cks[2][0]);
     queues[0].enqueueWriteBuffer(routing_table_ck_s_3, CL_TRUE,0,rank_count,&routing_tables_cks[3][0]);
 
-    queues[0].enqueueWriteBuffer(routing_table_ck_r_0, CL_TRUE,0,tags,&routing_tables_ckr[0]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_r_1, CL_TRUE,0,tags,&routing_tables_ckr[1]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_r_2, CL_TRUE,0,tags,&routing_tables_ckr[2]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_r_3, CL_TRUE,0,tags,&routing_tables_ckr[3]);
+    queues[0].enqueueWriteBuffer(routing_table_ck_r_0, CL_TRUE,0,tags,&routing_tables_ckr[0][0]);
+    queues[0].enqueueWriteBuffer(routing_table_ck_r_1, CL_TRUE,0,tags,&routing_tables_ckr[1][0]);
+    queues[0].enqueueWriteBuffer(routing_table_ck_r_2, CL_TRUE,0,tags,&routing_tables_ckr[2][0]);
+    queues[0].enqueueWriteBuffer(routing_table_ck_r_3, CL_TRUE,0,tags,&routing_tables_ckr[3][0]);
 
     kernels[0].setArg(0,sizeof(int),&n);
     kernels[0].setArg(1,sizeof(char),&root);

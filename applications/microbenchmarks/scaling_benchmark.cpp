@@ -78,13 +78,13 @@ int main(int argc, char *argv[])
     fpga = rank % 2; // in this case is ok, pay attention
     //fpga=0; //executed on 15 and 16
     std::cout << "Rank: " << rank << " out of " << rank_count << " ranks, executing on fpga " <<fpga<< std::endl;
-    if(rank==0)
+    /*if(rank==0)
         program_path = replace(program_path, "<rank>", std::string("0"));
     else
         program_path = replace(program_path, "<rank>", std::string("1"));
-
+*/
     //for emulation
-    //program_path = replace(program_path, "<rank>", std::to_string(rank));
+    program_path = replace(program_path, "<rank>", std::to_string(rank));
     std::cout << "Program: " << program_path << std::endl;
     char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);

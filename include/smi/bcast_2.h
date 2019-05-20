@@ -130,16 +130,8 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
         {
 
             SET_HEADER_NUM_ELEMS(chan->net.header,chan->packet_element_id);
-            //send this packet to all the ranks
-            //naive implementation
-            /*for(int i=0;i<chan->num_rank;i++)
-            {
-                if(i!=chan->my_rank) //it's not me
-                {
-                    SET_HEADER_DST(chan->net.header,i);
-                    write_channel_intel(channels_to_ck_s[0],chan->net);
-                }
-            }*/
+            SET_HEADER_TAG(chan->net.header,1); //TODO fix this
+
             //offload to bcast kernel
             if(chan->beginning) //at the beginning we have to indicate
             {
@@ -165,7 +157,9 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
             //const char chan_idx=internal_receiver_rt[chan->tag_in];
             SET_HEADER_OP(chan->net_2.header,SMI_REQUEST);
             SET_HEADER_DST(chan->net_2.header,chan->root_rank);
+            SET_HEADER_TAG(chan->net_2.header,0);
             write_channel_intel(channels_to_ck_s[1],chan->net_2); //TODO to fix
+            //printf("non-root rank, I've sent the request\n");
             chan->beginning=false;
         }
 
@@ -176,6 +170,7 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
         {
             const char chan_idx=internal_receiver_rt[chan->tag_in];
             chan->net_2=read_channel_intel(channels_from_ck_r[1]);
+            //printf("Non root, received data\n");
         }
         //char * ptr=chan->net_2.data+(chan->packet_element_id_rcv);
         char *data_rcv=chan->net_2.data;
@@ -267,7 +262,9 @@ __kernel void kernel_bcast(char num_rank)
         {
             if(received_request>0)
             {
+               // printf("Wait for request...\n");
                 SMI_Network_message req=read_channel_intel(channels_from_ck_r[0]);
+              //  printf("request received\n");
                 received_request--;
                // wait_for_requests=(received_request==num_requests);
             }
@@ -277,6 +274,7 @@ __kernel void kernel_bcast(char num_rank)
                 {
                     SET_HEADER_DST(mess.header,rcv);
                     write_channel_intel(channels_to_ck_s[0],mess);
+                  //  printf("sending data to %d, tag: %d\n",rcv,GET_HEADER_TAG(mess.header));
                 }
                 rcv++;
                 if(rcv==num_rank)

@@ -176,10 +176,10 @@ __kernel void kernel_reduce(const char num_rank)
     char current_buffer_element=0;
     char add_to_root=0;
     const int READS_LIMIT=8;
+    int contiguos_reads=0; //this is used only for reading from CK_R
     while(true)
     {
         bool valid=false;
-        int contiguos_reads=0; //this is used only for reading from CK_R
         if(!send_credits)
         {
             switch(sender_id)
