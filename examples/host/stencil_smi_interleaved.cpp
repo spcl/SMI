@@ -333,9 +333,10 @@ int main(int argc, char **argv) {
                                    interleaved_host[b].begin());
     }
 
-  } catch (...) {
+  } catch (std::exception const &err) {
     // Don't exit immediately, such that MPI will not exit other ranks that are
     // currently reconfiguring the FPGA.
+    std::cout << err.what() << std::endl; 
     std::this_thread::sleep_for(std::chrono::seconds(30));
     return 1;
   }
