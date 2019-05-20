@@ -2,9 +2,9 @@
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 
-#define CTILE_ROWS 4
-#define CTILE_COLS 4
-#define MTILE 128
+#define CTILE_ROWS 16
+#define CTILE_COLS 16
+#define MTILE 512
 #define KERNEL_NAME sgemm
 #define CHANNEL_MATRIX_A channel_in_matrix_A_0
 #define CHANNEL_MATRIX_B channel_in_matrix_B_0
@@ -147,24 +147,24 @@ __kernel void READ_MATRIX_A(__global volatile TYPE_T * restrict A, const unsigne
                         #pragma unroll 8
                         for(int i=0;i<MTILE;i++)
                         {
-                            if(ti*MTILE+i < N)
+                       //     if(ti*MTILE+i < N)
                                 localA[i]=A[(ti*MTILE+i)*lda+k];
-                            else
-                                localA[i]=0;
+                        //    else
+                          //      localA[i]=0;
                         }
                     }
                     //Broadcast it
 
                     //if(my_rank==3)
                      //   printf("From rank %d: ",r);
-                   /* for(int i=0;i<MTILE;i++)
+                    for(int i=0;i<MTILE;i++)
                     {
                         float value=localA[i];
                         SMI_Bcast(&chan,&(value));
                         localA[i]=value;
                        // if(my_rank==3)
                          //   printf("%.0f ",localA[i]);
-                    }*/
+                    }
                     //if(my_rank==3)
                       //  printf("\n");
 
@@ -177,10 +177,10 @@ __kernel void READ_MATRIX_A(__global volatile TYPE_T * restrict A, const unsigne
                         #pragma unroll
                         for(int i=0;i<CTILE_ROWS;i++)
                         {
-                            float value=localA[tti*CTILE_ROWS+i];
-                            SMI_Bcast(&chan,&(value));
-                            /*localA[i]=value;*/
-                            write_channel_intel(CHANNEL_MATRIX_A,/*localA[tti*CTILE_ROWS+i]*/value);
+                           // float value=localA[tti*CTILE_ROWS+i];
+                            //SMI_Bcast(&chan,&(value));
+                            //localA[i]=value;
+                            write_channel_intel(CHANNEL_MATRIX_A,localA[tti*CTILE_ROWS+i]);
                         }
                     }
                 }
@@ -207,16 +207,28 @@ __kernel void READ_MATRIX_B(__global volatile TYPE_T * restrict B, const unsigne
         {
             for(int k=0;k<K;k++)
             {
-                #pragma unroll 16
+               /* #pragma unroll 16
                 for(int i=0;i<MTILE;i++)
                 {
                     if(tj*MTILE+i < M)
                         localB[i]=B[k*ldb+(tj*MTILE+i)];
                     else
                         localB[i]=0;
-                }
+                }*/
                 for(int i=0;i<InnerBlocksN;i++)
                 {
+
+                    if(i==0)
+                    {
+                        #pragma unroll 16
+                        for(int j=0;j<MTILE;j++)
+                        {
+                            //if(tj*MTILE+i < M)
+                                localB[j]=B[k*ldb+(tj*MTILE+j)];
+                            //else
+                              //  localB[i]=0;
+                        }
+                    }
                     //iterates over the inner tiles of B
                     for(int ttj=0;ttj<InnerBlocksM;ttj++)
                     {
@@ -267,8 +279,8 @@ __kernel void WRITE_MATRIX(__global volatile TYPE_T * restrict C, const TYPE_T b
                                  int ind_i=ti*MTILE+ii*CTILE_ROWS+iii;
                                  int ind_j=tj*MTILE+jj*CTILE_COLS+jjj;
                                  TYPE_T c = read_channel_intel(CHANNEL_MATRIX_OUT);
-                                 if(ind_i < N && ind_j<M)
-                                     C[ind_i*ldc+ind_j]=beta*C[ind_i*ldc+ind_j]+c;
+                                 //if(ind_i < N && ind_j<M)
+                                     C[ind_i*ldc+ind_j]=/*beta*C[ind_i*ldc+ind_j]+*/c;
                          }
                  }
         }
