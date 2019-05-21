@@ -1,5 +1,4 @@
-#include "smi/network_message.h"
-
+#include "smi/channel_helpers.h"
 
 
 #define RANK_COUNT 4
@@ -57,17 +56,14 @@ channel SMI_Network_message io_in_3 __attribute__((depth(16))) __attribute__((io
 #endif
 #endif
 
-
 // internal routing tables
-__constant char internal_sender_rt[1] = {0};
-__constant char internal_receiver_rt[1] = {0};
+__constant char internal_sender_rt[3] = { 0, 1, 2 };
+__constant char internal_receiver_rt[3] = { 0, 1, 2 };
 
-channel SMI_Network_message channels_to_ck_s[1] __attribute__((depth(16)));
-channel SMI_Network_message channels_from_ck_r[1] __attribute__((depth(16)));
+channel SMI_Network_message channels_to_ck_s[3] __attribute__((depth(16)));
+channel SMI_Network_message channels_from_ck_r[2] __attribute__((depth(16)));
 
 __constant char QSFP_COUNT = 4;
-__constant char READS_LIMIT=8;
-
 
 // connect all CK_S together
 channel SMI_Network_message channels_interconnect_ck_s[QSFP_COUNT*(QSFP_COUNT-1)] __attribute__((depth(16)));
@@ -81,7 +77,8 @@ channel SMI_Network_message channels_interconnect_ck_s_to_ck_r[QSFP_COUNT] __att
 // connect corresponding CK_R/CK_S pairs
 channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __attribute__((depth(16)));
 
-#include "smi/bcast.h"
+#include "bcast.h"
+#include "reduce.h"
 
 __kernel void CK_S_0(__global volatile char *restrict rt)
 {
@@ -96,10 +93,10 @@ __kernel void CK_S_0(__global volatile char *restrict rt)
     char sender_id = 0;
     SMI_Network_message message;
 
+    const int READS_LIMIT=4;
     char contiguos_reads=0;
     while(1)
     {
-
         bool valid = false;
         switch (sender_id)
         {
@@ -153,7 +150,6 @@ __kernel void CK_S_0(__global volatile char *restrict rt)
                     break;
             }
         }
-
         if(!valid || contiguos_reads==READS_LIMIT)
         {
             contiguos_reads=0;
@@ -165,11 +161,10 @@ __kernel void CK_S_0(__global volatile char *restrict rt)
         }
     }
 }
-
 __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
 {
-    char external_routing_table[1 /* tag count */];
-    for (int i = 0; i < 1 /* tag count */; i++)
+    char external_routing_table[3 /* tag count */];
+    for (int i = 0; i < 3 /* tag count */; i++)
     {
         external_routing_table[i] = rt[i];
     }
@@ -178,7 +173,7 @@ __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
     const char num_sender = 5;
     char sender_id = 0;
     SMI_Network_message message;
-
+    const int READS_LIMIT=4;
     char contiguos_reads=0;
     while(1)
     {
@@ -241,7 +236,7 @@ __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
             }
         }
 
-        if(!valid || contiguos_reads==READS_LIMIT)
+       if(!valid || contiguos_reads==READS_LIMIT)
         {
             contiguos_reads=0;
             sender_id++;
@@ -252,7 +247,6 @@ __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
         }
     }
 }
-
 __kernel void CK_S_1(__global volatile char *restrict rt)
 {
     char external_routing_table[RANK_COUNT];
@@ -262,10 +256,11 @@ __kernel void CK_S_1(__global volatile char *restrict rt)
     }
 
     // number of CK_S - 1 + CK_R + 1 tags
-    const char num_sender = 4;
+    const char num_sender = 5;
     char sender_id = 0;
     SMI_Network_message message;
 
+    const int READS_LIMIT=4;
     char contiguos_reads=0;
     while(1)
     {
@@ -288,7 +283,10 @@ __kernel void CK_S_1(__global volatile char *restrict rt)
                 // receive from CK_R_1
                 message = read_channel_nb_intel(channels_interconnect_ck_r_to_ck_s[1], &valid);
                 break;
-
+            case 4:
+                // receive from app channel with tag 1
+                message = read_channel_nb_intel(channels_to_ck_s[1], &valid);
+                break;
         }
 
         if (valid)
@@ -319,7 +317,6 @@ __kernel void CK_S_1(__global volatile char *restrict rt)
                     break;
             }
         }
-
         if(!valid || contiguos_reads==READS_LIMIT)
         {
             contiguos_reads=0;
@@ -331,20 +328,19 @@ __kernel void CK_S_1(__global volatile char *restrict rt)
         }
     }
 }
-
 __kernel void CK_R_1(__global volatile char *restrict rt, const char rank)
 {
-    char external_routing_table[1 /* tag count */];
-    for (int i = 0; i < 1 /* tag count */; i++)
+    char external_routing_table[3 /* tag count */];
+    for (int i = 0; i < 3 /* tag count */; i++)
     {
         external_routing_table[i] = rt[i];
     }
 
     // QSFP + number of CK_Rs - 1 + CK_S
-    const char num_sender = 4;
+    const char num_sender = 5;
     char sender_id = 0;
     SMI_Network_message message;
-
+    const int READS_LIMIT=4;
     char contiguos_reads=0;
     while(1)
     {
@@ -400,10 +396,14 @@ __kernel void CK_R_1(__global volatile char *restrict rt, const char rank)
                     // send to CK_R_3
                     write_channel_intel(channels_interconnect_ck_r[10], message);
                     break;
+                case 4:
+                    // send to app channel with tag 1
+                    write_channel_intel(channels_from_ck_r[internal_receiver_rt[1]], message);
+                    break;
             }
         }
 
-        if(!valid || contiguos_reads==READS_LIMIT)
+       if(!valid || contiguos_reads==READS_LIMIT)
         {
             contiguos_reads=0;
             sender_id++;
@@ -422,11 +422,12 @@ __kernel void CK_S_2(__global volatile char *restrict rt)
         external_routing_table[i] = rt[i];
     }
 
-    // number of CK_S - 1 + CK_R + 0 tags
-    const char num_sender = 4;
+    // number of CK_S - 1 + CK_R + 1 tags
+    const char num_sender = 5;
     char sender_id = 0;
     SMI_Network_message message;
 
+    const int READS_LIMIT=4;
     char contiguos_reads=0;
     while(1)
     {
@@ -448,6 +449,10 @@ __kernel void CK_S_2(__global volatile char *restrict rt)
             case 3:
                 // receive from CK_R_2
                 message = read_channel_nb_intel(channels_interconnect_ck_r_to_ck_s[2], &valid);
+                break;
+            case 4:
+                // receive from app channel with tag 2
+                message = read_channel_nb_intel(channels_to_ck_s[2], &valid);
                 break;
         }
 
@@ -479,7 +484,6 @@ __kernel void CK_S_2(__global volatile char *restrict rt)
                     break;
             }
         }
-
         if(!valid || contiguos_reads==READS_LIMIT)
         {
             contiguos_reads=0;
@@ -493,17 +497,17 @@ __kernel void CK_S_2(__global volatile char *restrict rt)
 }
 __kernel void CK_R_2(__global volatile char *restrict rt, const char rank)
 {
-    char external_routing_table[1 /* tag count */];
-    for (int i = 0; i < 1 /* tag count */; i++)
+    char external_routing_table[3 /* tag count */];
+    for (int i = 0; i < 3 /* tag count */; i++)
     {
         external_routing_table[i] = rt[i];
     }
 
     // QSFP + number of CK_Rs - 1 + CK_S
-    const char num_sender = 5;
+    const char num_sender = 4;
     char sender_id = 0;
     SMI_Network_message message;
-
+    const int READS_LIMIT=4;
     char contiguos_reads=0;
     while(1)
     {
@@ -559,10 +563,14 @@ __kernel void CK_R_2(__global volatile char *restrict rt, const char rank)
                     // send to CK_R_3
                     write_channel_intel(channels_interconnect_ck_r[11], message);
                     break;
+               /* case 4:
+                    // send to app channel with tag 2
+                    write_channel_intel(channels_from_ck_r[internal_receiver_rt[2]], message);
+                    break;*/
             }
         }
 
-        if(!valid || contiguos_reads==READS_LIMIT)
+       if(!valid || contiguos_reads==READS_LIMIT)
         {
             contiguos_reads=0;
             sender_id++;
@@ -586,6 +594,7 @@ __kernel void CK_S_3(__global volatile char *restrict rt)
     char sender_id = 0;
     SMI_Network_message message;
 
+    const int READS_LIMIT=4;
     char contiguos_reads=0;
     while(1)
     {
@@ -638,7 +647,6 @@ __kernel void CK_S_3(__global volatile char *restrict rt)
                     break;
             }
         }
-
         if(!valid || contiguos_reads==READS_LIMIT)
         {
             contiguos_reads=0;
@@ -652,8 +660,8 @@ __kernel void CK_S_3(__global volatile char *restrict rt)
 }
 __kernel void CK_R_3(__global volatile char *restrict rt, const char rank)
 {
-    char external_routing_table[1 /* tag count */];
-    for (int i = 0; i < 1 /* tag count */; i++)
+    char external_routing_table[3 /* tag count */];
+    for (int i = 0; i < 3 /* tag count */; i++)
     {
         external_routing_table[i] = rt[i];
     }
@@ -662,7 +670,7 @@ __kernel void CK_R_3(__global volatile char *restrict rt, const char rank)
     const char num_sender = 5;
     char sender_id = 0;
     SMI_Network_message message;
-
+    const int READS_LIMIT=4;
     char contiguos_reads=0;
     while(1)
     {
@@ -721,7 +729,7 @@ __kernel void CK_R_3(__global volatile char *restrict rt, const char rank)
             }
         }
 
-        if(!valid || contiguos_reads==READS_LIMIT)
+       if(!valid || contiguos_reads==READS_LIMIT)
         {
             contiguos_reads=0;
             sender_id++;

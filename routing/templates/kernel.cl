@@ -12,7 +12,7 @@ __kernel void CK_S_{{ channel.index }}(__global volatile char *restrict rt)
     char sender_id = 0;
     SMI_Network_message message;
 
-    const int READS_LIMIT=4;
+    const char READS_LIMIT=8;
     char contiguos_reads=0;
     while(1)
     {
@@ -85,7 +85,7 @@ __kernel void CK_R_{{ channel.index }}(__global volatile char *restrict rt, cons
     const char num_sender = {{ channel_count + 1 }};
     char sender_id = 0;
     SMI_Network_message message;
-    const int READS_LIMIT=4;
+    const char READS_LIMIT=8;
     char contiguos_reads=0;
     while(1)
     {
