@@ -106,7 +106,8 @@ void SMI_Reduce(SMI_RChannel *chan, volatile void* data_snd, volatile void* data
 
 }
 
-
+__constant int SHIFT_REG=4;
+//In this implementation we have shift register to support II=1
 __kernel void kernel_reduce(const char num_rank)
 {
     //printf("Reduce kernel\n");
@@ -114,9 +115,9 @@ __kernel void kernel_reduce(const char num_rank)
     SMI_Network_message reduce;
     bool init=true;
     char sender_id=0;
-    const char credits_flow_control=7; //apparently, this combination (credits, max ranks) is the max that we can support with II=1
+    const char credits_flow_control=4; //apparently, this combination (credits, max ranks) is the max that we can support with II=1
     const char max_num_ranks=16;
-    float reduce_result[credits_flow_control];  //reduced results
+    float __attribute__((register)) reduce_result[credits_flow_control][SHIFT_REG+1];  //reduced results
     char data_recvd[credits_flow_control];
     bool send_credits=false;//true if (the root) has to send reduce request
     char credits=credits_flow_control; //the number of credits that I have
@@ -125,7 +126,9 @@ __kernel void kernel_reduce(const char num_rank)
     for(int i=0;i<credits_flow_control;i++)
     {
         data_recvd[i]=0;
-        reduce_result[i]=0;
+        #pragma unroll
+        for(int j=0;j<SHIFT_REG+1;j++)
+            reduce_result[i][j]=0;
     }
 
     for(int i=0;i<max_num_ranks;i++)
@@ -162,7 +165,11 @@ __kernel void kernel_reduce(const char num_rank)
                     //char addto=add_to[rank];
                     char * ptr=mess.data;
                     float data= *(float*)(ptr);
-                    reduce_result[add_to_root]+=data;        //SMI_ADD
+                    reduce_result[add_to_root][SHIFT_REG]=data+reduce_result[add_to_root][0];        //SMI_ADD
+                    #pragma unroll
+                    for(int j = 0; j < SHIFT_REG; ++j)
+                        reduce_result[add_to_root][j] = reduce_result[add_to_root][j + 1];
+
                     // printf("Reduce kernel received from app, root. Adding it to: %d \n",add_to_root);
                     data_recvd[add_to_root]++;
                     a=add_to_root;
@@ -197,7 +204,12 @@ __kernel void kernel_reduce(const char num_rank)
                         char addto=add_to[rank];
                         data_recvd[addto]++;
                         a=addto;
-                        reduce_result[addto]+=data;        //SMI_ADD
+                        //reduce_result[addto]+=data;        //SMI_ADD
+                        reduce_result[addto][SHIFT_REG]=data+reduce_result[addto][0];        //SMI_ADD
+                        #pragma unroll
+                        for(int j = 0; j < SHIFT_REG; ++j)
+                            reduce_result[addto][j] = reduce_result[addto][j + 1];
+
                         addto++;
                         //add_to[rank]++;
                         if(addto==credits_flow_control)
@@ -216,7 +228,13 @@ __kernel void kernel_reduce(const char num_rank)
                     //printf("Reduce kernel, send to app: %d\n",reduce_result[current_buffer_element]);
                     //send to application
                     char *data_snd=reduce.data;
-                    char *conv=(char*)(&reduce_result[current_buffer_element]);
+                    //char *conv=(char*)(&reduce_result[current_buffer_element]);
+                    //shift register
+                    float res=0;
+                    #pragma unroll
+                    for(int i=0;i<SHIFT_REG;i++)
+                        res+=reduce_result[current_buffer_element][i];
+                    char *conv=(char*)(&res);
                     #pragma unroll
                     for(int jj=0;jj<4;jj++) //copy the data
                         data_snd[jj]=conv[jj];
@@ -224,7 +242,11 @@ __kernel void kernel_reduce(const char num_rank)
                     send_credits=true;
                     credits++;
                     data_recvd[current_buffer_element]=0;
-                    reduce_result[current_buffer_element]=0;
+
+                    //reduce_result[current_buffer_element]=0;
+                    #pragma unroll
+                    for(int j=0;j<SHIFT_REG+1;j++)
+                        reduce_result[current_buffer_element][j]=0;
                     current_buffer_element++;
                     if(current_buffer_element==credits_flow_control)
                         current_buffer_element=0;

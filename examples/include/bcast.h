@@ -74,26 +74,24 @@ SMI_BChannel SMI_Open_bcast_channel(uint count, SMI_Datatype data_type, char roo
 void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rcv*/)
 {
     //take here the pointers to send/recv data to avoid fake dependencies
-    const char elem_per_packet=chan->elements_per_packet;
+
     if(chan->my_rank==chan->root_rank)//I'm the root
     {
         //char pack_elem_id_snd=chan->packet_element_id;
         char *conv=(char*)data;
         char *data_snd=chan->net.data;
-        const uint message_size=chan->message_size;
         chan->processed_elements++;
         #pragma unroll
         for(int jj=0;jj<4;jj++) //copy the data
             data_snd[chan->packet_element_id*4+jj]=conv[jj];
-
         chan->packet_element_id++;
-        if(chan->packet_element_id==elem_per_packet || chan->processed_elements==message_size) //send it if packet is filled or we reached the message size
+        if(chan->packet_element_id==7 || chan->processed_elements==chan->message_size) //send it if packet is filled or we reached the message size
         {
 
             SET_HEADER_NUM_ELEMS(chan->net.header,chan->packet_element_id);
+            chan->packet_element_id=0;
             //offload to bcast kernel
             write_channel_intel(channel_bcast_send,chan->net);
-            chan->packet_element_id=0;
         }
     }
     else //I have to receive
@@ -113,7 +111,7 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
         //TODO: this prevents HyperFlex (try with a constant and you'll see)
         //I had to put this check, because otherwise II goes to 2
         //if we reached the number of elements in this packet get the next one from CK_R
-        if( chan->packet_element_id_rcv==elem_per_packet)
+        if( chan->packet_element_id_rcv==7)
              chan->packet_element_id_rcv=0;
         //mem_fence(CLK_CHANNEL_MEM_FENCE);
     }

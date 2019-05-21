@@ -153,6 +153,7 @@ int main(int argc, char *argv[])
     kernels[10].setArg(3,sizeof(char),&rank);
     kernels[10].setArg(4,sizeof(char),&rank_count);
     kernels[10].setArg(5,sizeof(cl_mem),&reduced_elements);
+    kernels[10].setArg(6,sizeof(cl_mem),&check);
 
 
 
@@ -177,13 +178,13 @@ int main(int argc, char *argv[])
         events[0].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
         double time= (double)((end-start)/1000.0f);
         times.push_back(time);
-       /* char res;
-        queues[9].enqueueReadBuffer(check,CL_TRUE,0,1,&res);
+        char res;
+        queues[10].enqueueReadBuffer(check,CL_TRUE,0,1,&res);
         if(res==1)
             cout << "Result is Ok!"<<endl;
         else
             cout << "Error!!!!"<<endl;
-*/
+
 
     }
 
