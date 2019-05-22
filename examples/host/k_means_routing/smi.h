@@ -57,11 +57,11 @@ channel SMI_Network_message io_in_3 __attribute__((depth(16))) __attribute__((io
 #endif
 
 // internal routing tables
-__constant char internal_sender_rt[3] = { 0, 1, 2 };
-__constant char internal_receiver_rt[3] = { 0, 1, 2 };
+__constant char internal_sender_rt[6] = { 0, 1, 2, 3, 4, 5 };
+__constant char internal_receiver_rt[6] = { 0, 1, 2, 3, 4, 5 };
 
-channel SMI_Network_message channels_to_ck_s[3] __attribute__((depth(16)));
-channel SMI_Network_message channels_from_ck_r[2] __attribute__((depth(16)));
+channel SMI_Network_message channels_to_ck_s[6] __attribute__((depth(16)));
+channel SMI_Network_message channels_from_ck_r[4] __attribute__((depth(16)));
 
 __constant char QSFP_COUNT = 4;
 
@@ -88,12 +88,12 @@ __kernel void CK_S_0(__global volatile char *restrict rt)
         external_routing_table[i] = rt[i];
     }
 
-    // number of CK_S - 1 + CK_R + 1 tags
-    const char num_sender = 5;
+    // number of CK_S - 1 + CK_R + 2 tags
+    const char num_sender = 6;
     char sender_id = 0;
     SMI_Network_message message;
 
-    const int READS_LIMIT=4;
+    const char READS_LIMIT=8;
     char contiguos_reads=0;
     while(1)
     {
@@ -119,6 +119,10 @@ __kernel void CK_S_0(__global volatile char *restrict rt)
             case 4:
                 // receive from app channel with tag 0
                 message = read_channel_nb_intel(channels_to_ck_s[0], &valid);
+                break;
+            case 5:
+                // receive from app channel with tag 4
+                message = read_channel_nb_intel(channels_to_ck_s[4], &valid);
                 break;
         }
 
@@ -163,8 +167,8 @@ __kernel void CK_S_0(__global volatile char *restrict rt)
 }
 __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
 {
-    char external_routing_table[3 /* tag count */];
-    for (int i = 0; i < 3 /* tag count */; i++)
+    char external_routing_table[6 /* tag count */];
+    for (int i = 0; i < 6 /* tag count */; i++)
     {
         external_routing_table[i] = rt[i];
     }
@@ -173,7 +177,7 @@ __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
     const char num_sender = 5;
     char sender_id = 0;
     SMI_Network_message message;
-    const int READS_LIMIT=4;
+    const char READS_LIMIT=8;
     char contiguos_reads=0;
     while(1)
     {
@@ -233,6 +237,10 @@ __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
                     // send to app channel with tag 0
                     write_channel_intel(channels_from_ck_r[internal_receiver_rt[0]], message);
                     break;
+                /*case 5:
+                    // send to app channel with tag 4
+                    write_channel_intel(channels_from_ck_r[internal_receiver_rt[4]], message);
+                    break;*/
             }
         }
 
@@ -255,12 +263,12 @@ __kernel void CK_S_1(__global volatile char *restrict rt)
         external_routing_table[i] = rt[i];
     }
 
-    // number of CK_S - 1 + CK_R + 1 tags
-    const char num_sender = 5;
+    // number of CK_S - 1 + CK_R + 2 tags
+    const char num_sender = 6;
     char sender_id = 0;
     SMI_Network_message message;
 
-    const int READS_LIMIT=4;
+    const char READS_LIMIT=8;
     char contiguos_reads=0;
     while(1)
     {
@@ -286,6 +294,10 @@ __kernel void CK_S_1(__global volatile char *restrict rt)
             case 4:
                 // receive from app channel with tag 1
                 message = read_channel_nb_intel(channels_to_ck_s[1], &valid);
+                break;
+            case 5:
+                // receive from app channel with tag 5
+                message = read_channel_nb_intel(channels_to_ck_s[5], &valid);
                 break;
         }
 
@@ -330,8 +342,8 @@ __kernel void CK_S_1(__global volatile char *restrict rt)
 }
 __kernel void CK_R_1(__global volatile char *restrict rt, const char rank)
 {
-    char external_routing_table[3 /* tag count */];
-    for (int i = 0; i < 3 /* tag count */; i++)
+    char external_routing_table[6 /* tag count */];
+    for (int i = 0; i < 6 /* tag count */; i++)
     {
         external_routing_table[i] = rt[i];
     }
@@ -340,7 +352,7 @@ __kernel void CK_R_1(__global volatile char *restrict rt, const char rank)
     const char num_sender = 5;
     char sender_id = 0;
     SMI_Network_message message;
-    const int READS_LIMIT=4;
+    const char READS_LIMIT=8;
     char contiguos_reads=0;
     while(1)
     {
@@ -400,6 +412,10 @@ __kernel void CK_R_1(__global volatile char *restrict rt, const char rank)
                     // send to app channel with tag 1
                     write_channel_intel(channels_from_ck_r[internal_receiver_rt[1]], message);
                     break;
+               /* case 5:
+                    // send to app channel with tag 5
+                    write_channel_intel(channels_from_ck_r[internal_receiver_rt[5]], message);
+                    break;*/
             }
         }
 
@@ -427,7 +443,7 @@ __kernel void CK_S_2(__global volatile char *restrict rt)
     char sender_id = 0;
     SMI_Network_message message;
 
-    const int READS_LIMIT=4;
+    const char READS_LIMIT=8;
     char contiguos_reads=0;
     while(1)
     {
@@ -497,17 +513,17 @@ __kernel void CK_S_2(__global volatile char *restrict rt)
 }
 __kernel void CK_R_2(__global volatile char *restrict rt, const char rank)
 {
-    char external_routing_table[3 /* tag count */];
-    for (int i = 0; i < 3 /* tag count */; i++)
+    char external_routing_table[6 /* tag count */];
+    for (int i = 0; i < 6 /* tag count */; i++)
     {
         external_routing_table[i] = rt[i];
     }
 
     // QSFP + number of CK_Rs - 1 + CK_S
-    const char num_sender = 4;
+    const char num_sender = 5;
     char sender_id = 0;
     SMI_Network_message message;
-    const int READS_LIMIT=4;
+    const char READS_LIMIT=8;
     char contiguos_reads=0;
     while(1)
     {
@@ -563,10 +579,10 @@ __kernel void CK_R_2(__global volatile char *restrict rt, const char rank)
                     // send to CK_R_3
                     write_channel_intel(channels_interconnect_ck_r[11], message);
                     break;
-               /* case 4:
+                case 4:
                     // send to app channel with tag 2
                     write_channel_intel(channels_from_ck_r[internal_receiver_rt[2]], message);
-                    break;*/
+                    break;
             }
         }
 
@@ -589,12 +605,12 @@ __kernel void CK_S_3(__global volatile char *restrict rt)
         external_routing_table[i] = rt[i];
     }
 
-    // number of CK_S - 1 + CK_R + 0 tags
-    const char num_sender = 4;
+    // number of CK_S - 1 + CK_R + 1 tags
+    const char num_sender = 5;
     char sender_id = 0;
     SMI_Network_message message;
 
-    const int READS_LIMIT=4;
+    const char READS_LIMIT=8;
     char contiguos_reads=0;
     while(1)
     {
@@ -616,6 +632,10 @@ __kernel void CK_S_3(__global volatile char *restrict rt)
             case 3:
                 // receive from CK_R_3
                 message = read_channel_nb_intel(channels_interconnect_ck_r_to_ck_s[3], &valid);
+                break;
+            case 4:
+                // receive from app channel with tag 3
+                message = read_channel_nb_intel(channels_to_ck_s[3], &valid);
                 break;
         }
 
@@ -660,8 +680,8 @@ __kernel void CK_S_3(__global volatile char *restrict rt)
 }
 __kernel void CK_R_3(__global volatile char *restrict rt, const char rank)
 {
-    char external_routing_table[3 /* tag count */];
-    for (int i = 0; i < 3 /* tag count */; i++)
+    char external_routing_table[6 /* tag count */];
+    for (int i = 0; i < 6 /* tag count */; i++)
     {
         external_routing_table[i] = rt[i];
     }
@@ -670,7 +690,7 @@ __kernel void CK_R_3(__global volatile char *restrict rt, const char rank)
     const char num_sender = 5;
     char sender_id = 0;
     SMI_Network_message message;
-    const int READS_LIMIT=4;
+    const char READS_LIMIT=8;
     char contiguos_reads=0;
     while(1)
     {
@@ -725,6 +745,10 @@ __kernel void CK_R_3(__global volatile char *restrict rt, const char rank)
                 case 3:
                     // send to CK_R_2
                     write_channel_intel(channels_interconnect_ck_r[8], message);
+                    break;
+                case 4:
+                    // send to app channel with tag 3
+                    write_channel_intel(channels_from_ck_r[internal_receiver_rt[3]], message);
                     break;
             }
         }

@@ -52,7 +52,6 @@ int main(int argc, char *argv[])
                 exit(-1);
         }
 
-    cout << "Performing reduce with  "<<1<<" elements, root: "<<(char)root<< " (attention: lenght is currently used to express the number of iteration)"<<endl;
     int rank_count;
     CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &rank_count));
     CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
@@ -75,13 +74,13 @@ int main(int argc, char *argv[])
     std::vector<cl::Kernel> kernels;
     std::vector<cl::CommandQueue> queues;
     std::vector<std::string> kernel_names={"CK_S_0", "CK_S_1", "CK_S_2", "CK_S_3", "CK_R_0", "CK_R_1", "CK_R_2", "CK_R_3",
-                                          "kernel_reduce", "kernel_bcast", "app"};
+                                          "kernel_reduce_float", "kernel_bcast_float", "kernel_reduce_int","kernel_bcast_int", "app"};
 
     //this is for the case with classi channels
     IntelFPGAOCLUtils::initEnvironment(platform,device,fpga,context,program,program_path,kernel_names, kernels,queues);
 
     //create memory buffers
-    char tags=3;
+    char tags=6;
     cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
     cl::Buffer routing_table_ck_s_0(context,CL_MEM_READ_ONLY,rank_count);
     cl::Buffer routing_table_ck_s_1(context,CL_MEM_READ_ONLY,rank_count);
@@ -140,20 +139,28 @@ int main(int argc, char *argv[])
     kernels[8].setArg(0,sizeof(char),&rank_count);
     kernels[9].setArg(0,sizeof(char),&rank_count);
 
+    kernels[10].setArg(0,sizeof(char),&rank_count);
+    kernels[11].setArg(0,sizeof(char),&rank_count);
+
     queues[8].enqueueTask(kernels[8]);
     queues[9].enqueueTask(kernels[9]);
+    queues[10].enqueueTask(kernels[10]);
+    queues[11].enqueueTask(kernels[11]);
 
 
     //Application
-    cl::Buffer reduced_elements(context,CL_MEM_READ_WRITE,n*sizeof(float));
+    cl::Buffer reduced_elements_float(context,CL_MEM_READ_WRITE,n*sizeof(float));
+    cl::Buffer reduced_elements_int(context,CL_MEM_READ_WRITE,n*sizeof(int));
 
-    kernels[10].setArg(0,sizeof(int),&iterations);
-    kernels[10].setArg(1,sizeof(int),&n);
-    kernels[10].setArg(2,sizeof(char),&root);
-    kernels[10].setArg(3,sizeof(char),&rank);
-    kernels[10].setArg(4,sizeof(char),&rank_count);
-    kernels[10].setArg(5,sizeof(cl_mem),&reduced_elements);
-    kernels[10].setArg(6,sizeof(cl_mem),&check);
+    kernels[12].setArg(0,sizeof(int),&iterations);
+    kernels[12].setArg(1,sizeof(int),&n);
+    kernels[12].setArg(2,sizeof(int),&n);
+    kernels[12].setArg(3,sizeof(char),&root);
+    kernels[12].setArg(4,sizeof(char),&rank);
+    kernels[12].setArg(5,sizeof(char),&rank_count);
+    kernels[12].setArg(6,sizeof(cl_mem),&reduced_elements_float);
+    kernels[12].setArg(7,sizeof(cl_mem),&reduced_elements_int);
+    kernels[12].setArg(8,sizeof(cl_mem),&check);
 
 
 
@@ -165,9 +172,9 @@ int main(int argc, char *argv[])
     CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
 
 
-    queues[10].enqueueTask(kernels[10],nullptr,&events[0]);
+    queues[12].enqueueTask(kernels[12],nullptr,&events[0]);
 
-    queues[10].finish();
+    queues[12].finish();
 
 
     CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
@@ -179,7 +186,7 @@ int main(int argc, char *argv[])
         double time= (double)((end-start)/1000.0f);
         times.push_back(time);
         char res;
-        queues[10].enqueueReadBuffer(check,CL_TRUE,0,1,&res);
+        queues[12].enqueueReadBuffer(check,CL_TRUE,0,1,&res);
         if(res==1)
             cout << "Result is Ok!"<<endl;
         else

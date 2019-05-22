@@ -18,6 +18,7 @@
 
 - code generation MPMD: if the ranks are asymettric (e.g. one send and the other receive) we need to differentiate between "sending" and "receiving" tags
 
-- API: uniform everything with channel_id
+- API: uniform everything with channel_id. Problem with collectives: not able to solve the ch_id as a constant. We
+	can move this to the support kernel, but remains the problem of the data type and the unrolling
 
 - CK_S/CK_R: keep reading from the same interface

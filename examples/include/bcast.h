@@ -1,7 +1,8 @@
-/** Bcast implementation for FLOAT
-    This will use a single tag:
-    - in output, if the rank is the root
-    - in input, if the rank is non-root
+/** Bcast implementations for kmeans
+ *
+ *  - bcast float will use channels_to_ck_s[2], ckr[1]
+ * -  bcast int will use channels_to_ck_s[5], ckr[3]
+
 
 */
 
@@ -15,7 +16,7 @@
 
 //temp here, then need to move
 
-channel SMI_Network_message channel_bcast_send __attribute__((depth(2))); //channel from root to bcast kernel
+channel SMI_Network_message channel_bcast_send[2] __attribute__((depth(2))); //channel from root to bcast kernel
 
 
 //align to 64 to remove aliasing
@@ -49,18 +50,16 @@ SMI_BChannel SMI_Open_bcast_channel(uint count, SMI_Datatype data_type, char roo
     chan.root_rank=root;
     chan.num_rank=num_ranks;
 
-    //float
+    //float or int
     chan.size_of_type=4;
     chan.elements_per_packet=7;
-
 
     //setup header for the message
     SET_HEADER_DST(chan.net.header,0);
     //SET_HEADER_SRC(chan.net.header,my_rank);
     SET_HEADER_SRC(chan.net.header,root);
-
     SET_HEADER_TAG(chan.net.header,0);        //used by destination
-    SET_HEADER_NUM_ELEMS(chan.net.header,0);    //at the beginning no data
+    SET_HEADER_NUM_ELEMS(chan.net.header,0);  //at the beginning no data
     chan.processed_elements=0;
     chan.packet_element_id=0;
     chan.packet_element_id_rcv=0;
@@ -68,10 +67,8 @@ SMI_BChannel SMI_Open_bcast_channel(uint count, SMI_Datatype data_type, char roo
 }
 
 
-/*
- * This Bcast is the fusion between a pop and a push
- */
-void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rcv*/)
+//float bcast
+void SMI_Bcast_float(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rcv*/)
 {
     //take here the pointers to send/recv data to avoid fake dependencies
 
@@ -91,7 +88,7 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
             SET_HEADER_NUM_ELEMS(chan->net.header,chan->packet_element_id);
             chan->packet_element_id=0;
             //offload to bcast kernel
-            write_channel_intel(channel_bcast_send,chan->net);
+            write_channel_intel(channel_bcast_send[0],chan->net);
         }
     }
     else //I have to receive
@@ -99,18 +96,13 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
         if(chan->packet_element_id_rcv==0)
         {
             //const char chan_idx=internal_receiver_rt[chan->tag_in];
-            chan->net_2=read_channel_intel(channels_from_ck_r[1]);
+            chan->net_2=read_channel_intel(channels_from_ck_r[1]); //TODO fix this
         }
         //char * ptr=chan->net_2.data+(chan->packet_element_id_rcv);
         char *data_rcv=chan->net_2.data;
         char * ptr=data_rcv+(chan->packet_element_id_rcv)*4;
         *(float *)data= *(float*)(ptr);
-
-        //pack_elem_id_rcv++;
         chan->packet_element_id_rcv++;                       //first increment and then use it: otherwise compiler detects Fmax problems
-        //TODO: this prevents HyperFlex (try with a constant and you'll see)
-        //I had to put this check, because otherwise II goes to 2
-        //if we reached the number of elements in this packet get the next one from CK_R
         if( chan->packet_element_id_rcv==7)
              chan->packet_element_id_rcv=0;
         //mem_fence(CLK_CHANNEL_MEM_FENCE);
@@ -120,10 +112,52 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
 
 
 
-__kernel void kernel_bcast(char num_rank)
+//int bcast
+void SMI_Bcast_int(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rcv*/)
 {
-    //decide whether we keep this argument or not
-    //otherwise we have to decide where to put it
+    //take here the pointers to send/recv data to avoid fake dependencies
+
+    if(chan->my_rank==chan->root_rank)//I'm the root
+    {
+        //char pack_elem_id_snd=chan->packet_element_id;
+        char *conv=(char*)data;
+        char *data_snd=chan->net.data;
+        chan->processed_elements++;
+        #pragma unroll
+        for(int jj=0;jj<4;jj++) //copy the data
+            data_snd[chan->packet_element_id*4+jj]=conv[jj];
+        chan->packet_element_id++;
+        if(chan->packet_element_id==7 || chan->processed_elements==chan->message_size) //send it if packet is filled or we reached the message size
+        {
+
+            SET_HEADER_NUM_ELEMS(chan->net.header,chan->packet_element_id);
+            chan->packet_element_id=0;
+            //offload to bcast kernel
+            write_channel_intel(channel_bcast_send[1],chan->net);
+        }
+    }
+    else //I have to receive
+    {
+        if(chan->packet_element_id_rcv==0)
+        {
+            //const char chan_idx=internal_receiver_rt[chan->tag_in];
+            chan->net_2=read_channel_intel(channels_from_ck_r[3]);
+        }
+        //char * ptr=chan->net_2.data+(chan->packet_element_id_rcv);
+        char *data_rcv=chan->net_2.data;
+        char * ptr=data_rcv+(chan->packet_element_id_rcv)*4;
+        *(int *)data= *(int*)(ptr);
+        chan->packet_element_id_rcv++;                       //first increment and then use it: otherwise compiler detects Fmax problems
+        if( chan->packet_element_id_rcv==7)
+             chan->packet_element_id_rcv=0;
+        //mem_fence(CLK_CHANNEL_MEM_FENCE);
+    }
+
+}
+
+
+__kernel void kernel_bcast_float(char num_rank)
+{
     bool external=true;
     char rcv;
     char root;
@@ -134,7 +168,7 @@ __kernel void kernel_bcast(char num_rank)
     {
         if(external)
         {
-            mess=read_channel_intel(channel_bcast_send);
+            mess=read_channel_intel(channel_bcast_send[0]);
             rcv=0;
             external=false;
             root=GET_HEADER_SRC(mess.header);
@@ -144,9 +178,43 @@ __kernel void kernel_bcast(char num_rank)
 
         if(rcv!=root) //it's not me
         {
-//            printf("BCAST: Sending to %d, with tag: %d\n",rcv,GET_HEADER_TAG(mess.header));
             SET_HEADER_DST(mess.header,rcv);
             write_channel_intel(channels_to_ck_s[2],mess);
+        }
+        rcv++;
+        if(rcv==num_rank)
+        {
+            external=true;
+        }
+    }
+
+}
+
+
+
+__kernel void kernel_bcast_int(char num_rank)
+{
+    bool external=true;
+    char rcv;
+    char root;
+    SMI_Network_message mess;
+//  /  printf("bcast kernel!\n");
+    while(true)
+    {
+        if(external)
+        {
+            mess=read_channel_intel(channel_bcast_send[1]);
+            rcv=0;
+            external=false;
+            root=GET_HEADER_SRC(mess.header);
+            SET_HEADER_SRC(mess.header,root);
+            SET_HEADER_TAG(mess.header,3); //TODO fix this
+        }
+
+        if(rcv!=root) //it's not me
+        {
+            SET_HEADER_DST(mess.header,rcv);
+            write_channel_intel(channels_to_ck_s[5],mess);
         }
         rcv++;
         if(rcv==num_rank)
