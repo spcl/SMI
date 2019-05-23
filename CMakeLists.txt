@@ -89,7 +89,7 @@ function(add_smi_kernel KERNEL_PATH USE_CODEGEN NUM_RANKS NUM_TAGS)
       add_dependencies(build_${KERNEL_NAME}_emulator
                        build_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK})
     endforeach()
-    add_dependencies(build_${KERNEL_NAME}_emulator
+    add_dependencies(build_${KERNEL_NAME}_emulator_0
                      generate_${KERNEL_NAME}_routing)
   endif()
   add_custom_target(build_${KERNEL_NAME}_hardware
