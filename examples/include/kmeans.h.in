@@ -1,0 +1,18 @@
+#pragma once
+
+#pragma OPENCL EXTENSION cl_intel_channels : enable
+
+#define W ${SMI_VECTORIZATION_WIDTH}
+#define K ${SMI_KMEANS_CLUSTERS}
+#define DIMS ${SMI_KMEANS_DIMS}
+#define DTYPE ${SMI_DATATYPE} 
+#define ITYPE unsigned short
+#define SMI_TYPE ${SMI_COMM_DATATYPE}
+#define W ${SMI_VECTORIZATION_WIDTH}
+#if W > 1
+#define VTYPE ${SMI_DATATYPE}${SMI_VECTORIZATION_WIDTH} 
+#define IVTYPE ushort${SMI_VECTORIZATION_WIDTH} 
+#else
+#define VTYPE DTYPE
+#define IVTYPE ITYPE
+#endif
