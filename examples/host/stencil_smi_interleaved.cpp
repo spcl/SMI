@@ -202,7 +202,7 @@ int main(int argc, char **argv) {
 
   MPIStatus(mpi_rank, "Creating OpenCL context...\n");
   try {
-    hlslib::ocl::Context context(mpi_rank % kDevicesPerNode);
+    hlslib::ocl::Context context(emulator ? 0 : (mpi_rank % kDevicesPerNode));
     MPIStatus(mpi_rank, "Creating program from binary...\n");
     auto program = context.MakeProgram(kernel_path);
 
