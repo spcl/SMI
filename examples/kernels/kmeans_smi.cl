@@ -195,7 +195,7 @@ kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
     for (int k = 0; k < K; ++k) {
       for (int d = 0; d < DIMS / W; ++d) {
         VTYPE updated = centroids_updated[d][k] / count_updated[k]; 
-        // write_channel_intel(centroid_loop_ch, updated);
+        write_channel_intel(centroid_loop_ch, updated);
         // Write back to global memory
         centroids_global[k * DIMS / W + d] = updated; 
       }
