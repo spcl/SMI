@@ -2,7 +2,7 @@
 
 
 
-#define RANK_COUNT 4
+#define RANK_COUNT 8
 
 // QSFP channels
 #ifndef SMI_EMULATION_RANK

@@ -1,7 +1,7 @@
 #include "smi/channel_helpers.h"
 
 
-#define RANK_COUNT 4
+#define RANK_COUNT 8
 
 // QSFP channels
 #ifndef SMI_EMULATION_RANK
@@ -79,7 +79,7 @@ channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __att
 
 #include "smi/push.h"
 
-__constant char READS_LIMIT=4;
+__constant char READS_LIMIT=8;
 
 __kernel void CK_S_0(__global volatile char *restrict rt)
 {

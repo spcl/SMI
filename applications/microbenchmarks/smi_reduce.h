@@ -1,7 +1,7 @@
 #include "smi/network_message.h"
 
 
-#define RANK_COUNT 4
+#define RANK_COUNT 8
 
 // QSFP channels
 #ifndef SMI_EMULATION_RANK
@@ -63,7 +63,7 @@ __constant char internal_receiver_rt[2] = { 0, 1 };
 channel SMI_Network_message channels_to_ck_s[2] __attribute__((depth(16)));
 channel SMI_Network_message channels_from_ck_r[1] __attribute__((depth(16)));
 
-__constant char QSFP_COUNT = 4;
+__constant char QSFP_COUNT = 8;
 
 // connect all CK_S together
 channel SMI_Network_message channels_interconnect_ck_s[QSFP_COUNT*(QSFP_COUNT-1)] __attribute__((depth(16)));
