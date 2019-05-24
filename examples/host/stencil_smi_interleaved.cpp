@@ -287,7 +287,7 @@ int main(int argc, char **argv) {
     std::vector<hlslib::ocl::Kernel> compute_kernels;
     compute_kernels.emplace_back(program.MakeKernel(
         "Read", device_buffers[0], device_buffers[1], device_buffers[2],
-        device_buffers[3], i_px, i_py, timesteps));
+        device_buffers[3], i_px, i_py, timesteps, (char)mpi_rank));
     compute_kernels.emplace_back(
         program.MakeKernel("Stencil", i_px, i_py, timesteps));
     compute_kernels.emplace_back(program.MakeKernel(

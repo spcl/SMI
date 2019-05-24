@@ -3,7 +3,7 @@ project(smi)
 
 # Configuration 
 set(SMI_TARGET_BOARD "p520_max_sg280l" CACHE STRING "aoc target board.")
-set(SMI_ROUTING_FILE "${CMAKE_SOURCE_DIR}/routing/fpga-15-16.routing" CACHE STRING "File describing routing setup.")
+set(SMI_ROUTING_FILE "${CMAKE_SOURCE_DIR}/routing/fpga-06-07-08-09.routing" CACHE STRING "File describing routing setup.")
 set(SMI_FMAX "300" CACHE STRING "Target Fmax when compiling for hardware.")
 set(SMI_DEVICES_PER_NODE 2 CACHE STRING "Number of FPGA devices per node.")
 

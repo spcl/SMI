@@ -1,5 +1,19 @@
 #include "stencil.h"
 #include "smi.h"
+#define ANSI_COLOR_RED     "\x1b[31m"
+#define ANSI_COLOR_GREEN   "\x1b[32m"
+#define ANSI_COLOR_YELLOW  "\x1b[33m"
+#define ANSI_COLOR_BLUE    "\x1b[34m"
+#define ANSI_COLOR_MAGENTA "\x1b[35m"
+#define ANSI_COLOR_CYAN    "\x1b[36m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
+
+//#define DEBUG
+#ifdef DEBUG
+#  define D(x) x
+#else
+#  define D(x)
+#endif
 
 #if PX * PY != RANK_COUNT
 #error "Incompatible number of stencil processes and number of communication ranks."
@@ -20,8 +34,13 @@ kernel void Read(__global volatile const VTYPE *restrict bank0,
                  __global volatile const VTYPE *restrict bank1,
                  __global volatile const VTYPE *restrict bank2,
                  __global volatile const VTYPE *restrict bank3, const int i_px,
-                 const int i_py, const int timesteps) {
+                 const int i_py, const int timesteps,char myrank) {
+    const int read_from_top=0;
+    const int read_from_bottom=0;
+    const int read_from_right=0;
+    const int read_from_left=0;
   // Extra artificial timestep to send first boundaries
+
   for (int t = 0; t < timesteps + 1; ++t) {
     // Swap the timestep modulo to accommodate first artificial timestep
     const int offset =
@@ -63,6 +82,7 @@ kernel void Read(__global volatile const VTYPE *restrict bank0,
           if (oob_top) {
             if (i_px > 0 && t > 0 && !on_corner) {
               // Read from channel above
+              D(printf(ANSI_COLOR_GREEN "[READ-%d] read from top %d\n" ANSI_COLOR_RESET,my_rank,++read_from_top);)
               #pragma unroll
               for (int b = 0; b < B; ++b) {
                 res[b] = read_channel_intel(receive_top[b]);
@@ -71,6 +91,8 @@ kernel void Read(__global volatile const VTYPE *restrict bank0,
           } else if (oob_bottom) {
             if (i_px < PX - 1 && t > 0 && !on_corner) {
               // Read from channel below
+              D(printf(ANSI_COLOR_GREEN "[READ-%d] read from bottom %d\n" ANSI_COLOR_RESET,my_rank,++read_from_bottom);)
+
               #pragma unroll
               for (int b = 0; b < B; ++b) {
                 res[b] = read_channel_intel(receive_bottom[b]);
@@ -79,6 +101,8 @@ kernel void Read(__global volatile const VTYPE *restrict bank0,
           } else if (oob_left) {
             if (i_py > 0 && t > 0 && !on_corner) {
               // Read from left channel
+              D(printf(ANSI_COLOR_GREEN "[READ-%d] read from left %d\n" ANSI_COLOR_RESET,my_rank,++read_from_left);)
+
               HTYPE read_horizontal = read_channel_intel(receive_left);
 
               // Populate elements within boundary, leaving the rest
@@ -91,6 +115,8 @@ kernel void Read(__global volatile const VTYPE *restrict bank0,
             }
           } else if (oob_right) {
             if (i_py < PY - 1 && t > 0 && !on_corner) {
+              D(printf(ANSI_COLOR_GREEN "[READ-%d] read from right %d\n" ANSI_COLOR_RESET,my_rank,++read_from_right);)
+
               // Read from right channel
               HTYPE read_horizontal = read_channel_intel(receive_right);
 
