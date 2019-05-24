@@ -10,6 +10,7 @@
 
 // Convert from C to C++
 using Data_t = DTYPE;
+constexpr int kNumTags = 6;
 constexpr int kK = K;
 constexpr int kDims = DIMS;
 constexpr auto kUsage =
@@ -73,12 +74,12 @@ int main(int argc, char **argv) {
   const int iterations = std::stoi(argv[3]);
 
   // Read routing tables
-  std::vector<std::vector<char>> routing_tables_ckr(kChannelsPerRank,
-                                                    std::vector<char>(4));
+  std::vector<std::vector<char>> routing_tables_ckr(
+      kChannelsPerRank, std::vector<char>(kNumTags));
   std::vector<std::vector<char>> routing_tables_cks(
       kChannelsPerRank, std::vector<char>(mpi_size));
   for (int i = 0; i < kChannelsPerRank; ++i) {
-    LoadRoutingTable<char>(mpi_rank, i, 4, "kmeans_smi_routing", "ckr",
+    LoadRoutingTable<char>(mpi_rank, i, kNumTags, "kmeans_smi_routing", "ckr",
                            &routing_tables_ckr[i][0]);
     LoadRoutingTable<char>(mpi_rank, i, mpi_size, "kmeans_smi_routing", "cks",
                            &routing_tables_cks[i][0]);

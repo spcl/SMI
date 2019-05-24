@@ -127,7 +127,7 @@ kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
     // printf("[%i] Starting centroid reduce...\n", smi_rank);
 
     SMI_RChannel __attribute__((register)) reduce_mean_ch =
-        SMI_Open_reduce_channel(K * DIMS * W, SMI_FLOAT, 0, smi_rank, smi_size);
+        SMI_Open_reduce_channel(K * DIMS, SMI_FLOAT, 0, smi_rank, smi_size);
     #pragma loop_coalesce
     for (int k = 0; k < K; ++k) {
       for (int d = 0; d < DIMS / W; d++) {
@@ -148,7 +148,7 @@ kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
     // printf("[%i] Starting centroid broadcast...\n", smi_rank);
 
     SMI_BChannel __attribute__((register)) broadcast_mean_ch =
-        SMI_Open_bcast_channel(K * DIMS * W, SMI_FLOAT, 0, smi_rank, smi_size);
+        SMI_Open_bcast_channel(K * DIMS, SMI_FLOAT, 0, smi_rank, smi_size);
     #pragma loop_coalesce
     for (int k = 0; k < K; ++k) {
       for (int d = 0; d < DIMS / W; d++) {
