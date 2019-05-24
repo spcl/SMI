@@ -16,3 +16,4 @@
 #define VTYPE DTYPE
 #define IVTYPE ITYPE
 #endif
+#define SMI_DEVICES_PER_NODE ${SMI_DEVICES_PER_NODE}

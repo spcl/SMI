@@ -91,6 +91,10 @@ int compute_tran_temp(cl_mem MatrixPower, cl_mem MatrixTemp[2], int col,
       float Ry_1 = 1 / Ry;
       float Rz_1 = 1 / Rz;
 
+      std::cout << grid_height << ", " << grid_width << ", " << Rx_1 << ", "
+                << Ry_1 << ", " << Rz_1 << ", " << Cap << ", " << max_slope
+                << ", " << step << ", " << step_div_Cap;
+
       CL_SAFE_CALL(
           clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&MatrixPower));
       CL_SAFE_CALL(clSetKernelArg(kernel, 3, sizeof(int), (void *)&col));

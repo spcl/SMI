@@ -6,6 +6,7 @@ set(SMI_VECTORIZATION_WIDTH 16 CACHE STRING "Width for exploiting vector paralle
 set(SMI_STENCIL_NUM_PROCS_X 2 CACHE STRING "Number of processes in X dimension.")
 set(SMI_STENCIL_NUM_PROCS_Y 2 CACHE STRING "Number of processes in Y dimension.")
 math(EXPR SMI_STENCIL_NUM_PROCS "${SMI_STENCIL_NUM_PROCS_X} * ${SMI_STENCIL_NUM_PROCS_Y}")
+set(SMI_KMEANS_RANKS 8 CACHE STRING "Number of dimensions for K-means.")
 set(SMI_KMEANS_DIMS 64 CACHE STRING "Number of dimensions for K-means.")
 set(SMI_KMEANS_CLUSTERS 8 CACHE STRING "Number of clusters to compute.")
 
@@ -23,19 +24,28 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 find_package(PythonInterp 3)
 
-add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_simple.cl" OFF 1 0)
+add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_simple.cl" OFF 1 0 OFF)
 add_smi_executable("stencil_simple")
 if(PythonInterp_FOUND)
-  add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_spatial_tiling.cl" ON 1 0)
+  add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_spatial_tiling.cl" ON 1 0 OFF)
   add_smi_executable("stencil_spatial_tiling")
-  add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_smi.cl" OFF ${SMI_STENCIL_NUM_PROCS} 4)
+  add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_smi.cl" OFF ${SMI_STENCIL_NUM_PROCS} 4 OFF)
   add_smi_executable("stencil_smi")
-  add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_smi_interleaved.cl" OFF ${SMI_STENCIL_NUM_PROCS} 4)
+  add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_smi_interleaved.cl" OFF ${SMI_STENCIL_NUM_PROCS} 4 OFF)
   add_smi_executable("stencil_smi_interleaved")
   # Rodinia hotspot kernel
   configure_file(include/hotspot.h.in hotspot.h)
-  add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/hotspot_smi.cl" OFF ${SMI_STENCIL_NUM_PROCS} 4)
+  add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/hotspot_smi.cl" OFF ${SMI_STENCIL_NUM_PROCS} 4 OFF)
   add_smi_executable("hotspot_smi")
+  add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/kmeans_smi.cl" OFF ${SMI_KMEANS_RANKS} 4 ON)
+  add_smi_executable("kmeans_smi")
+  add_dependencies(kmeans_smi.exe generate_kmeans_smi_routing)
+  add_dependencies(build_kmeans_smi_emulator generate_kmeans_smi_routing)
+  add_dependencies(build_kmeans_smi_hardware generate_kmeans_smi_routing)
 endif()
-add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/kmeans_aos.cl" OFF 1 0)
+add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/kmeans_aos.cl" OFF 1 0 OFF)
 add_smi_executable("kmeans_aos")
+add_custom_target(generate_kmeans_smi_routing
+                  COMMAND ${CMAKE_COMMAND} -E copy_directory
+                  ${CMAKE_CURRENT_SOURCE_DIR}/host/k_means_routing 
+                  ${CMAKE_CURRENT_BINARY_DIR}/kmeans_smi_routing)
