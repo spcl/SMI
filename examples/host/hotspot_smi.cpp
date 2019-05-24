@@ -8,7 +8,6 @@
 #include "common.h"
 #include "hlslib/intel/OpenCL.h"
 #include "hotspot.h"
-#include <unistd.h>
 
 // Convert from C to C++
 constexpr auto kMemoryBanks = B;
@@ -220,19 +219,7 @@ int main(int argc, char **argv) {
     LoadRoutingTable<char>(mpi_rank, i, mpi_size, "hotspot_smi_routing", "cks",
                            &routing_tables_cks[i][0]);
   }
- /* usleep(100000*mpi_rank);
-  std::cout << "----------------" <<std::endl;
-  std::cout << "Rank: "<< mpi_rank<<std::endl;
-  std::cout << "CK_R_TABLE: " <<std::endl;
-  for(int i=0;i<kChannelsPerRank;i++)
-      for(int j=0;j<4;j++)
-          std::cout << i<< "," << j<<": "<< (int)routing_tables_ckr[i][j]<<std::endl;
-  std::cout << "CK_S_TABLE: " <<std::endl;
-  for(int i=0;i<kChannelsPerRank;i++)
-      for(int j=0;j<mpi_size;j++)
-          std::cout << i<< "," << j<<": "<< (int)routing_tables_cks[i][j]<<std::endl;
-    sleep(1);
-*/
+
   std::vector<AlignedVec_t> temperature_host_split, power_host_split;
   AlignedVec_t temperature_host, power_host, temperature_reference,
       power_reference;
@@ -274,10 +261,11 @@ int main(int argc, char **argv) {
   const int device = mpi_rank % kDevicesPerNode;
   MPIStatus(mpi_rank, "Creating OpenCL context using device ", device, "...\n");
   hlslib::ocl::Context context(mpi_rank % kDevicesPerNode);
-
-  MPI_Barrier(MPI_COMM_WORLD);
   MPIStatus(mpi_rank, "Creating program from binary...\n");
   auto program = context.MakeProgram(kernel_path);
+
+  MPI_Barrier(MPI_COMM_WORLD);
+
   MPIStatus(mpi_rank, "Allocating device memory...\n");
   const std::array<hlslib::ocl::MemoryBank, 4> banks = {
       hlslib::ocl::MemoryBank::bank0, hlslib::ocl::MemoryBank::bank1,
@@ -337,19 +325,18 @@ int main(int argc, char **argv) {
   MPIStatus(mpi_rank, "Starting memory conversion kernels...\n");
   std::vector<hlslib::ocl::Kernel> conv_kernels;
   conv_kernels.emplace_back(
-      program.MakeKernel("ConvertReceiveLeft", i_px, i_py,(char)mpi_rank));
+      program.MakeKernel("ConvertReceiveLeft", i_px, i_py));
   conv_kernels.emplace_back(
-      program.MakeKernel("ConvertReceiveRight", i_px, i_py,(char)mpi_rank));
+      program.MakeKernel("ConvertReceiveRight", i_px, i_py));
   conv_kernels.emplace_back(
-      program.MakeKernel("ConvertReceiveTop", i_px, i_py,(char)mpi_rank));
+      program.MakeKernel("ConvertReceiveTop", i_px, i_py));
   conv_kernels.emplace_back(
-      program.MakeKernel("ConvertReceiveBottom", i_px, i_py,(char)mpi_rank));
-  conv_kernels.emplace_back(program.MakeKernel("ConvertSendLeft", i_px, i_py,(char)mpi_rank));
-  conv_kernels.emplace_back(program.MakeKernel("ConvertSendRight", i_px, i_py,(char)mpi_rank));
-  conv_kernels.emplace_back(program.MakeKernel("ConvertSendTop", i_px, i_py,(char)mpi_rank));
+      program.MakeKernel("ConvertReceiveBottom", i_px, i_py));
+  conv_kernels.emplace_back(program.MakeKernel("ConvertSendLeft", i_px, i_py));
+  conv_kernels.emplace_back(program.MakeKernel("ConvertSendRight", i_px, i_py));
+  conv_kernels.emplace_back(program.MakeKernel("ConvertSendTop", i_px, i_py));
   conv_kernels.emplace_back(
-      program.MakeKernel("ConvertSendBottom", i_px, i_py,(char)mpi_rank));
-
+      program.MakeKernel("ConvertSendBottom", i_px, i_py));
   for (auto &k : conv_kernels) {
     k.ExecuteTaskFork();
   }
@@ -360,18 +347,18 @@ int main(int argc, char **argv) {
   MPIStatus(mpi_rank, "Creating compute kernels...\n");
   std::vector<hlslib::ocl::Kernel> compute_kernels;
   compute_kernels.emplace_back(program.MakeKernel(
-      "Write", temperature_interleaved_device[0],
-      temperature_interleaved_device[1], temperature_interleaved_device[2],
-      temperature_interleaved_device[3], i_px, i_py, timesteps,(char)mpi_rank));
-  compute_kernels.emplace_back(program.MakeKernel(
       "Read", temperature_interleaved_device[0],
       temperature_interleaved_device[1], temperature_interleaved_device[2],
-      temperature_interleaved_device[3], i_px, i_py, timesteps,(char)mpi_rank));
+      temperature_interleaved_device[3], i_px, i_py, timesteps));
   compute_kernels.emplace_back(program.MakeKernel(
       "ReadPower", power_interleaved_device[0], power_interleaved_device[1],
-      power_interleaved_device[2], power_interleaved_device[3], timesteps,(char)mpi_rank));
+      power_interleaved_device[2], power_interleaved_device[3], timesteps));
   compute_kernels.emplace_back(program.MakeKernel(
-      "Stencil", rx1, ry1, rz1, step_div_cap, i_px, i_py, timesteps,(char)mpi_rank));
+      "Stencil", rx1, ry1, rz1, step_div_cap, i_px, i_py, timesteps));
+  compute_kernels.emplace_back(program.MakeKernel(
+      "Write", temperature_interleaved_device[0],
+      temperature_interleaved_device[1], temperature_interleaved_device[2],
+      temperature_interleaved_device[3], i_px, i_py, timesteps));
 
   // Wait for all ranks to be ready for launch
   MPI_Barrier(MPI_COMM_WORLD);
@@ -379,10 +366,8 @@ int main(int argc, char **argv) {
   MPIStatus(mpi_rank, "Launching kernels...\n");
   std::vector<std::future<std::pair<double, double>>> futures;
   const auto start = std::chrono::high_resolution_clock::now();
-  int i=0;
   for (auto &k : compute_kernels) {
     futures.emplace_back(k.ExecuteTaskAsync());
-    std::cout<< "Launched compute "<< i++ <<std::endl;
   }
 
   MPIStatus(mpi_rank, "Waiting for kernels to finish...\n");

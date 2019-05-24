@@ -166,7 +166,8 @@ int main(int argc, char **argv) {
   MPIStatus(mpi_rank, "Creating OpenCL context...\n");
   try {
     hlslib::ocl::Context context(mpi_rank % kDevicesPerNode);
-
+    MPIStatus(mpi_rank, "Creating program from binary...\n");
+    auto program = context.MakeProgram(kernel_path);
     MPIStatus(mpi_rank, "Allocating device memory...\n");
     auto device_buffer =
         context.MakeBuffer<Data_t, hlslib::ocl::Access::readWrite>(2 * kXLocal *
@@ -184,8 +185,7 @@ int main(int argc, char **argv) {
               routing_tables_ckr[i].cbegin(), routing_tables_ckr[i].cend());
     }
 
-    MPIStatus(mpi_rank, "Creating program from binary...\n");
-    auto program = context.MakeProgram(kernel_path);
+
 
     // std::pair<kernel object, whether kernel is autorun>
     std::vector<hlslib::ocl::Kernel> comm_kernels;
@@ -221,8 +221,6 @@ int main(int argc, char **argv) {
     conv_kernels.emplace_back(
         program.MakeKernel("ConvertSendRight", i_px, i_py));
     conv_kernels.emplace_back(program.MakeKernel("ConvertSendTop", i_px, i_py));
-    conv_kernels.emplace_back(
-        program.MakeKernel("ConvertSendBottom", i_px, i_py));
     conv_kernels.emplace_back(
         program.MakeKernel("ConvertSendBottom", i_px, i_py));
     for (auto &k : conv_kernels) {
