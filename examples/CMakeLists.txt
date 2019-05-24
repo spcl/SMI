@@ -25,8 +25,6 @@ find_package(PythonInterp 3)
 
 add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_simple.cl" OFF 1 0)
 add_smi_executable("stencil_simple")
-add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_smi_host.cl" OFF 1 0)
-add_smi_executable("stencil_smi_host")
 if(PythonInterp_FOUND)
   add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_spatial_tiling.cl" ON 1 0)
   add_smi_executable("stencil_spatial_tiling")
