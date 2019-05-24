@@ -15,44 +15,84 @@ channel SMI_Network_message io_out_3 __attribute__((depth(16))) __attribute__((i
 channel SMI_Network_message io_in_3 __attribute__((depth(16))) __attribute__((io("kernel_input_ch3")));
 #else
 #if SMI_EMULATION_RANK == 0
-channel SMI_Network_message io_out_0 __attribute__((depth(16))) __attribute__((io("emulated_channel_r0c0_r2c0")));
-channel SMI_Network_message io_in_0 __attribute__((depth(16))) __attribute__((io("emulated_channel_r2c0_r0c0")));
-channel SMI_Network_message io_out_1 __attribute__((depth(16))) __attribute__((io("emulated_channel_r0c1_r1c1")));
-channel SMI_Network_message io_in_1 __attribute__((depth(16))) __attribute__((io("emulated_channel_r1c1_r0c1")));
-channel SMI_Network_message io_out_2 __attribute__((depth(16))) __attribute__((io("emulated_channel_r0c2_r3c2")));
-channel SMI_Network_message io_in_2 __attribute__((depth(16))) __attribute__((io("emulated_channel_r3c2_r0c2")));
-channel SMI_Network_message io_out_3 __attribute__((depth(16))) __attribute__((io("emulated_channel_r0c3_unconnected")));
-channel SMI_Network_message io_in_3 __attribute__((depth(16))) __attribute__((io("emulated_channel_unconnected_r0c3")));
+channel SMI_Network_message io_out_0 __attribute__((depth(16))) __attribute__((io("emulated_channel_r0c0_r6c1")));
+channel SMI_Network_message io_in_0 __attribute__((depth(16))) __attribute__((io("emulated_channel_r6c1_r0c0")));
+channel SMI_Network_message io_out_1 __attribute__((depth(16))) __attribute__((io("emulated_channel_r0c1_r2c0")));
+channel SMI_Network_message io_in_1 __attribute__((depth(16))) __attribute__((io("emulated_channel_r2c0_r0c1")));
+channel SMI_Network_message io_out_2 __attribute__((depth(16))) __attribute__((io("emulated_channel_r0c2_r1c3")));
+channel SMI_Network_message io_in_2 __attribute__((depth(16))) __attribute__((io("emulated_channel_r1c3_r0c2")));
+channel SMI_Network_message io_out_3 __attribute__((depth(16))) __attribute__((io("emulated_channel_r0c3_r1c2")));
+channel SMI_Network_message io_in_3 __attribute__((depth(16))) __attribute__((io("emulated_channel_r1c2_r0c3")));
 #endif
 #if SMI_EMULATION_RANK == 1
-channel SMI_Network_message io_out_0 __attribute__((depth(16))) __attribute__((io("emulated_channel_r1c0_r3c0")));
-channel SMI_Network_message io_in_0 __attribute__((depth(16))) __attribute__((io("emulated_channel_r3c0_r1c0")));
-channel SMI_Network_message io_out_1 __attribute__((depth(16))) __attribute__((io("emulated_channel_r1c1_r0c1")));
-channel SMI_Network_message io_in_1 __attribute__((depth(16))) __attribute__((io("emulated_channel_r0c1_r1c1")));
-channel SMI_Network_message io_out_2 __attribute__((depth(16))) __attribute__((io("emulated_channel_r1c2_r2c2")));
-channel SMI_Network_message io_in_2 __attribute__((depth(16))) __attribute__((io("emulated_channel_r2c2_r1c2")));
-channel SMI_Network_message io_out_3 __attribute__((depth(16))) __attribute__((io("emulated_channel_r1c3_unconnected")));
-channel SMI_Network_message io_in_3 __attribute__((depth(16))) __attribute__((io("emulated_channel_unconnected_r1c3")));
+channel SMI_Network_message io_out_0 __attribute__((depth(16))) __attribute__((io("emulated_channel_r1c0_r7c1")));
+channel SMI_Network_message io_in_0 __attribute__((depth(16))) __attribute__((io("emulated_channel_r7c1_r1c0")));
+channel SMI_Network_message io_out_1 __attribute__((depth(16))) __attribute__((io("emulated_channel_r1c1_r3c0")));
+channel SMI_Network_message io_in_1 __attribute__((depth(16))) __attribute__((io("emulated_channel_r3c0_r1c1")));
+channel SMI_Network_message io_out_2 __attribute__((depth(16))) __attribute__((io("emulated_channel_r1c2_r0c3")));
+channel SMI_Network_message io_in_2 __attribute__((depth(16))) __attribute__((io("emulated_channel_r0c3_r1c2")));
+channel SMI_Network_message io_out_3 __attribute__((depth(16))) __attribute__((io("emulated_channel_r1c3_r0c2")));
+channel SMI_Network_message io_in_3 __attribute__((depth(16))) __attribute__((io("emulated_channel_r0c2_r1c3")));
 #endif
 #if SMI_EMULATION_RANK == 2
-channel SMI_Network_message io_out_0 __attribute__((depth(16))) __attribute__((io("emulated_channel_r2c0_r0c0")));
-channel SMI_Network_message io_in_0 __attribute__((depth(16))) __attribute__((io("emulated_channel_r0c0_r2c0")));
-channel SMI_Network_message io_out_1 __attribute__((depth(16))) __attribute__((io("emulated_channel_r2c1_r3c1")));
-channel SMI_Network_message io_in_1 __attribute__((depth(16))) __attribute__((io("emulated_channel_r3c1_r2c1")));
-channel SMI_Network_message io_out_2 __attribute__((depth(16))) __attribute__((io("emulated_channel_r2c2_r1c2")));
-channel SMI_Network_message io_in_2 __attribute__((depth(16))) __attribute__((io("emulated_channel_r1c2_r2c2")));
-channel SMI_Network_message io_out_3 __attribute__((depth(16))) __attribute__((io("emulated_channel_r2c3_unconnected")));
-channel SMI_Network_message io_in_3 __attribute__((depth(16))) __attribute__((io("emulated_channel_unconnected_r2c3")));
+channel SMI_Network_message io_out_0 __attribute__((depth(16))) __attribute__((io("emulated_channel_r2c0_r0c1")));
+channel SMI_Network_message io_in_0 __attribute__((depth(16))) __attribute__((io("emulated_channel_r0c1_r2c0")));
+channel SMI_Network_message io_out_1 __attribute__((depth(16))) __attribute__((io("emulated_channel_r2c1_r4c0")));
+channel SMI_Network_message io_in_1 __attribute__((depth(16))) __attribute__((io("emulated_channel_r4c0_r2c1")));
+channel SMI_Network_message io_out_2 __attribute__((depth(16))) __attribute__((io("emulated_channel_r2c2_r3c3")));
+channel SMI_Network_message io_in_2 __attribute__((depth(16))) __attribute__((io("emulated_channel_r3c3_r2c2")));
+channel SMI_Network_message io_out_3 __attribute__((depth(16))) __attribute__((io("emulated_channel_r2c3_r3c2")));
+channel SMI_Network_message io_in_3 __attribute__((depth(16))) __attribute__((io("emulated_channel_r3c2_r2c3")));
 #endif
 #if SMI_EMULATION_RANK == 3
-channel SMI_Network_message io_out_0 __attribute__((depth(16))) __attribute__((io("emulated_channel_r3c0_r1c0")));
-channel SMI_Network_message io_in_0 __attribute__((depth(16))) __attribute__((io("emulated_channel_r1c0_r3c0")));
-channel SMI_Network_message io_out_1 __attribute__((depth(16))) __attribute__((io("emulated_channel_r3c1_r2c1")));
-channel SMI_Network_message io_in_1 __attribute__((depth(16))) __attribute__((io("emulated_channel_r2c1_r3c1")));
-channel SMI_Network_message io_out_2 __attribute__((depth(16))) __attribute__((io("emulated_channel_r3c2_r0c2")));
-channel SMI_Network_message io_in_2 __attribute__((depth(16))) __attribute__((io("emulated_channel_r0c2_r3c2")));
-channel SMI_Network_message io_out_3 __attribute__((depth(16))) __attribute__((io("emulated_channel_r3c3_unconnected")));
-channel SMI_Network_message io_in_3 __attribute__((depth(16))) __attribute__((io("emulated_channel_unconnected_r3c3")));
+channel SMI_Network_message io_out_0 __attribute__((depth(16))) __attribute__((io("emulated_channel_r3c0_r1c1")));
+channel SMI_Network_message io_in_0 __attribute__((depth(16))) __attribute__((io("emulated_channel_r1c1_r3c0")));
+channel SMI_Network_message io_out_1 __attribute__((depth(16))) __attribute__((io("emulated_channel_r3c1_r5c0")));
+channel SMI_Network_message io_in_1 __attribute__((depth(16))) __attribute__((io("emulated_channel_r5c0_r3c1")));
+channel SMI_Network_message io_out_2 __attribute__((depth(16))) __attribute__((io("emulated_channel_r3c2_r2c3")));
+channel SMI_Network_message io_in_2 __attribute__((depth(16))) __attribute__((io("emulated_channel_r2c3_r3c2")));
+channel SMI_Network_message io_out_3 __attribute__((depth(16))) __attribute__((io("emulated_channel_r3c3_r2c2")));
+channel SMI_Network_message io_in_3 __attribute__((depth(16))) __attribute__((io("emulated_channel_r2c2_r3c3")));
+#endif
+#if SMI_EMULATION_RANK == 4
+channel SMI_Network_message io_out_0 __attribute__((depth(16))) __attribute__((io("emulated_channel_r4c0_r2c1")));
+channel SMI_Network_message io_in_0 __attribute__((depth(16))) __attribute__((io("emulated_channel_r2c1_r4c0")));
+channel SMI_Network_message io_out_1 __attribute__((depth(16))) __attribute__((io("emulated_channel_r4c1_r6c0")));
+channel SMI_Network_message io_in_1 __attribute__((depth(16))) __attribute__((io("emulated_channel_r6c0_r4c1")));
+channel SMI_Network_message io_out_2 __attribute__((depth(16))) __attribute__((io("emulated_channel_r4c2_r5c3")));
+channel SMI_Network_message io_in_2 __attribute__((depth(16))) __attribute__((io("emulated_channel_r5c3_r4c2")));
+channel SMI_Network_message io_out_3 __attribute__((depth(16))) __attribute__((io("emulated_channel_r4c3_r5c2")));
+channel SMI_Network_message io_in_3 __attribute__((depth(16))) __attribute__((io("emulated_channel_r5c2_r4c3")));
+#endif
+#if SMI_EMULATION_RANK == 5
+channel SMI_Network_message io_out_0 __attribute__((depth(16))) __attribute__((io("emulated_channel_r5c0_r3c1")));
+channel SMI_Network_message io_in_0 __attribute__((depth(16))) __attribute__((io("emulated_channel_r3c1_r5c0")));
+channel SMI_Network_message io_out_1 __attribute__((depth(16))) __attribute__((io("emulated_channel_r5c1_r7c0")));
+channel SMI_Network_message io_in_1 __attribute__((depth(16))) __attribute__((io("emulated_channel_r7c0_r5c1")));
+channel SMI_Network_message io_out_2 __attribute__((depth(16))) __attribute__((io("emulated_channel_r5c2_r4c3")));
+channel SMI_Network_message io_in_2 __attribute__((depth(16))) __attribute__((io("emulated_channel_r4c3_r5c2")));
+channel SMI_Network_message io_out_3 __attribute__((depth(16))) __attribute__((io("emulated_channel_r5c3_r4c2")));
+channel SMI_Network_message io_in_3 __attribute__((depth(16))) __attribute__((io("emulated_channel_r4c2_r5c3")));
+#endif
+#if SMI_EMULATION_RANK == 6
+channel SMI_Network_message io_out_0 __attribute__((depth(16))) __attribute__((io("emulated_channel_r6c0_r4c1")));
+channel SMI_Network_message io_in_0 __attribute__((depth(16))) __attribute__((io("emulated_channel_r4c1_r6c0")));
+channel SMI_Network_message io_out_1 __attribute__((depth(16))) __attribute__((io("emulated_channel_r6c1_r0c0")));
+channel SMI_Network_message io_in_1 __attribute__((depth(16))) __attribute__((io("emulated_channel_r0c0_r6c1")));
+channel SMI_Network_message io_out_2 __attribute__((depth(16))) __attribute__((io("emulated_channel_r6c2_r7c3")));
+channel SMI_Network_message io_in_2 __attribute__((depth(16))) __attribute__((io("emulated_channel_r7c3_r6c2")));
+channel SMI_Network_message io_out_3 __attribute__((depth(16))) __attribute__((io("emulated_channel_r6c3_r7c2")));
+channel SMI_Network_message io_in_3 __attribute__((depth(16))) __attribute__((io("emulated_channel_r7c2_r6c3")));
+#endif
+#if SMI_EMULATION_RANK == 7
+channel SMI_Network_message io_out_0 __attribute__((depth(16))) __attribute__((io("emulated_channel_r7c0_r5c1")));
+channel SMI_Network_message io_in_0 __attribute__((depth(16))) __attribute__((io("emulated_channel_r5c1_r7c0")));
+channel SMI_Network_message io_out_1 __attribute__((depth(16))) __attribute__((io("emulated_channel_r7c1_r1c0")));
+channel SMI_Network_message io_in_1 __attribute__((depth(16))) __attribute__((io("emulated_channel_r1c0_r7c1")));
+channel SMI_Network_message io_out_2 __attribute__((depth(16))) __attribute__((io("emulated_channel_r7c2_r6c3")));
+channel SMI_Network_message io_in_2 __attribute__((depth(16))) __attribute__((io("emulated_channel_r6c3_r7c2")));
+channel SMI_Network_message io_out_3 __attribute__((depth(16))) __attribute__((io("emulated_channel_r7c3_r6c2")));
+channel SMI_Network_message io_in_3 __attribute__((depth(16))) __attribute__((io("emulated_channel_r6c2_r7c3")));
 #endif
 #endif
 
