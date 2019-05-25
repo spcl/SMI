@@ -106,8 +106,8 @@ __kernel void kernel_reduce(const char num_rank)
     SMI_Network_message reduce;
     bool init=true;
     char sender_id=0;
-    const char credits_flow_control=8; //apparently, this combination (credits, max ranks) is the max that we can support with II=1
-    const char max_num_ranks=16;
+    const char credits_flow_control=15; //apparently, this combination (credits, max ranks) is the max that we can support with II=1
+    const char max_num_ranks=8;
     float __attribute__((register)) reduce_result[credits_flow_control][SHIFT_REG+1];  //reduced results
     char data_recvd[credits_flow_control];
     bool send_credits=false;//true if (the root) has to send reduce request
