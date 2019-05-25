@@ -2,9 +2,9 @@
 #include <iostream>
 #include <numeric>
 #include <random>
+#include "common.h"
 #include "hlslib/intel/OpenCL.h"
 #include "kmeans.h"
-#include "common.h"
 
 #include <mpi.h>
 
@@ -14,7 +14,8 @@ constexpr int kNumTags = 6;
 constexpr int kK = K;
 constexpr int kDims = DIMS;
 constexpr auto kUsage =
-    "Usage: ./kmeans_smi <[emulator/hardware]> <num_points> <iterations>\n";
+    "Usage: ./kmeans_smi_iterate <[emulator/hardware]> <num_points> "
+    "<iterations>\n";
 constexpr auto kDevicesPerNode = SMI_DEVICES_PER_NODE;
 
 using AlignedVec_t =
@@ -56,9 +57,9 @@ int main(int argc, char **argv) {
     emulator = true;
     // In emulation mode, each rank has its own kernel file
     kernel_path =
-        ("kmeans_smi_emulator_" + std::to_string(mpi_rank) + ".aocx");
+        ("kmeans_smi_iterate_emulator_" + std::to_string(mpi_rank) + ".aocx");
   } else if (mode_str == "hardware") {
-    kernel_path = "kmeans_smi_hardware.aocx";
+    kernel_path = "kmeans_smi_iterate_hardware.aocx";
     emulator = false;
   } else {
     std::cout << kUsage;
@@ -79,13 +80,13 @@ int main(int argc, char **argv) {
   std::vector<std::vector<char>> routing_tables_cks(
       kChannelsPerRank, std::vector<char>(mpi_size));
   for (int i = 0; i < kChannelsPerRank; ++i) {
-    LoadRoutingTable<char>(mpi_rank, i, kNumTags, "kmeans_smi_routing", "ckr",
-                           &routing_tables_ckr[i][0]);
-    LoadRoutingTable<char>(mpi_rank, i, mpi_size, "kmeans_smi_routing", "cks",
-                           &routing_tables_cks[i][0]);
+    LoadRoutingTable<char>(mpi_rank, i, kNumTags, "kmeans_smi_iterate_routing",
+                           "ckr", &routing_tables_ckr[i][0]);
+    LoadRoutingTable<char>(mpi_rank, i, mpi_size, "kmeans_smi_iterate_routing",
+                           "cks", &routing_tables_cks[i][0]);
   }
 
-  AlignedVec_t input; 
+  AlignedVec_t input;
   AlignedVec_t points(kDims * points_per_rank);
   AlignedVec_t centroids(kK * kDims);
   if (mpi_rank == 0) {
@@ -153,19 +154,15 @@ int main(int argc, char **argv) {
               points_per_rank, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
   try {
-
     MPIStatus(mpi_rank, "Creating OpenCL context...\n");
     hlslib::ocl::Context context(emulator ? 0 : (mpi_rank % kDevicesPerNode));
 
     MPIStatus(mpi_rank, "Allocating and copying device memory...\n");
     auto points_device = context.MakeBuffer<Data_t, hlslib::ocl::Access::read>(
         points.cbegin(), points.cend());
-    auto centroids_device_read =
-        context.MakeBuffer<Data_t, hlslib::ocl::Access::read>(centroids.cbegin(),
-                                                              centroids.cend());
-    auto centroids_device_write =
-        context.MakeBuffer<Data_t, hlslib::ocl::Access::write>(centroids.cbegin(),
-                                                               centroids.cend());
+    auto centroids_device =
+        context.MakeBuffer<Data_t, hlslib::ocl::Access::readWrite>(
+            centroids.cbegin(), centroids.cend());
     std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>>
         routing_tables_cks_device(kChannelsPerRank);
     std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>>
@@ -210,35 +207,30 @@ int main(int argc, char **argv) {
 
     MPIStatus(mpi_rank, "Creating compute kernels...\n");
     std::vector<hlslib::ocl::Kernel> kernels;
-    kernels.emplace_back(program.MakeKernel("SendCentroids",
-                                            centroids_device_read, iterations,
-                                            mpi_rank, mpi_size));
-    kernels.emplace_back(program.MakeKernel("ComputeDistance", points_device,
-                                            points_per_rank, iterations,
-                                            mpi_rank, mpi_size));
-    kernels.emplace_back(
-        program.MakeKernel("ComputeMeans", centroids_device_write,
-                           points_per_rank, iterations, mpi_rank, mpi_size));
+    kernels.emplace_back(program.MakeKernel("ComputeDistance", centroids_device,
+                                            points_device, points_per_rank));
+    kernels.emplace_back(program.MakeKernel(
+        "ComputeMeans", centroids_device, points_per_rank, mpi_rank, mpi_size));
 
     // Wait for compute kernels to be initialized
     MPI_Barrier(MPI_COMM_WORLD);
 
     // Execute kernel
-    MPIStatus(mpi_rank, "Launching compute kernels...\n");
-    std::vector<std::future<std::pair<double, double>>> futures;
     const auto start = std::chrono::high_resolution_clock::now();
-    for (auto &k : kernels) {
-      futures.emplace_back(k.ExecuteTaskAsync());
-    }
-
-    MPIStatus(mpi_rank, "Waiting for kernels to finish...\n");
-    for (auto &f : futures) {
-      f.wait();
+    for (int i = 0; i < iterations; ++i) {
+      MPIStatus(mpi_rank, "Executing iteration ", i, "...\n");
+      std::vector<std::future<std::pair<double, double>>> futures;
+      for (auto &k : kernels) {
+        futures.emplace_back(k.ExecuteTaskAsync());
+      }
+      for (auto &f : futures) {
+        f.wait();
+      }
     }
     const auto end = std::chrono::high_resolution_clock::now();
     const double elapsed =
-        1e-9 *
-        std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+        1e-9 * std::chrono::duration_cast<std::chrono::nanoseconds>(end - start)
+                   .count();
     MPIStatus(mpi_rank, "Finished in ", elapsed, " seconds.\n");
 
     // Make sure all kernels finished
@@ -246,7 +238,7 @@ int main(int argc, char **argv) {
 
     // Copy back result
     MPIStatus(mpi_rank, "Copying back result...\n");
-    centroids_device_write.CopyToHost(centroids.begin());
+    centroids_device.CopyToHost(centroids.begin());
 
   } catch (std::exception const &err) {
     // Don't exit immediately, such that MPI will not exit other ranks that are
@@ -257,7 +249,6 @@ int main(int argc, char **argv) {
   }
 
   if (mpi_rank == 0) {
-
     // Final centroids
     std::cout << "Final centroids:\n";
     for (int k = 0; k < kK; ++k) {
@@ -267,7 +258,6 @@ int main(int argc, char **argv) {
       }
       std::cout << "}\n";
     }
-
   }
 
   MPI_Finalize();
