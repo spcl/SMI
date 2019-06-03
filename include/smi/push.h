@@ -27,6 +27,15 @@
  */
 void SMI_Push_flush(SMI_Channel *chan, void* data, bool immediate)
 {
+    if(!chan->rendezvous)
+    {
+        //wait until the message arrives
+        const char chan_idx=internal_receiver_rt[chan->tag];
+        SMI_Network_message mess=read_channel_intel(channels_from_ck_r[chan_idx]);
+       // printf("Sender, recevd rendezvous from tag %d\n",chan->tag);
+        chan->rendezvous =true;
+
+    }
     char *conv=(char*)data;
     const char chan_idx=internal_sender_rt[chan->tag];
     #pragma unroll
@@ -40,6 +49,7 @@ void SMI_Push_flush(SMI_Channel *chan, void* data, bool immediate)
         chan->packet_element_id=0;
         write_channel_intel(channels_to_ck_s[chan_idx],chan->net);
     }
+    
 }
 
 

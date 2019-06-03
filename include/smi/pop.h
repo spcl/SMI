@@ -24,6 +24,21 @@
  */
 void SMI_Pop(SMI_Channel *chan, void *data)
 {
+    if(!chan->rendezvous)
+    {
+        chan->rendezvous=true;
+        const char chan_idx=internal_sender_rt[chan->tag];
+        SMI_Network_message mess;
+        SET_HEADER_DST(mess.header,chan->sender_rank);
+        SET_HEADER_TAG(mess.header,chan->tag);
+        SET_HEADER_OP(mess.header,SMI_REQUEST);
+        write_channel_intel(channels_to_ck_s[chan_idx],mess);
+       // printf("Receiver, sent rendezvous\n");
+
+    }
+  
+
+
     //in this case we have to copy the data into the target variable
     if(chan->packet_element_id==0)
     {
@@ -45,7 +60,7 @@ void SMI_Pop(SMI_Channel *chan, void *data)
         *(float *)data= *(float*)(ptr);
     if(chan->data_type==SMI_DOUBLE)
         *(double *)data= *(double*)(ptr);
-
+    
 }
 
 #endif //ifndef POP_

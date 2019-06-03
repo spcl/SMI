@@ -23,6 +23,7 @@ typedef struct __attribute__((packed)) __attribute__((aligned(32))){
     SMI_Operationtype op_type;            //type of operation
     char size_of_type;              //size of data type
     char elements_per_packet;       //number of data elements per packet
+    bool rendezvous;                //true if rendezvous has been done, false otherwise
 }SMI_Channel;
 
 

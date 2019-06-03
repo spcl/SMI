@@ -21,7 +21,7 @@ SMI_Channel SMI_Open_send_channel(uint count, SMI_Datatype data_type, char desti
     chan.message_size=count;
     chan.data_type=data_type;
     chan.op_type=SMI_SEND;
-
+    chan.rendezvous=false;
     switch(data_type)
     {
         case(SMI_CHAR):
@@ -65,6 +65,7 @@ SMI_Channel SMI_Open_receive_channel(uint count, SMI_Datatype data_type, char so
     chan.message_size=count;
     chan.data_type=data_type;
     chan.op_type=SMI_RECEIVE;
+    chan.rendezvous=false;
 
     switch(data_type)
     {
