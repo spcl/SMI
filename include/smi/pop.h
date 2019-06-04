@@ -24,19 +24,7 @@
  */
 void SMI_Pop(SMI_Channel *chan, void *data)
 {
-    if(!chan->rendezvous)
-    {
-        chan->rendezvous=true;
-        const char chan_idx=internal_sender_rt[chan->tag];
-        SMI_Network_message mess;
-        SET_HEADER_DST(mess.header,chan->sender_rank);
-        SET_HEADER_TAG(mess.header,chan->tag);
-        SET_HEADER_OP(mess.header,SMI_REQUEST);
-        write_channel_intel(channels_to_ck_s[chan_idx],mess);
-       // printf("Receiver, sent rendezvous\n");
 
-    }
-  
 
 
     //in this case we have to copy the data into the target variable
@@ -44,6 +32,8 @@ void SMI_Pop(SMI_Channel *chan, void *data)
     {
         const char chan_idx=internal_receiver_rt[chan->tag];
         chan->net=read_channel_intel(channels_from_ck_r[chan_idx]);
+
+
     }
     char * ptr=chan->net.data+(chan->packet_element_id)*chan->size_of_type;
     chan->packet_element_id++;                       //first increment and then use it: otherwise compiler detects Fmax problems
@@ -60,6 +50,25 @@ void SMI_Pop(SMI_Channel *chan, void *data)
         *(float *)data= *(float*)(ptr);
     if(chan->data_type==SMI_DOUBLE)
         *(double *)data= *(double*)(ptr);
+    chan->tokens--;
+    if(chan->tokens==0) //va nell'if
+    {
+        //this is also useful for enforcing the ordering
+        //At this point, the sender has still max_tokens/2 tokens: we have to consider this while we send
+        //the new tokens to it
+        chan->tokens=MIN(chan->max_tokens/2, MAX(chan->message_size-chan->processed_elements-chan->max_tokens/2,0)); //b/2
+
+        const char chan_idx=internal_sender_rt[chan->tag];
+        SMI_Network_message mess;
+        *(uint*)mess.data=chan->tokens;
+        SET_HEADER_DST(mess.header,chan->sender_rank);
+        SET_HEADER_TAG(mess.header,chan->tag);
+        SET_HEADER_OP(mess.header,SMI_REQUEST);
+        write_channel_intel(channels_to_ck_s[chan_idx],mess);
+        //printf("Receiver, sent tokens: %d to tag %d\n",chan->tokens,chan->tag);
+
+    }
+
     
 }
 
