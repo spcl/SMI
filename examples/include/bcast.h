@@ -16,7 +16,7 @@
 
 //temp here, then need to move
 
-channel SMI_Network_message channel_bcast_send[2] __attribute__((depth(2))); //channel from root to bcast kernel
+channel SMI_Network_message channel_scatter_send[2] __attribute__((depth(2))); //channel from root to bcast kernel
 
 
 //align to 64 to remove aliasing
@@ -88,7 +88,7 @@ void SMI_Bcast_float(SMI_BChannel *chan, volatile void* data/*, volatile void* d
             SET_HEADER_NUM_ELEMS(chan->net.header,chan->packet_element_id);
             chan->packet_element_id=0;
             //offload to bcast kernel
-            write_channel_intel(channel_bcast_send[0],chan->net);
+            write_channel_intel(channel_scatter_send[0],chan->net);
         }
     }
     else //I have to receive
@@ -133,7 +133,7 @@ void SMI_Bcast_int(SMI_BChannel *chan, volatile void* data/*, volatile void* dat
             SET_HEADER_NUM_ELEMS(chan->net.header,chan->packet_element_id);
             chan->packet_element_id=0;
             //offload to bcast kernel
-            write_channel_intel(channel_bcast_send[1],chan->net);
+            write_channel_intel(channel_scatter_send[1],chan->net);
         }
     }
     else //I have to receive
@@ -168,7 +168,7 @@ __kernel void kernel_bcast_float(char num_rank)
     {
         if(external)
         {
-            mess=read_channel_intel(channel_bcast_send[0]);
+            mess=read_channel_intel(channel_scatter_send[0]);
             rcv=0;
             external=false;
             root=GET_HEADER_SRC(mess.header);
@@ -203,7 +203,7 @@ __kernel void kernel_bcast_int(char num_rank)
     {
         if(external)
         {
-            mess=read_channel_intel(channel_bcast_send[1]);
+            mess=read_channel_intel(channel_scatter_send[1]);
             rcv=0;
             external=false;
             root=GET_HEADER_SRC(mess.header);

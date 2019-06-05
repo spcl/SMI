@@ -8,6 +8,8 @@
 __kernel void app(const int N, char root,char my_rank, char num_ranks)
 {
     SMI_BChannel  __attribute__((register)) chan= SMI_Open_bcast_channel(N, SMI_FLOAT, root,my_rank,num_ranks);
+    printf("Sizeof %d\n",sizeof(SMI_BChannel));
+
    // printf("Rank: %d, i have to send: %d\n",my_rank,N);
     for(int i=0;i<N;i++)
     {
