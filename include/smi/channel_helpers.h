@@ -51,7 +51,6 @@ SMI_Channel SMI_Open_send_channel(uint count, SMI_Datatype data_type, char desti
             break;
          //TODO add more data types
     }
-
     //setup header for the message
     SET_HEADER_DST(chan.net.header,destination);
     //SET_HEADER_SRC(chan.net.header,my_rank);
@@ -102,7 +101,6 @@ SMI_Channel SMI_Open_receive_channel(uint count, SMI_Datatype data_type, char so
          //TODO add more data types
     }
     chan.tokens=chan.max_tokens/8;
-
 
     SET_HEADER_NUM_ELEMS(chan.net.header,0);    //at the beginning no data
     chan.packet_element_id=0; //data per packet

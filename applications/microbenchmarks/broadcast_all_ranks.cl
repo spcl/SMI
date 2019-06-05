@@ -1,7 +1,7 @@
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 
-#include "smi_broadcast.h"
-//#include "broadcast_routing_2tags/smi.h"
+//#include "smi_broadcast.h"
+#include "broadcast_routing_2tags/smi.h"
 
 
 
@@ -11,7 +11,7 @@ __kernel void app(const int N, char root,char my_rank, char num_ranks)
    // printf("Rank: %d, i have to send: %d\n",my_rank,N);
     for(int i=0;i<N;i++)
     {
-    	float to_comm;
+        float to_comm;
         if(my_rank==root)
             to_comm=i;
         float to_rcv;
@@ -19,7 +19,7 @@ __kernel void app(const int N, char root,char my_rank, char num_ranks)
        // printf("Rank %d sent %.0f\n",my_rank,to_comm);
      //   acc+=to_comm;
 
-       // if(my_rank!=root && i!=to_comm)
-         //     printf("Rank %d received %.0f while I was expecting %d\n",my_rank,to_comm,i);
+        //if(my_rank!=root && i!=to_comm)
+          //    printf("Rank %d received %.0f while I was expecting %d\n",my_rank,to_comm,i);
     }
 }

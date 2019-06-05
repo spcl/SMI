@@ -11,7 +11,6 @@ kernel void SendCentroids(__global volatile const VTYPE centroids_global[],
                           const int iterations, const int smi_rank,
                           const int smi_size) {
 
-  printf("[%d] SendCentroids\n",smi_rank);
   //#pragma loop_coalesce TODO
   for (int i = 0; i < iterations; ++i) {
     // printf("[%i] SendCentroids iteration %i\n", smi_rank, i);
@@ -23,7 +22,7 @@ kernel void SendCentroids(__global volatile const VTYPE centroids_global[],
           val = centroids_global[k * DIMS / W + d];
         } else {
           // On following iterations, read centroids from global memory
-          val = read_channel_intel(centroid_loop_ch);
+         // val = read_channel_intel(centroid_loop_ch);
         }
        // write_channel_intel(centroid_ch, val); TODO
       }
@@ -36,7 +35,6 @@ __kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
                            const int smi_rank, const int smi_size)
 {
 
-    printf("[%d] ComputeMeans\n",smi_rank);
     for (int i = 0; i < iterations; ++i)
     {
 
@@ -91,6 +89,7 @@ __kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
             }
           }
         }
+        mem_fence(CLK_CHANNEL_MEM_FENCE);
 
         VTYPE centroids_updated[DIMS / W][K];
 
@@ -114,7 +113,11 @@ __kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
         }
 
         int count_reduced[K];
+        mem_fence(CLK_CHANNEL_MEM_FENCE);
 
+        int count_updated[K];
+if(smi_rank>10)
+{
         SMI_RChannel  __attribute__((register)) reduce_count_ch= SMI_Open_reduce_channel(K, SMI_INT, 0,smi_rank,smi_size);
         for (int k = 0; k < K; k++) {
           int send_val = count[k];
@@ -124,7 +127,6 @@ __kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
           count_reduced[k] = recv_val;
         }
 
-        int count_updated[K];
 
         SMI_BChannel  __attribute__((register)) broadcast_count_ch= SMI_Open_bcast_channel(K, SMI_INT, 0,smi_rank,smi_size);
 
@@ -133,13 +135,15 @@ __kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
           SMI_Bcast_int(&broadcast_count_ch, &bcast_val);
           count_updated[k] = bcast_val;
         }
-
+}
         // Compute means by dividing by count
-        #pragma loop_coalesce
+        //#pragma loop_coalesce TODO
+#pragma unroll 1
         for (int k = 0; k < K; ++k) {
+            #pragma unroll 1
           for (int d = 0; d < DIMS / W; ++d) {
             VTYPE updated = centroids_updated[d][k] / count_updated[k];
-            write_channel_intel(centroid_loop_ch, updated);
+          //  write_channel_intel(centroid_loop_ch, updated);
             // Write back to global memory
             centroids_global[k * DIMS / W + d] = updated;
           }

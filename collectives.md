@@ -11,6 +11,9 @@ resort to tags (that in SMI indentify communication endpoints and are used to la
 
     We need to know the rank (in the open channel or in the communication primitive) so that we can distinguish if we want to push or pop data
 
+
+	Rendezvous: each non-root rank should send a "ready to receive" message to the root, to avoid intermixing of different collectives. This could occur when the root of the broadcast changes
+
 - **Reduce**: data elements streamed by each rank will be combined and produced to the root
     -  Open channel: `SMI_RChannel SMI_Open_receive_channel(uint count, SMI_Datatype type, SMI_Op operator, char root, char my_rank, char tag);`
     -  Reduce: `SMI_Reduce(SMI_RChannel *chan, void* data)`

@@ -244,23 +244,24 @@ __kernel void kernel_bcast(char num_rank)
     char received_request=0; //how many ranks are ready to receive
     const char num_requests=num_rank-1;
     SMI_Network_message mess;
+
     while(true)
     {
-        if(external)
+        if(external) //read from the application
         {
             mess=read_channel_intel(channel_bcast_send);
             if(GET_HEADER_OP(mess.header)==SMI_REQUEST)
             {
-                wait_for_requests=true;
+                //wait_for_requests=true;
                 received_request=num_requests;
             }
             rcv=0;
             external=false;
             root=GET_HEADER_SRC(mess.header);
         }
-        else
+        else //handle the request
         {
-            if(received_request>0)
+            if(received_request!=0)
             {
                // printf("Wait for request...\n");
                 SMI_Network_message req=read_channel_intel(channels_from_ck_r[0]);
@@ -277,11 +278,7 @@ __kernel void kernel_bcast(char num_rank)
                   //  printf("sending data to %d, tag: %d\n",rcv,GET_HEADER_TAG(mess.header));
                 }
                 rcv++;
-                if(rcv==num_rank)
-                {
-                    external=true;
-                    //rcv=0;
-                }
+                external=(rcv==num_rank);
             }
         }
     }
