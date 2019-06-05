@@ -3,16 +3,40 @@
 
 #include "../host/k_means_routing/smi.h"
 #include "../include/kmeans_new.h"
-/**
-  Each rank will sends its rank value +1 for reduction.
-  The root store the reduced values in DRAM
-  Then the root will broadcast the reduced value
-*/
+
+channel VTYPE centroid_ch __attribute__((depth(2 * K * DIMS / W)));
+channel VTYPE centroid_loop_ch __attribute__((depth(2 * K * DIMS / W)));
+
+kernel void SendCentroids(__global volatile const VTYPE centroids_global[],
+                          const int iterations, const int smi_rank,
+                          const int smi_size) {
+
+  printf("[%d] SendCentroids\n",smi_rank);
+  //#pragma loop_coalesce TODO
+  for (int i = 0; i < iterations; ++i) {
+    // printf("[%i] SendCentroids iteration %i\n", smi_rank, i);
+    for (int k = 0; k < K; ++k) {
+      for (int d = 0; d < DIMS / W; ++d) {
+        VTYPE val;
+        if (i == 0) {
+          // On first iteration, read centroids from memory
+          val = centroids_global[k * DIMS / W + d];
+        } else {
+          // On following iterations, read centroids from global memory
+          val = read_channel_intel(centroid_loop_ch);
+        }
+       // write_channel_intel(centroid_ch, val); TODO
+      }
+    }
+  }
+}
 
 __kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
                            const int num_points, const int iterations,
                            const int smi_rank, const int smi_size)
 {
+
+    printf("[%d] ComputeMeans\n",smi_rank);
     for (int i = 0; i < iterations; ++i)
     {
 
@@ -115,7 +139,7 @@ __kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
         for (int k = 0; k < K; ++k) {
           for (int d = 0; d < DIMS / W; ++d) {
             VTYPE updated = centroids_updated[d][k] / count_updated[k];
-           // write_channel_intel(centroid_loop_ch, updated); TODO
+            write_channel_intel(centroid_loop_ch, updated);
             // Write back to global memory
             centroids_global[k * DIMS / W + d] = updated;
           }

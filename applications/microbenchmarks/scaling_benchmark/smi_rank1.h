@@ -61,7 +61,7 @@ __constant char internal_sender_rt[2] = { 0, 1 };
 __constant char internal_receiver_rt[2] = { 0, 1 };
 
 channel SMI_Network_message channels_to_ck_s[2] __attribute__((depth(16)));
-channel SMI_Network_message channels_from_ck_r[2] __attribute__((depth(16)));
+channel SMI_Network_message channels_from_ck_r[2] __attribute__((depth(64)));
 
 __constant char QSFP_COUNT = 4;
 

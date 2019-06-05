@@ -101,7 +101,7 @@ SMI_Channel SMI_Open_receive_channel(uint count, SMI_Datatype data_type, char so
             break;
          //TODO add more data types
     }
-    chan.tokens=chan.max_tokens/2;
+    chan.tokens=chan.max_tokens/8;
 
 
     SET_HEADER_NUM_ELEMS(chan.net.header,0);    //at the beginning no data

@@ -11,11 +11,18 @@
 #include "../../include/utils/utils.hpp"
 #include "../../include/utils/smi_utils.hpp"
 #include "../include/kmeans_new.h"
-#define ROUTING_DIR "examples/host/k_means_routing/"
+#include <random>
+#include "hlslib/intel/OpenCL.h"
 
+
+#define ROUTING_DIR "examples/host/k_means_routing/"
+using Data_t = DTYPE;
+constexpr int kNumTags = 6;
 constexpr int kK = K;
 constexpr int kDims = DIMS;
-//#define CHECK
+using AlignedVec_t =
+std::vector<Data_t, hlslib::ocl::AlignedAllocator<Data_t, 64>>;
+
 using namespace std;
 int main(int argc, char *argv[])
 {
@@ -78,7 +85,8 @@ int main(int argc, char *argv[])
     std::vector<cl::Kernel> kernels;
     std::vector<cl::CommandQueue> queues;
     std::vector<std::string> kernel_names={"CK_S_0", "CK_S_1", "CK_S_2", "CK_S_3", "CK_R_0", "CK_R_1", "CK_R_2", "CK_R_3",
-                                          "kernel_reduce_float", "kernel_bcast_float", "kernel_reduce_int","kernel_bcast_int", "ComputeMeans"};
+                                          "kernel_reduce_float", "kernel_bcast_float", "kernel_reduce_int","kernel_bcast_int",
+                                           "ComputeMeans", "SendCentroids"};
 
     //this is for the case with classi channels
     IntelFPGAOCLUtils::initEnvironment(platform,device,fpga,context,program,program_path,kernel_names, kernels,queues);
@@ -154,11 +162,60 @@ int main(int argc, char *argv[])
 
     //Application
     int points_per_rank = n / rank_count;
-    cl::Buffer points_device(context,CL_MEM_READ_WRITE,sizeof(float)*(points_per_rank*kDims));
     int mpi_rank=rank;
     int mpi_size=rank_count;
+    const int num_points = n;
 
-    //queues[0].enqueueWriteBuffer(points_device, CL_TRUE,0,sizeof(float)*(points.size()),points.data());
+    AlignedVec_t input;
+    AlignedVec_t points(kDims * points_per_rank);
+    AlignedVec_t centroids(kK * kDims);
+    if (mpi_rank == 0) {
+        // std::random_device rd;
+        std::default_random_engine rng(5);
+        input = AlignedVec_t(num_points * kDims);  // TODO: load some data set
+        // Generate Gaussian means with a uniform distribution
+        std::uniform_real_distribution<Data_t> dist_means(-5, 5);
+        AlignedVec_t gaussian_means(kK * kDims);
+        // Randomize centers for Gaussian distributions
+        for (int k = 0; k < kK; ++k) {
+          for (int d = 0; d < kDims; ++d) {
+            gaussian_means[k * kDims + d] = dist_means(rng);
+          }
+        }
+
+        // Generate data with a separate Gaussian at each mean
+        std::normal_distribution<Data_t> normal_dist;
+        for (int k = 0; k < kK; ++k) {
+          const int n_per_centroid = num_points / kK;
+          for (int i = k * n_per_centroid; i < (k + 1) * n_per_centroid; ++i) {
+            for (int d = 0; d < kDims; ++d) {
+              input[i * kDims + d] =
+                  normal_dist(rng) + gaussian_means[k * kDims + d];
+            }
+          }
+        }
+        // For sampling indices for starting centroids
+        std::uniform_int_distribution<size_t> index_dist(0, num_points);
+        // Choose initial centroids
+        for (int k = 0; k < kK; ++k) {
+          auto i = index_dist(rng);
+          std::copy(&input[i * kDims], &input[(i + 1) * kDims],
+                    &centroids[k * kDims]);
+        }
+        // Print starting centroids
+    }
+    // Distribute data
+    MPI_Bcast(centroids.data(), kK * kDims, MPI_FLOAT, 0, MPI_COMM_WORLD);
+    MPI_Scatter(input.data(), points_per_rank, MPI_FLOAT, points.data(),
+              points_per_rank, MPI_FLOAT, 0, MPI_COMM_WORLD);
+
+
+    cl::Buffer points_device(context,CL_MEM_READ_WRITE,sizeof(float)*(points.size()));
+    cl::Buffer centroids_device_read(context,CL_MEM_READ_WRITE,sizeof(float)*(centroids.size()));
+
+    queues[12].enqueueWriteBuffer(points_device, CL_TRUE,0,sizeof(float)*(points.size()),points.data());
+    queues[12].enqueueWriteBuffer(centroids_device_read, CL_TRUE,0,sizeof(float)*(centroids.size()),centroids.data());
+
 
 
     kernels[12].setArg(0,sizeof(cl_mem),&points_device);
@@ -167,7 +224,11 @@ int main(int argc, char *argv[])
     kernels[12].setArg(3,sizeof(int),&mpi_rank);
     kernels[12].setArg(4,sizeof(int),&mpi_size);
 
-
+    //sen centroids
+    kernels[13].setArg(0,sizeof(cl_mem),&centroids_device_read);
+    kernels[13].setArg(1,sizeof(int),&iterations);
+    kernels[13].setArg(2,sizeof(int),&mpi_rank);
+    kernels[13].setArg(3,sizeof(int),&mpi_size);
 
     std::vector<double> times;
 
@@ -176,10 +237,11 @@ int main(int argc, char *argv[])
     // wait for other nodes
     CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
 
-
     queues[12].enqueueTask(kernels[12],nullptr,&events[0]);
+    queues[13].enqueueTask(kernels[13],nullptr,&events[0]);
 
     queues[12].finish();
+    queues[13].finish();
 
 
     CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
