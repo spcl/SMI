@@ -22,7 +22,7 @@ kernel void SendCentroids(__global volatile const VTYPE centroids_global[],
           val = centroids_global[k * DIMS / W + d];
         } else {
           // On following iterations, read centroids from global memory
-         // val = read_channel_intel(centroid_loop_ch);
+          val = read_channel_intel(centroid_loop_ch);
         }
        // write_channel_intel(centroid_ch, val); TODO
       }
@@ -157,7 +157,7 @@ __kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
             #pragma unroll 1
           for (int d = 0; d < DIMS / W; ++d) {
             VTYPE updated = centroids_updated[d][k] / count_updated[k];
-          //  write_channel_intel(centroid_loop_ch, updated);
+            write_channel_intel(centroid_loop_ch, updated);
             // Write back to global memory
             centroids_global[k * DIMS / W + d] = updated;
           }
