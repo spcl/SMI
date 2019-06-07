@@ -47,7 +47,7 @@ SMI_BChannel SMI_Open_bcast_channel(uint count, SMI_Datatype data_type, char roo
     //setup channel descriptor
     chan.message_size=count;
     chan.data_type=data_type;
-    chan.tag_in=0;
+    chan.tag_in=1;
     chan.tag_out=0;
     chan.my_rank=my_rank;
     chan.root_rank=root;
@@ -75,12 +75,23 @@ SMI_BChannel SMI_Open_bcast_channel(uint count, SMI_Datatype data_type, char roo
     }
 
     //setup header for the message
-    SET_HEADER_DST(chan.net.header,0);
     //SET_HEADER_SRC(chan.net.header,my_rank);
-    SET_HEADER_SRC(chan.net.header,root);
 
-    SET_HEADER_TAG(chan.net.header,0);        //used by destination
-    SET_HEADER_NUM_ELEMS(chan.net.header,0);    //at the beginning no data
+
+    if(my_rank!=root)
+    {
+        //this is set up to send a "ready to receive" to the root
+        //const char chan_idx=internal_receiver_rt[chan->tag_in];
+        SET_HEADER_OP(chan.net.header,SMI_REQUEST);
+        SET_HEADER_DST(chan.net.header,root);
+        SET_HEADER_TAG(chan.net.header,0); //TODO to fix
+    }
+    else
+    {
+        SET_HEADER_SRC(chan.net.header,root);
+        SET_HEADER_TAG(chan.net.header,0);        //used by destination
+        SET_HEADER_NUM_ELEMS(chan.net.header,0);    //at the beginning no data
+    }
     chan.processed_elements=0;
     chan.packet_element_id=0;
     chan.packet_element_id_rcv=0;
@@ -105,7 +116,7 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
         const uint message_size=chan->message_size;
         chan->processed_elements++;
       // const char chan_idx_out=internal_sender_rt[chan->tag_out];  //This should be properly code generated, good luck
-        switch(chan->data_type)
+        switch(chan->data_type) //this must be code generated
         {
             case SMI_CHAR:
                 data_snd[chan->packet_element_id]=*conv;
@@ -116,7 +127,7 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
                 for(int jj=0;jj<4;jj++) //copy the data
                     data_snd[chan->packet_element_id*4+jj]=conv[jj];
             break;
-            /*case SMI_DOUBLE:
+           /* case SMI_DOUBLE:
                 #pragma unroll
                 for(int jj=0;jj<8;jj++) //copy the data
                     data_snd[chan->packet_element_id*8+jj]=conv[jj];
@@ -154,29 +165,37 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
     {
         if(chan->beginning)//at the beginning we have to send the request
         {
-            //const char chan_idx=internal_receiver_rt[chan->tag_in];
-            SET_HEADER_OP(chan->net_2.header,SMI_REQUEST);
-            SET_HEADER_DST(chan->net_2.header,chan->root_rank);
-            SET_HEADER_TAG(chan->net_2.header,0);
-            write_channel_intel(channels_to_ck_s[1],chan->net_2); //TODO to fix
+            const char chan_idx=internal_receiver_rt[chan->tag_in];
+//            SET_HEADER_OP(chan->net.header,SMI_REQUEST);
+//            SET_HEADER_DST(chan->net.header,chan->root_rank);
+//            SET_HEADER_TAG(chan->net.header,0);
+           // write_channel_intel(channels_to_ck_s[1],chan->net); //TODO to fix
+             write_channel_intel(channels_to_ck_s[chan_idx],chan->net); //TODO to fix
             //printf("non-root rank, I've sent the request\n");
             chan->beginning=false;
+
+
         }
+       // mem_fence(CLK_CHANNEL_MEM_FENCE);
+        //ATTENTION: Here we are using two different messages (net and net_2) to send the ack to the root and to receive the data
+        //This is done to avoid the compiler to do wrong choices (in some cases, even if there is a clear dependency, the read from
+        //channel has been moved before the write)
 
         //chan->net=read_channel_intel(channels_from_ck_r[0]);
         //in this case we have to copy the data into the target variable
         //char pack_elem_id_rcv=chan->packet_element_id_rcv;
-        if(chan->packet_element_id_rcv==0)
+        if(chan->packet_element_id_rcv==0 &&  !chan->beginning)
         {
             const char chan_idx=internal_receiver_rt[chan->tag_in];
-            chan->net_2=read_channel_intel(channels_from_ck_r[1]);
+            //chan->net_2=read_channel_intel(channels_from_ck_r[1]);
+            chan->net_2=read_channel_intel(channels_from_ck_r[chan_idx]);
             //printf("Non root, received data\n");
         }
         //char * ptr=chan->net_2.data+(chan->packet_element_id_rcv);
         char *data_rcv=chan->net_2.data;
         switch(chan->data_type)
         {
-            case SMI_CHAR:
+           case SMI_CHAR:
             {
                 char * ptr=data_rcv;
                 *(char *)data= *(char*)(ptr);
@@ -194,7 +213,7 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
                  *(float *)data= *(float*)(ptr);
                 break;
             }
-            /*case SMI_DOUBLE:
+         /*   case SMI_DOUBLE:
             {
                 char * ptr=data_rcv+(chan->packet_element_id_rcv)*8;
                 *(double *)data= *(double*)(ptr);
@@ -238,7 +257,6 @@ __kernel void kernel_bcast(char num_rank)
     //decide whether we keep this argument or not
     //otherwise we have to decide where to put it
     bool external=true;
-    bool wait_for_requests=false;
     char rcv;
     char root;
     char received_request=0; //how many ranks are ready to receive
@@ -252,7 +270,6 @@ __kernel void kernel_bcast(char num_rank)
             mess=read_channel_intel(channel_bcast_send);
             if(GET_HEADER_OP(mess.header)==SMI_REQUEST)
             {
-                //wait_for_requests=true;
                 received_request=num_requests;
             }
             rcv=0;
@@ -264,17 +281,17 @@ __kernel void kernel_bcast(char num_rank)
             if(received_request!=0)
             {
                // printf("Wait for request...\n");
-                SMI_Network_message req=read_channel_intel(channels_from_ck_r[0]);
+                SMI_Network_message req=read_channel_intel(channels_from_ck_r[0]);      //TO BE CODE GENERATED
               //  printf("request received\n");
                 received_request--;
-               // wait_for_requests=(received_request==num_requests);
             }
             else
             {
                 if(rcv!=root) //it's not me
                 {
                     SET_HEADER_DST(mess.header,rcv);
-                    write_channel_intel(channels_to_ck_s[0],mess);
+                    SET_HEADER_TAG(mess.header,1);
+                    write_channel_intel(channels_to_ck_s[0],mess);              //TO BE CODE GENERATED
                   //  printf("sending data to %d, tag: %d\n",rcv,GET_HEADER_TAG(mess.header));
                 }
                 rcv++;

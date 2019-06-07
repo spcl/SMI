@@ -53,12 +53,12 @@ __kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
         }
 
         for (int p = 0; p < num_points; ++p) {  // Pipelined
-          ITYPE index ;//= read_channel_intel(index_ch);TODO
+          ITYPE index=0;//= read_channel_intel(index_ch);TODO
           // These loop are not flattened, as the compiler fails to do accumulation
           // otherwise. This means that the inner loop will fully drain before the
           // next iteration, making this slow for small dimensionality.
           for (int d = 0; d < DIMS / W; ++d) {  // Pipelined
-            VTYPE dims; /*= read_channel_intel(dims_ch); TODO*/
+            VTYPE dims=0; /*= read_channel_intel(dims_ch); TODO*/
             #pragma unroll
             for (int k = 0; k < K; ++k) {
               means[d][k] += (index == k) ? dims : 0;
@@ -69,14 +69,19 @@ __kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
 
         DTYPE means_reduced[W][DIMS / W][K];
 
+        int count_reduced[K];
+        int count_updated[K];
+        VTYPE centroids_updated[DIMS / W][K];
 
-        SMI_RChannel  __attribute__((register)) reduce_mean_ch= SMI_Open_reduce_channel(K*DIMS, SMI_FLOAT, 0,smi_rank,smi_size);
-        //#pragma loop_coalesce //TODO
+        SMI_RChannel /* __attribute__((register))*/ reduce_mean_ch= SMI_Open_reduce_channel(K*DIMS, SMI_FLOAT, 0,smi_rank,smi_size);
+        #pragma loop_coalesce 3
         for (int k = 0; k < K; ++k) {
           for (int d = 0; d < DIMS / W; d++) {
-            VTYPE send_vec = means[d][k];
-            VTYPE recv_vec;
+            VTYPE send_vec;
+            #pragma unroll 1
             for (int w = 0; w < W; ++w) {
+              if(w==0)
+                  send_vec = means[d][k];
 #if W>1
               DTYPE send_val = send_vec[w];
 #else
@@ -89,9 +94,23 @@ __kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
             }
           }
         }
-        mem_fence(CLK_CHANNEL_MEM_FENCE);
 
-        VTYPE centroids_updated[DIMS / W][K];
+#if 0
+        VTYPE send_vec = means[0][0];
+             #pragma unroll 1
+             for(int i=0;i<K*DIMS;i++)
+             {
+                  DTYPE send_val = send_vec[0];
+                  DTYPE recv_val;
+                  SMI_Reduce_float(&reduce_mean_ch, &send_val, &recv_val);
+                  // It doesn't matter that we write junk on non-0 ranks
+                  means_reduced[0][0][0] = recv_val;
+
+             }
+#endif
+
+
+        mem_fence(CLK_CHANNEL_MEM_FENCE);
 
         SMI_BChannel  __attribute__((register)) broadcast_mean_ch=  SMI_Open_bcast_channel(K*DIMS, SMI_FLOAT, 0,smi_rank,smi_size);
 
@@ -112,12 +131,7 @@ __kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
           }
         }
 
-        int count_reduced[K];
-        mem_fence(CLK_CHANNEL_MEM_FENCE);
 
-        int count_updated[K];
-if(smi_rank>10)
-{
         SMI_RChannel  __attribute__((register)) reduce_count_ch= SMI_Open_reduce_channel(K, SMI_INT, 0,smi_rank,smi_size);
         for (int k = 0; k < K; k++) {
           int send_val = count[k];
@@ -135,7 +149,7 @@ if(smi_rank>10)
           SMI_Bcast_int(&broadcast_count_ch, &bcast_val);
           count_updated[k] = bcast_val;
         }
-}
+
         // Compute means by dividing by count
         //#pragma loop_coalesce TODO
 #pragma unroll 1

@@ -133,10 +133,10 @@ __kernel void CK_S_0(__global volatile char *restrict rt)
     char sender_id = 0;
     SMI_Network_message message;
 
-    const int READS_LIMIT=8;
+    const char READS_LIMIT=8;
+    char contiguos_reads=0;
     while(1)
     {
-        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -213,10 +213,10 @@ __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
     const char num_sender = 5;
     char sender_id = 0;
     SMI_Network_message message;
-    const int READS_LIMIT=8;
+    const char READS_LIMIT=8;
+    char contiguos_reads=0;
     while(1)
     {
-        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -300,10 +300,10 @@ __kernel void CK_S_1(__global volatile char *restrict rt)
     char sender_id = 0;
     SMI_Network_message message;
 
-    const int READS_LIMIT=8;
+    const char READS_LIMIT=8;
+    char contiguos_reads=0;
     while(1)
     {
-        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -380,8 +380,8 @@ __kernel void CK_R_1(__global volatile char *restrict rt, const char rank)
     const char num_sender = 5;
     char sender_id = 0;
     SMI_Network_message message;
-    const int READS_LIMIT=8;
-    int contiguos_reads=0;
+    const char READS_LIMIT=8;
+    char contiguos_reads=0;
     while(1)
     {
         bool valid = false;
@@ -467,10 +467,10 @@ __kernel void CK_S_2(__global volatile char *restrict rt)
     char sender_id = 0;
     SMI_Network_message message;
 
-    const int READS_LIMIT=8;
+    const char READS_LIMIT=8;
+    char contiguos_reads=0;
     while(1)
     {
-        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -543,10 +543,10 @@ __kernel void CK_R_2(__global volatile char *restrict rt, const char rank)
     const char num_sender = 5;
     char sender_id = 0;
     SMI_Network_message message;
-    const int READS_LIMIT=8;
+    const char READS_LIMIT=8;
+    char contiguos_reads=0;
     while(1)
     {
-        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -626,10 +626,10 @@ __kernel void CK_S_3(__global volatile char *restrict rt)
     char sender_id = 0;
     SMI_Network_message message;
 
-    const int READS_LIMIT=8;
+    const char READS_LIMIT=8;
+    char contiguos_reads=0;
     while(1)
     {
-        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {
@@ -702,10 +702,10 @@ __kernel void CK_R_3(__global volatile char *restrict rt, const char rank)
     const char num_sender = 5;
     char sender_id = 0;
     SMI_Network_message message;
-    const int READS_LIMIT=8;
+    const char READS_LIMIT=8;
+    char contiguos_reads=0;
     while(1)
     {
-        int contiguos_reads=0;
         bool valid = false;
         switch (sender_id)
         {

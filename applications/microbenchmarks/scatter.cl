@@ -8,7 +8,7 @@
 __kernel void app(const int N, char root,char my_rank, char num_ranks)
 {
     SMI_ScatterChannel  __attribute__((register)) chan= SMI_Open_scatter_channel(N,N, SMI_INT, root,my_rank,num_ranks);
-    printf("Sizeof %d\n",sizeof(SMI_ScatterChannel));
+    //printf("Sizeof %d\n",sizeof(SMI_ScatterChannel));
    // printf("Rank: %d, i have to send: %d\n",my_rank,N);
   //  for(int j=0;j<num_ranks;j++)
    // {

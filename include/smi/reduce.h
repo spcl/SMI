@@ -86,6 +86,10 @@ void SMI_Reduce(SMI_RChannel *chan, volatile void* data_snd, volatile void* data
         write_channel_intel(channel_reduce_send_no_root[0],chan->net);
     chan->packet_element_id=0;
 
+    //This fence is needed because otherwise this funny compiler put the following
+    //read before the write...
+    mem_fence(CLK_CHANNEL_MEM_FENCE);
+
     if(chan->my_rank==chan->root_rank)//I'm the root, I have to receive from the kernel
     {
         chan->net_2=read_channel_intel(channel_reduce_recv[0]);

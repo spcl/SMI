@@ -84,6 +84,7 @@ void SMI_Reduce_float(SMI_RChannel *chan, volatile void* data_snd, volatile void
         write_channel_intel(channel_reduce_send[0],chan->net);
     else //non root
         write_channel_intel(channel_reduce_send_no_root[0],chan->net);
+    mem_fence(CLK_CHANNEL_MEM_FENCE);
     chan->packet_element_id=0;
 
     if(chan->my_rank==chan->root_rank)//I'm the root, I have to receive from the kernel

@@ -157,12 +157,14 @@ void SMI_Scatter(SMI_ScatterChannel *chan, volatile void* send_data, volatile vo
     {
         if(chan->beginning)//at the beginning we have to send the request
         {
-            SET_HEADER_OP(chan->net_2.header,SMI_REQUEST);
-            SET_HEADER_DST(chan->net_2.header,chan->root_rank);
-            SET_HEADER_TAG(chan->net_2.header,0);
-            write_channel_intel(channels_to_ck_s[1],chan->net_2); //TODO to fix
+            SET_HEADER_OP(chan->net.header,SMI_REQUEST);
+            SET_HEADER_DST(chan->net.header,chan->root_rank);
+            SET_HEADER_TAG(chan->net.header,0);
+            write_channel_intel(channels_to_ck_s[1],chan->net); //TODO to fix
             chan->beginning=false;
         }
+        mem_fence(CLK_CHANNEL_MEM_FENCE);
+
 
         if(chan->packet_element_id_rcv==0)
         {
