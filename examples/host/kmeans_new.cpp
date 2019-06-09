@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
     std::vector<cl::CommandQueue> queues;
     std::vector<std::string> kernel_names={"CK_S_0", "CK_S_1", "CK_S_2", "CK_S_3", "CK_R_0", "CK_R_1", "CK_R_2", "CK_R_3",
                                           "kernel_reduce_float", "kernel_bcast_float", "kernel_reduce_int","kernel_bcast_int",
-                                           "ComputeMeans", "SendCentroids"};
+                                           "ComputeMeans", "SendCentroids", "ComputeDistance"};
 
     //this is for the case with classi channels
     IntelFPGAOCLUtils::initEnvironment(platform,device,fpga,context,program,program_path,kernel_names, kernels,queues);
@@ -211,14 +211,16 @@ int main(int argc, char *argv[])
 
 
     cl::Buffer points_device(context,CL_MEM_READ_WRITE,sizeof(float)*(points.size()));
-    cl::Buffer centroids_device_read(context,CL_MEM_READ_WRITE,sizeof(float)*(centroids.size()));
+    cl::Buffer centroids_device_read(context,CL_MEM_READ_ONLY,sizeof(float)*(centroids.size()));
+    cl::Buffer centroids_device_write(context,CL_MEM_WRITE_ONLY,sizeof(float)*(centroids.size()));
+
 
     queues[12].enqueueWriteBuffer(points_device, CL_TRUE,0,sizeof(float)*(points.size()),points.data());
     queues[12].enqueueWriteBuffer(centroids_device_read, CL_TRUE,0,sizeof(float)*(centroids.size()),centroids.data());
 
 
 
-    kernels[12].setArg(0,sizeof(cl_mem),&points_device);
+    kernels[12].setArg(0,sizeof(cl_mem),&centroids_device_write);
     kernels[12].setArg(1,sizeof(int),&points_per_rank);
     kernels[12].setArg(2,sizeof(int),&iterations);
     kernels[12].setArg(3,sizeof(int),&mpi_rank);
@@ -230,6 +232,12 @@ int main(int argc, char *argv[])
     kernels[13].setArg(2,sizeof(int),&mpi_rank);
     kernels[13].setArg(3,sizeof(int),&mpi_size);
 
+    kernels[14].setArg(0,sizeof(cl_mem),&points_device);
+    kernels[14].setArg(1,sizeof(int),&points_per_rank);
+    kernels[14].setArg(2,sizeof(int),&iterations);
+    kernels[14].setArg(3,sizeof(int),&mpi_rank);
+    kernels[14].setArg(4,sizeof(int),&mpi_size);
+
     std::vector<double> times;
 
   //  kernels[0].setArg(5,sizeof(int),&i);
@@ -239,9 +247,11 @@ int main(int argc, char *argv[])
 
     queues[12].enqueueTask(kernels[12],nullptr,&events[0]);
     queues[13].enqueueTask(kernels[13],nullptr,&events[0]);
+    queues[14].enqueueTask(kernels[14],nullptr,&events[0]);
 
     queues[12].finish();
     queues[13].finish();
+    queues[14].finish();
 
 
     CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));

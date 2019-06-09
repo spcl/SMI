@@ -4,6 +4,8 @@
 #include "../host/k_means_routing/smi.h"
 #include "../include/kmeans_new.h"
 
+channel VTYPE dims_ch __attribute__((depth(2 * DIMS / W)));
+channel ITYPE index_ch __attribute__((depth(2)));
 channel VTYPE centroid_ch __attribute__((depth(2 * K * DIMS / W)));
 channel VTYPE centroid_loop_ch __attribute__((depth(2 * K * DIMS / W)));
 
@@ -24,9 +26,63 @@ kernel void SendCentroids(__global volatile const VTYPE centroids_global[],
           // On following iterations, read centroids from global memory
           val = read_channel_intel(centroid_loop_ch);
         }
-       // write_channel_intel(centroid_ch, val); TODO
+        write_channel_intel(centroid_ch, val);
       }
     }
+  }
+}
+
+kernel void ComputeDistance(__global volatile const VTYPE points[],
+                            const int num_points, const int iterations,
+                            const int smi_rank, const int smi_size) {
+
+  for (int i = 0; i < iterations; ++i) {
+
+    // printf("[%i] ComputeDistance iteration %i\n", smi_rank, i);
+
+    VTYPE centroids[DIMS / W][K];
+
+    // Load centroids into local memory
+    #pragma loop_coalesce
+    for (int k = 0; k < K; ++k) {  // Pipelined
+      for (int d = 0; d < DIMS / W; d++) {  // Pipelined
+        centroids[d][k] = read_channel_intel(centroid_ch);
+      }
+    }
+
+    for (int p = 0; p < num_points; ++p) {
+      DTYPE dist[K];
+      #pragma unroll
+      for (int k = 0; k < K; ++k) {
+        dist[k] = 0;
+      }
+      for (int d = 0; d < DIMS / W; ++d) {  // Pipelined
+        VTYPE x = points[p * DIMS / W + d];
+        write_channel_intel(dims_ch, x);  // Forward to mean kernel
+        #pragma unroll
+        for (int k = 0; k < K; ++k) {
+          DTYPE dist_contribution = 0;
+          VTYPE centroid = centroids[d][k];
+          #pragma unroll
+          for (int w = 0; w < W; ++w) {
+            DTYPE diff = x[w] - centroid[w]; 
+            dist_contribution = diff * diff; 
+          }
+          dist[k] += dist_contribution;
+        }
+      }
+      DTYPE min_dist = INFINITY;
+      int min_idx = 0;
+      #pragma unroll
+      for (int k = 0; k < K; ++k) {
+        if (dist[k] < min_dist) {
+          min_dist = dist[k];
+          min_idx = k;
+        }
+      }
+      write_channel_intel(index_ch, min_idx);
+    }
+
   }
 }
 
@@ -53,12 +109,12 @@ __kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
         }
 
         for (int p = 0; p < num_points; ++p) {  // Pipelined
-          ITYPE index=0;//= read_channel_intel(index_ch);TODO
+          ITYPE index= read_channel_intel(index_ch);
           // These loop are not flattened, as the compiler fails to do accumulation
           // otherwise. This means that the inner loop will fully drain before the
           // next iteration, making this slow for small dimensionality.
           for (int d = 0; d < DIMS / W; ++d) {  // Pipelined
-            VTYPE dims=0; /*= read_channel_intel(dims_ch); TODO*/
+            VTYPE dims= read_channel_intel(dims_ch); 
             #pragma unroll
             for (int k = 0; k < K; ++k) {
               means[d][k] += (index == k) ? dims : 0;
@@ -110,7 +166,7 @@ __kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
 #endif
 
 
-        mem_fence(CLK_CHANNEL_MEM_FENCE);
+        //mem_fence(CLK_CHANNEL_MEM_FENCE); //TODO
 
         SMI_BChannel  __attribute__((register)) broadcast_mean_ch=  SMI_Open_bcast_channel(K*DIMS, SMI_FLOAT, 0,smi_rank,smi_size);
 
