@@ -38,7 +38,7 @@ kernel void ComputeDistance(__global volatile const VTYPE points[],
 
   for (int i = 0; i < iterations; ++i) {
 
-    // printf("[%i] ComputeDistance iteration %i\n", smi_rank, i);
+    //printf("[%i] ComputeDistance iteration %i\n", smi_rank, i);
 
     VTYPE centroids[DIMS / W][K];
 
@@ -82,7 +82,7 @@ kernel void ComputeDistance(__global volatile const VTYPE points[],
       }
       write_channel_intel(index_ch, min_idx);
     }
-
+  //printf("[%i] ComputeDistance finished iteration %i\n", smi_rank, i);
   }
 }
 
@@ -93,7 +93,7 @@ __kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
 
     for (int i = 0; i < iterations; ++i)
     {
-
+      //printf("[%i] ComputeMeans iteration %i\n", smi_rank, i);
         // Compute mean for new centroids while iterating
         VTYPE means[DIMS / W][K];
         for (int d = 0; d < DIMS / W; ++d) {
@@ -108,6 +108,7 @@ __kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
           count[k] = 0;
         }
 
+      //  printf("[%i] Computing means...\n", smi_rank);
         for (int p = 0; p < num_points; ++p) {  // Pipelined
           ITYPE index= read_channel_intel(index_ch);
           // These loop are not flattened, as the compiler fails to do accumulation
@@ -128,6 +129,7 @@ __kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
         int count_reduced[K];
         int count_updated[K];
         VTYPE centroids_updated[DIMS / W][K];
+      //  printf("[%i] Starting centroid reduce...\n", smi_rank);
 
         SMI_RChannel /* __attribute__((register))*/ reduce_mean_ch= SMI_Open_reduce_channel(K*DIMS, SMI_FLOAT, 0,smi_rank,smi_size);
         #pragma loop_coalesce 3
@@ -151,21 +153,7 @@ __kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
           }
         }
 
-#if 0
-        VTYPE send_vec = means[0][0];
-             #pragma unroll 1
-             for(int i=0;i<K*DIMS;i++)
-             {
-                  DTYPE send_val = send_vec[0];
-                  DTYPE recv_val;
-                  SMI_Reduce_float(&reduce_mean_ch, &send_val, &recv_val);
-                  // It doesn't matter that we write junk on non-0 ranks
-                  means_reduced[0][0][0] = recv_val;
-
-             }
-#endif
-
-
+      //  printf("[%i] Starting centroid broadcast...\n", smi_rank);
         //mem_fence(CLK_CHANNEL_MEM_FENCE); //TODO
 
         SMI_BChannel  __attribute__((register)) broadcast_mean_ch=  SMI_Open_bcast_channel(K*DIMS, SMI_FLOAT, 0,smi_rank,smi_size);
@@ -186,7 +174,7 @@ __kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
             centroids_updated[d][k] = bcast_vec;
           }
         }
-
+      //  printf("[%i] Starting count reduce...\n", smi_rank);
 
         SMI_RChannel  __attribute__((register)) reduce_count_ch= SMI_Open_reduce_channel(K, SMI_INT, 0,smi_rank,smi_size);
         for (int k = 0; k < K; k++) {
@@ -197,6 +185,7 @@ __kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
           count_reduced[k] = recv_val;
         }
 
+      //  printf("[%i] Starting count broadcast...\n", smi_rank);
 
         SMI_BChannel  __attribute__((register)) broadcast_count_ch= SMI_Open_bcast_channel(K, SMI_INT, 0,smi_rank,smi_size);
 
@@ -205,7 +194,7 @@ __kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
           SMI_Bcast_int(&broadcast_count_ch, &bcast_val);
           count_updated[k] = bcast_val;
         }
-
+     //   printf("[%i] Writing back centroids...\n", smi_rank);
         // Compute means by dividing by count
         //#pragma loop_coalesce TODO
 #pragma unroll 1

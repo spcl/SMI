@@ -257,24 +257,25 @@ int main(int argc, char *argv[])
     CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
     if(rank==root)
     {
+        //copy centroids back
+        queues[12].enqueueReadBuffer(points_device, CL_TRUE,0,sizeof(float)*(points.size()),points.data());
         ulong end, start;
         events[0].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
         events[0].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
         double time= (double)((end-start)/1000.0f);
         times.push_back(time);
         char res;
-        queues[12].enqueueReadBuffer(check,CL_TRUE,0,1,&res);
-        if(res==1)
-            cout << "Result is Ok!"<<endl;
-        else
-            cout << "Error!!!!"<<endl;
+        queues[12].enqueueReadBuffer(centroids_device_write,CL_TRUE,0,sizeof(float)*(centroids.size()),centroids.data());
+       // Final centroids
+        std::cout << "Final centroids:\n";
+        for (int k = 0; k < kK; ++k) {
+          std::cout << "  {" << centroids[k * kDims];
+          for (int d = 1; d < kDims; ++d) {
+            std::cout << ", " << centroids[k * kDims + d];
+          }
+          std::cout << "}\n";
+        }
 
-
-    }
-
-    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-    if(rank==root)
-    {
 
        //check
         double mean=0;
@@ -294,11 +295,8 @@ int main(int argc, char *argv[])
         cout << "Sent (KB): " <<data_sent_KB<<endl;
         cout << "Average bandwidth (Gbit/s): " <<  (data_sent_KB*8/(mean/1000000.0))/(1024*1024) << endl;
 
-
-
     }
 
-    printf("Finalize: %d\n",rank);
     CHECK_MPI(MPI_Finalize());
 
 }
