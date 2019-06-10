@@ -255,7 +255,7 @@ int main(int argc, char *argv[])
 
 
     CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-    if(rank==root)
+    if(rank==0)
     {
         //copy centroids back
         queues[12].enqueueReadBuffer(points_device, CL_TRUE,0,sizeof(float)*(points.size()),points.data());
