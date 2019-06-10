@@ -235,6 +235,7 @@ int main(int argc, char **argv) {
     for (auto &f : futures) {
       f.wait();
     }
+    std::cout << mpi_rank <<" finished"<<std::endl;
     const auto end = std::chrono::high_resolution_clock::now();
     const double elapsed =
         1e-9 *
