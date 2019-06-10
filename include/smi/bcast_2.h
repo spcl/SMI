@@ -116,7 +116,28 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
         const uint message_size=chan->message_size;
         chan->processed_elements++;
       // const char chan_idx_out=internal_sender_rt[chan->tag_out];  //This should be properly code generated, good luck
-        switch(chan->data_type) //this must be code generated
+        if(chan->data_type==SMI_CHAR)
+            data_snd[chan->packet_element_id]=*conv;
+        if(chan->data_type==SMI_INT)
+            #pragma unroll
+                for(int jj=0;jj<4;jj++) //copy the data
+                    data_snd[chan->packet_element_id*4+jj]=conv[jj];
+        if(chan->data_type==SMI_FLOAT)    
+            #pragma unroll
+                for(int jj=0;jj<4;jj++) //copy the data
+                    data_snd[chan->packet_element_id*4+jj]=conv[jj];
+
+/*
+        if(chan->data_type==SMI_DOUBLE)
+             #pragma unroll
+                for(int jj=0;jj<8;jj++) //copy the data
+                    data_snd[chan->packet_element_id*8+jj]=conv[jj];
+*/
+        /*const char data_size=chan->size_of_type;
+        #pragma unroll
+                for(int jj=0;jj<data_size;jj++) //copy the data
+                    data_snd[chan->packet_element_id*data_size+jj]=conv[jj];*/
+        /*switch(chan->data_type) //this must be code generated
         {
             case SMI_CHAR:
                 data_snd[chan->packet_element_id]=*conv;
@@ -127,12 +148,13 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
                 for(int jj=0;jj<4;jj++) //copy the data
                     data_snd[chan->packet_element_id*4+jj]=conv[jj];
             break;
-           /* case SMI_DOUBLE:
+           case SMI_DOUBLE:
                 #pragma unroll
                 for(int jj=0;jj<8;jj++) //copy the data
                     data_snd[chan->packet_element_id*8+jj]=conv[jj];
-            break;*/
-        }
+            break;
+        }*/
+
 
         //chan->net.data[chan->packet_element_id]=*conv;
         chan->packet_element_id++;
@@ -165,7 +187,7 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
 //            SET_HEADER_OP(chan->net.header,SMI_REQUEST);
 //            SET_HEADER_DST(chan->net.header,chan->root_rank);
 //            SET_HEADER_TAG(chan->net.header,0);
-           write_channel_intel(channels_to_ck_s[1],chan->net); //TODO to fix
+           write_channel_intel(channels_to_ck_s[chan_idx],chan->net); //TODO to fix
             //printf("non-root rank, I've sent the request\n");
             chan->beginning=false;
 
@@ -182,12 +204,34 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
         if(chan->packet_element_id_rcv==0 &&  !chan->beginning)
         {
             const char chan_idx=internal_receiver_rt[chan->tag_in];
-            chan->net_2=read_channel_intel(channels_from_ck_r[1]);
+            chan->net=read_channel_intel(channels_from_ck_r[chan_idx]);
             //chan->net_2=read_channel_intel(channels_from_ck_r[chan_idx]);
             //printf("Non root, received data\n");
         }
         //char * ptr=chan->net_2.data+(chan->packet_element_id_rcv);
-        char *data_rcv=chan->net_2.data;
+        //char *data_rcv=chan->net_2.data;
+         char * ptr=chan->net.data+(chan->packet_element_id)*chan->size_of_type;     
+        if(chan->data_type==SMI_CHAR)
+             {
+               // char * ptr=data_rcv;
+                *(char *)data= *(char*)(ptr);
+            }
+        if(chan->data_type==SMI_INT)
+            {
+                 //char * ptr=data_rcv+(chan->packet_element_id_rcv)*4;
+                 *(int *)data= *(int*)(ptr);
+            }
+        if(chan->data_type==SMI_FLOAT)
+        {
+              //char * ptr=data_rcv+(chan->packet_element_id_rcv)*4;
+                 *(float *)data= *(float*)(ptr);
+        }
+        if(chan->data_type==SMI_DOUBLE)
+        {
+            //char * ptr=data_rcv+(chan->packet_element_id_rcv)*8;
+                *(double *)data= *(double*)(ptr);
+        }
+        /*
         switch(chan->data_type)
         {
            case SMI_CHAR:
@@ -208,13 +252,13 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
                  *(float *)data= *(float*)(ptr);
                 break;
             }
-         /*   case SMI_DOUBLE:
+            case SMI_DOUBLE:
             {
                 char * ptr=data_rcv+(chan->packet_element_id_rcv)*8;
                 *(double *)data= *(double*)(ptr);
                 break;
-            }*/
-        }
+            }
+        }*/
        // char * ptr=data_rcv+(chan->packet_element_id_rcv)*4;
        // *(float *)data= *(float*)(ptr);
         //pack_elem_id_rcv++;
