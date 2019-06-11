@@ -22,6 +22,7 @@ constexpr int kK = K;
 constexpr int kDims = DIMS;
 using AlignedVec_t =
 std::vector<Data_t, hlslib::ocl::AlignedAllocator<Data_t, 64>>;
+using Point_t = std::array<Data_t, kDims>;
 
 using namespace std;
 int main(int argc, char *argv[])
@@ -81,7 +82,7 @@ int main(int argc, char *argv[])
     std::vector<cl::Kernel> kernels;
     std::vector<cl::CommandQueue> queues;
     std::vector<std::string> kernel_names={"CK_S_0", "CK_S_1", "CK_S_2", "CK_S_3", "CK_R_0", "CK_R_1", "CK_R_2", "CK_R_3",
-                                          "kernel_reduce_float", "kernel_bcast_float", "kernel_reduce_int","kernel_bcast_int",
+                                           "kernel_reduce_float", "kernel_bcast_float", "kernel_reduce_int","kernel_bcast_int",
                                            "ComputeMeans", "SendCentroids", "ComputeDistance"};
 
     //this is for the case with classi channels
@@ -106,11 +107,11 @@ int main(int argc, char *argv[])
         LoadRoutingTable<char>(rank, i, tags, ROUTING_DIR, "ckr", &routing_tables_ckr[i][0]);
         LoadRoutingTable<char>(rank, i, rank_count, ROUTING_DIR, "cks", &routing_tables_cks[i][0]);
     }
-//    std::cout << "Rank: "<< rank<<endl;
-//    for(int i=0;i<kChannelsPerRank;i++)
-//        for(int j=0;j<rank_count;j++)
-//            std::cout << i<< "," << j<<": "<< (int)routing_tables_cks[i][j]<<endl;
-//    sleep(rank);
+    //    std::cout << "Rank: "<< rank<<endl;
+    //    for(int i=0;i<kChannelsPerRank;i++)
+    //        for(int j=0;j<rank_count;j++)
+    //            std::cout << i<< "," << j<<": "<< (int)routing_tables_cks[i][j]<<endl;
+    //    sleep(rank);
 
     queues[0].enqueueWriteBuffer(routing_table_ck_s_0, CL_TRUE,0,rank_count,&routing_tables_cks[0][0]);
     queues[0].enqueueWriteBuffer(routing_table_ck_s_1, CL_TRUE,0,rank_count,&routing_tables_cks[1][0]);
@@ -165,6 +166,7 @@ int main(int argc, char *argv[])
     AlignedVec_t input;
     AlignedVec_t points(kDims * points_per_rank);
     AlignedVec_t centroids(kK * kDims);
+    AlignedVec_t centroids_host(kK * kDims);    //for host checking
     if (mpi_rank == 0) {
         // std::random_device rd;
         std::default_random_engine rng(5);
@@ -174,37 +176,66 @@ int main(int argc, char *argv[])
         AlignedVec_t gaussian_means(kK * kDims);
         // Randomize centers for Gaussian distributions
         for (int k = 0; k < kK; ++k) {
-          for (int d = 0; d < kDims; ++d) {
-            gaussian_means[k * kDims + d] = dist_means(rng);
-          }
+            for (int d = 0; d < kDims; ++d) {
+                gaussian_means[k * kDims + d] = dist_means(rng);
+            }
         }
 
         // Generate data with a separate Gaussian at each mean
         std::normal_distribution<Data_t> normal_dist;
-        for (int k = 0; k < kK; ++k) {
-          const int n_per_centroid = num_points / kK;
-          for (int i = k * n_per_centroid; i < (k + 1) * n_per_centroid; ++i) {
-            for (int d = 0; d < kDims; ++d) {
-              input[i * kDims + d] =
-                  normal_dist(rng) + gaussian_means[k * kDims + d];
+        /*for (int k = 0; k < kK; ++k) {
+            const int n_per_centroid = num_points / kK;
+            for (int i = k * n_per_centroid; i < (k + 1) * n_per_centroid; ++i) {
+                printf("Generating point %d\n",i);
+                for (int d = 0; d < kDims; ++d) {
+                    input[i * kDims + d] =
+                            normal_dist(rng) + gaussian_means[k * kDims + d];
+                }
             }
-          }
+        }*/
+        //BUG TO FIX, if num_points is not divisible by kK
+        for(int i=0;i<num_points;i++)
+        {
+            int k=i%kK;
+            for (int d = 0; d < kDims; ++d) {
+                input[i * kDims + d] =
+                        normal_dist(rng) + gaussian_means[k * kDims + d];
+            }
         }
+
         // For sampling indices for starting centroids
         std::uniform_int_distribution<size_t> index_dist(0, num_points);
         // Choose initial centroids
         for (int k = 0; k < kK; ++k) {
-          auto i = index_dist(rng);
-          std::copy(&input[i * kDims], &input[(i + 1) * kDims],
+            auto i = index_dist(rng);
+            std::copy(&input[i * kDims], &input[(i + 1) * kDims],
                     &centroids[k * kDims]);
         }
         // Print starting centroids
+        std::stringstream ss;
+
+        ss.str("");
+        ss.clear();
+        ss << "Means used to generate data:\n";
+        ss << "Initial centroids:\n";
+        for (int k = 0; k < kK; ++k) {
+            ss << "  {" << centroids[k * kDims];
+            for (int d = 1; d < kDims; ++d) {
+                ss << ", " << centroids[k * kDims + d];
+            }
+            ss << "}\n";
+        }
+        std::cout <<ss.str()<<std::endl;
+        std::copy(centroids.begin(),centroids.end(),centroids_host.begin());
     }
+
+
     // Distribute data
     MPI_Bcast(centroids.data(), kK * kDims, MPI_FLOAT, 0, MPI_COMM_WORLD);
-    MPI_Scatter(input.data(), points_per_rank, MPI_FLOAT, points.data(),
-              points_per_rank, MPI_FLOAT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(centroids_host.data(), kK * kDims, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
+    MPI_Scatter(input.data(), points_per_rank* kDims, MPI_FLOAT, points.data(), //BUG TO FIX, missing *kDIMS
+                points_per_rank* kDims, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
     cl::Buffer points_device(context,CL_MEM_READ_WRITE,sizeof(float)*(points.size()));
     cl::Buffer centroids_device_read(context,CL_MEM_READ_ONLY,sizeof(float)*(centroids.size()));
@@ -274,14 +305,100 @@ int main(int argc, char *argv[])
 
         //get back the results
         queues[12].enqueueReadBuffer(centroids_device_write,CL_TRUE,0,sizeof(float)*(centroids.size()),centroids.data());
-       // Final centroids
+        // Final centroids
         std::cout << "Final centroids:\n";
         for (int k = 0; k < kK; ++k) {
-          std::cout << "  {" << centroids[k * kDims];
-          for (int d = 1; d < kDims; ++d) {
-            std::cout << ", " << centroids[k * kDims + d];
-          }
-          std::cout << "}\n";
+            std::cout << "  {" << centroids[k * kDims];
+            for (int d = 1; d < kDims; ++d) {
+                std::cout << ", " << centroids[k * kDims + d];
+            }
+            std::cout << "}\n";
+        }
+
+
+
+    }
+    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+
+    //host based version
+    if(rank==0)
+        std::cout << "Performing host based implementation ..."<<std::endl;
+
+    {
+        std::array<Point_t, kK> means;
+        std::array<unsigned int, kK> count;
+        Data_t total_distance;
+        /*std::array<Point_t, kK> centroids_local;
+            for (int k = 0; k < kK; ++k) {
+                for (int d = 0; d < kDims; ++d) {
+                    centroids_local[k][d] = centroids[is][k][d];
+                }
+            }*/
+        for (int i = 0; i < iterations; ++i) {
+            total_distance = 0;
+            // Reset means to zero
+            for (int k = 0; k < kK; ++k) {
+                for (int d = 0; d < kDims; ++d) {
+                    means[k][d] = 0;
+                }
+                count[k]  = 0;
+            }
+
+
+            for (int ip = 0; ip < points_per_rank; ++ip) {  // Loop over local points
+                Point_t p;
+                for (int d = 0; d < kDims; ++d)
+                    p[d]= points[ip*kDims+d];
+
+                unsigned char min_idx;
+                Data_t min_dist = std::numeric_limits<Data_t>::max();
+                for (int k = 0; k < kK; ++k) {  // Loop over each centroid
+                    Data_t cand_dist = 0;
+                    for (int d = 0; d < kDims; ++d) {  // Compute squared distance
+                        auto dist = centroids_host[k*kDims+d] - p[d];
+                        cand_dist += dist * dist;
+                    }
+                    // Assign to closest centroid
+                    if (cand_dist < min_dist) {
+                        min_dist = cand_dist;
+                        min_idx = k;
+                    }
+                    total_distance += cand_dist;
+                }
+
+                // Add point coordinates to mean for calculating new centroids
+                for (int d = 0; d < kDims; ++d) {
+
+                    means[min_idx][d] += p[d];
+                }
+                count[min_idx] += 1;
+            }
+            //Reduce means and number of assignments
+            MPI_Allreduce(MPI_IN_PLACE, &count[0], kK, MPI_UNSIGNED, MPI_SUM,
+                    MPI_COMM_WORLD);
+            MPI_Allreduce(MPI_IN_PLACE, &means[0], kK * kDims, MPI_FLOAT, MPI_SUM,
+                    MPI_COMM_WORLD);
+            // Divide by N to get new centroids
+            for (int k = 0; k < kK; ++k) {
+                for (int d = 0; d < kDims; ++d) {
+                    centroids_host[k*kDims+d] = means[k][d] / count[k];
+                }
+            }
+
+        }
+        MPI_Reduce((mpi_rank == 0) ? MPI_IN_PLACE : &total_distance,
+                   &total_distance, 1, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
+
+        if(rank==0)
+        {
+            std::cout << "Final centroids host:\n";
+            for (int k = 0; k < kK; ++k) {
+                std::cout << "  {" << centroids_host[k * kDims];
+                for (int d = 1; d < kDims; ++d) {
+                    std::cout << ", " << centroids_host[k * kDims + d];
+                }
+                std::cout << "}\n";
+            }
         }
     }
 

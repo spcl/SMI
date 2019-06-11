@@ -119,10 +119,14 @@ __kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
             #pragma unroll
             for (int k = 0; k < K; ++k) {
               means[d][k] += (index == k) ? dims : 0;
-              count[k] += (index == k) ? 1 : 0;
+              if(d==0) //BUG TO FIX
+                count[k] += (index == k) ? 1 : 0;
             }
           }
         }
+     //   for (int k = 0; k < K; k++)
+       //     printf("Num points: %d, number to centroids[%d]: %d\n",num_points,k,count[k]);
+
 
         DTYPE means_reduced[W][DIMS / W][K];
 
@@ -180,6 +184,7 @@ __kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
         for (int k = 0; k < K; k++) {
           int send_val = count[k];
           int recv_val;
+//          printf("[%d] Count to be reduced %d\n",smi_rank, send_val);
           SMI_Reduce_int(&reduce_count_ch, &send_val, &recv_val);
           // Doesn't matter that this is junk on non-root ranks
           count_reduced[k] = recv_val;
@@ -199,6 +204,7 @@ __kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
         //#pragma loop_coalesce TODO
 #pragma unroll 1
         for (int k = 0; k < K; ++k) {
+  //          printf("[%d] Dividing centroid %d by %d\n",smi_rank, k,count_updated[k]);
             #pragma unroll 1
           for (int d = 0; d < DIMS / W; ++d) {
             VTYPE updated = centroids_updated[d][k] / count_updated[k];
