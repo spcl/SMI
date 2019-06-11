@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
         std::default_random_engine rng(5);
         input = AlignedVec_t(num_points * kDims);  // TODO: load some data set
         // Generate Gaussian means with a uniform distribution
-        std::uniform_real_distribution<Data_t> dist_means(-500, 500);
+        std::uniform_real_distribution<Data_t> dist_means(-5, 5);
         AlignedVec_t gaussian_means(kK * kDims);
         // Randomize centers for Gaussian distributions
         for (int k = 0; k < kK; ++k) {
