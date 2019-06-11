@@ -54,10 +54,6 @@ int main(int argc, char *argv[])
             case 'b':
                 program_path=std::string(optarg);
                 break;
-            case 'r':
-                root=(char)atoi(optarg);
-                break;
-
             default:
                 cerr << "Usage: "<< argv[0]<<"-b <binary file> -n <length>"<<endl;
                 exit(-1);
@@ -174,7 +170,7 @@ int main(int argc, char *argv[])
         std::default_random_engine rng(5);
         input = AlignedVec_t(num_points * kDims);  // TODO: load some data set
         // Generate Gaussian means with a uniform distribution
-        std::uniform_real_distribution<Data_t> dist_means(-5, 5);
+        std::uniform_real_distribution<Data_t> dist_means(-500, 500);
         AlignedVec_t gaussian_means(kK * kDims);
         // Randomize centers for Gaussian distributions
         for (int k = 0; k < kK; ++k) {
@@ -217,6 +213,7 @@ int main(int argc, char *argv[])
 
     queues[12].enqueueWriteBuffer(points_device, CL_TRUE,0,sizeof(float)*(points.size()),points.data());
     queues[12].enqueueWriteBuffer(centroids_device_read, CL_TRUE,0,sizeof(float)*(centroids.size()),centroids.data());
+    queues[12].enqueueWriteBuffer(centroids_device_write, CL_TRUE,0,sizeof(float)*(centroids.size()),centroids.data());
 
 
 
@@ -240,14 +237,13 @@ int main(int argc, char *argv[])
 
     std::vector<double> times;
 
-  //  kernels[0].setArg(5,sizeof(int),&i);
-    cl::Event events[1]; //this defination must stay here
+    cl::Event events[3];
     // wait for other nodes
     CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
 
     queues[12].enqueueTask(kernels[12],nullptr,&events[0]);
-    queues[13].enqueueTask(kernels[13],nullptr,&events[0]);
-    queues[14].enqueueTask(kernels[14],nullptr,&events[0]);
+    queues[13].enqueueTask(kernels[13],nullptr,&events[1]);
+    queues[14].enqueueTask(kernels[14],nullptr,&events[2]);
 
     queues[12].finish();
     queues[13].finish();
@@ -259,12 +255,24 @@ int main(int argc, char *argv[])
     {
         //copy centroids back
         queues[12].enqueueReadBuffer(points_device, CL_TRUE,0,sizeof(float)*(points.size()),points.data());
+
+        ulong min_start=4294967295, max_end=0;
         ulong end, start;
-        events[0].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
-        events[0].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
-        double time= (double)((end-start)/1000.0f);
-        times.push_back(time);
-        char res;
+        for(int i=0;i<3;i++)
+        {
+            events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
+            events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
+            if(i==0)
+                min_start=start;
+            if(start<min_start)
+                min_start=start;
+            if(end>max_end)
+                max_end=end;
+        }
+        double time= (double)((max_end-min_start)/1000.0f);
+        std::cout << "Computation time (usec): " << time <<std::endl;
+
+        //get back the results
         queues[12].enqueueReadBuffer(centroids_device_write,CL_TRUE,0,sizeof(float)*(centroids.size()),centroids.data());
        // Final centroids
         std::cout << "Final centroids:\n";
@@ -275,26 +283,6 @@ int main(int argc, char *argv[])
           }
           std::cout << "}\n";
         }
-
-
-       //check
-        double mean=0;
-        for(auto t:times)
-            mean+=t;
-        mean/=iterations;
-        //report the mean in usecs
-        double stddev=0;
-        for(auto t:times)
-            stddev+=((t-mean)*(t-mean));
-        stddev=sqrt(stddev/iterations);
-        double conf_interval_99=2.58*stddev/sqrt(iterations);
-        double data_sent_KB=(double)(n*sizeof(float))/1024.0;
-        cout << "Computation time (usec): " << mean << " (sttdev: " << stddev<<")"<<endl;
-        cout << "Conf interval 99: "<<conf_interval_99<<endl;
-        cout << "Conf interval 99 within " <<(conf_interval_99/mean)*100<<"% from mean" <<endl;
-        cout << "Sent (KB): " <<data_sent_KB<<endl;
-        cout << "Average bandwidth (Gbit/s): " <<  (data_sent_KB*8/(mean/1000000.0))/(1024*1024) << endl;
-
     }
 
     CHECK_MPI(MPI_Finalize());
