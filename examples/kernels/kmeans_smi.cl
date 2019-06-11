@@ -117,7 +117,8 @@ kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
         #pragma unroll
         for (int k = 0; k < K; ++k) {
           means[d][k] += (index == k) ? dims : 0;
-          count[k] += (index == k) ? 1 : 0;
+          if(d==0)
+            count[k] += (index == k) ? 1 : 0;
         }
       }
     }
@@ -131,9 +132,11 @@ kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
     #pragma loop_coalesce
     for (int k = 0; k < K; ++k) {
       for (int d = 0; d < DIMS / W; d++) {
-        VTYPE send_vec = means[d][k];
+        VTYPE send_vec;
         VTYPE recv_vec;
         for (int w = 0; w < W; ++w) {
+          if(w==0)
+               send_vec = means[d][k];
           DTYPE send_val = send_vec[w];
           DTYPE recv_val;
           SMI_Reduce_float(&reduce_mean_ch, &send_val, &recv_val);

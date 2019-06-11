@@ -149,8 +149,8 @@ int main(int argc, char **argv) {
   // Distribute data
   MPIStatus(mpi_rank, "Communicating host memory...\n");
   MPI_Bcast(centroids.data(), kK * kDims, MPI_FLOAT, 0, MPI_COMM_WORLD);
-  MPI_Scatter(input.data(), points_per_rank, MPI_FLOAT, points.data(),
-              points_per_rank, MPI_FLOAT, 0, MPI_COMM_WORLD);
+  MPI_Scatter(input.data(), points_per_rank* kDims, MPI_FLOAT, points.data(),
+              points_per_rank* kDims, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
   try {
 
