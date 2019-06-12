@@ -409,8 +409,8 @@ int main(int argc, char *argv[])
             for (int k = 0; k < kK; ++k) {
                 double diff=0;
                 for (int d = 0; d < kDims; ++d) {
-                    double d=centroids_host[k * kDims + d]-centroids[k * kDims + d];
-                    diff+=d*d;
+                    double dd=centroids_host[k * kDims + d]-centroids[k * kDims + d];
+                    diff+=dd*dd;
                     
                 }
                 std::cout << "Distance between FPGA and Host on centroid "<<k<<": "<<sqrt(diff)<<std::endl;
