@@ -325,6 +325,8 @@ int main(int argc, char *argv[])
         std::cout << "Performing host based implementation ..."<<std::endl;
 
     {
+        timestamp_t cpu_start=current_time_usecs();
+
         std::array<Point_t, kK> means;
         std::array<unsigned int, kK> count;
         Data_t total_distance;
@@ -388,6 +390,7 @@ int main(int argc, char *argv[])
         }
         MPI_Reduce((mpi_rank == 0) ? MPI_IN_PLACE : &total_distance,
                    &total_distance, 1, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
+        timestamp_t cpu_time=current_time_usecs()-cpu_start;
 
         if(rank==0)
         {
@@ -398,6 +401,19 @@ int main(int argc, char *argv[])
                     std::cout << ", " << centroids_host[k * kDims + d];
                 }
                 std::cout << "}\n";
+            }
+            std::cout << "CPU Computation time (usec): " << cpu_time <<std::endl;
+
+            //compute difference with FPGA result
+
+            for (int k = 0; k < kK; ++k) {
+                double diff=0;
+                for (int d = 0; d < kDims; ++d) {
+                    double dd=centroids_host[k * kDims + d]-centroids[k * kDims + d];
+                    diff+=dd*dd;
+                    
+                }
+                std::cout << "Distance between FPGA and Host on centroid "<<k<<": "<<sqrt(diff)<<std::endl;
             }
         }
     }
