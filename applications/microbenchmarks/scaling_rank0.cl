@@ -11,7 +11,6 @@
 
 __kernel void app(const int N, const char dest_rank)
 {
-//    printf("Size of: %d",sizeof(SMI_Channel));
     SMI_Channel chan=SMI_Open_send_channel(N,SMI_DOUBLE,dest_rank,0);
     const double start=0.1f;
     for(int i=0;i<N;i++)

@@ -57,11 +57,11 @@ channel SMI_Network_message io_in_3 __attribute__((depth(16))) __attribute__((io
 #endif
 
 // internal routing tables
-__constant char internal_sender_rt[2] = { 0, 1 };
+//__constant char internal_sender_rt[2] = { 0, 1 };
 __constant char internal_receiver_rt[2] = { 0, 1 };
 
-channel SMI_Network_message channels_to_ck_s[2] __attribute__((depth(16)));
-channel SMI_Network_message channels_from_ck_r[2] __attribute__((depth(1024)));
+//channel SMI_Network_message channels_to_ck_s[2] __attribute__((depth(16)));
+channel SMI_Network_message channels_from_ck_r[2] __attribute__((depth(16)));
 
 __constant char QSFP_COUNT = 4;
 
@@ -91,7 +91,7 @@ __kernel void CK_S_0(__global volatile char *restrict rt)
     }
 
     // number of CK_S - 1 + CK_R + 1 tags
-    const char num_sender = 5;
+    const char num_sender = 4;
     char sender_id = 0;
     SMI_Network_message message;
 
@@ -118,10 +118,6 @@ __kernel void CK_S_0(__global volatile char *restrict rt)
                 // receive from CK_R_0
                 message = read_channel_nb_intel(channels_interconnect_ck_r_to_ck_s[0], &valid);
                 break;
-            case 4:
-                // receive from app channel with tag 0
-                message = read_channel_nb_intel(channels_to_ck_s[0], &valid);
-            break;  
 
         }
 
@@ -260,7 +256,7 @@ __kernel void CK_S_1(__global volatile char *restrict rt)
     }
 
     // number of CK_S - 1 + CK_R + 1 tags
-    const char num_sender = 5;
+    const char num_sender = 4;
     char sender_id = 0;
     SMI_Network_message message;
 
@@ -286,10 +282,6 @@ __kernel void CK_S_1(__global volatile char *restrict rt)
                 // receive from CK_R_1
                 message = read_channel_nb_intel(channels_interconnect_ck_r_to_ck_s[1], &valid);
                 break;
-            case 4:
-                // receive from app channel with tag 1
-                message = read_channel_nb_intel(channels_to_ck_s[1], &valid);
-            break;
 
         }
 
