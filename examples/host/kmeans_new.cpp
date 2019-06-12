@@ -402,7 +402,7 @@ int main(int argc, char *argv[])
                 }
                 std::cout << "}\n";
             }
-            std::cout << "CPU Computation time (usec): " << time <<std::endl;
+            std::cout << "CPU Computation time (usec): " << cpu_time <<std::endl;
 
         }
     }
