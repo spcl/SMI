@@ -12,7 +12,8 @@ typedef enum{
     SMI_SEND = 0,
     SMI_RECEIVE = 1,
     SMI_BROADCAST = 2,
-    SMI_REQUEST=3
+    SMI_REQUEST=3,
+    SMI_SCATTER=4
 }SMI_Operationtype;
 
 #endif

@@ -36,7 +36,7 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     char size_of_type;              //size of data type
     char elements_per_packet;       //number of data elements per packet
     bool beginning;
-    SMI_Network_message net_2;        //buffered network message
+   // SMI_Network_message net_2;        //buffered network message
     char packet_element_id_rcv;     //used by the receivers
 }SMI_BChannel;
 
@@ -55,6 +55,10 @@ SMI_BChannel SMI_Open_bcast_channel(uint count, SMI_Datatype data_type, char roo
     chan.beginning=true;
     switch(data_type)
     {
+        case(SMI_SHORT):
+            chan.size_of_type=2;
+            chan.elements_per_packet=14;
+            break;
         case(SMI_INT):
             chan.size_of_type=4;
             chan.elements_per_packet=7;
@@ -107,17 +111,24 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
 {
     //take here the pointers to send/recv data to avoid fake dependencies
     const char elem_per_packet=chan->elements_per_packet;
+
     if(chan->my_rank==chan->root_rank)//I'm the root
     {
 
         //char pack_elem_id_snd=chan->packet_element_id;
         char *conv=(char*)data;
+
         char *data_snd=chan->net.data;
         const uint message_size=chan->message_size;
         chan->processed_elements++;
+
       // const char chan_idx_out=internal_sender_rt[chan->tag_out];  //This should be properly code generated, good luck
         if(chan->data_type==SMI_CHAR)
             data_snd[chan->packet_element_id]=*conv;
+        if(chan->data_type==SMI_INT)
+            #pragma unroll
+                for(int jj=0;jj<2;jj++) //copy the data
+                    data_snd[chan->packet_element_id*2+jj]=conv[jj];
         if(chan->data_type==SMI_INT)
             #pragma unroll
                 for(int jj=0;jj<4;jj++) //copy the data
@@ -127,12 +138,11 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
                 for(int jj=0;jj<4;jj++) //copy the data
                     data_snd[chan->packet_element_id*4+jj]=conv[jj];
 
-/*
         if(chan->data_type==SMI_DOUBLE)
              #pragma unroll
                 for(int jj=0;jj<8;jj++) //copy the data
                     data_snd[chan->packet_element_id*8+jj]=conv[jj];
-*/
+
         /*const char data_size=chan->size_of_type;
         #pragma unroll
                 for(int jj=0;jj<data_size;jj++) //copy the data
@@ -183,7 +193,7 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
     {
         if(chan->beginning)//at the beginning we have to send the request
         {
-            const char chan_idx=internal_receiver_rt[chan->tag_in];
+            const char chan_idx=internal_sender_rt[chan->tag_in];
 //            SET_HEADER_OP(chan->net.header,SMI_REQUEST);
 //            SET_HEADER_DST(chan->net.header,chan->root_rank);
 //            SET_HEADER_TAG(chan->net.header,0);
@@ -193,7 +203,7 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
 
 
         }
-       // mem_fence(CLK_CHANNEL_MEM_FENCE);
+        mem_fence(CLK_CHANNEL_MEM_FENCE);
         //ATTENTION: Here we are using two different messages (net and net_2) to send the ack to the root and to receive the data
         //This is done to avoid the compiler to do wrong choices (in some cases, even if there is a clear dependency, the read from
         //channel has been moved before the write)
@@ -209,28 +219,34 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void* data_rc
             //printf("Non root, received data\n");
         }
         //char * ptr=chan->net_2.data+(chan->packet_element_id_rcv);
-        //char *data_rcv=chan->net_2.data;
-         char * ptr=chan->net.data+(chan->packet_element_id)*chan->size_of_type;     
-        if(chan->data_type==SMI_CHAR)
+        char *data_rcv=chan->net.data;
+         //char * ptr=chan->net_2.data+(chan->packet_element_id)*chan->size_of_type;
+       if(chan->data_type==SMI_CHAR)
              {
-               // char * ptr=data_rcv;
+                char * ptr=data_rcv;
                 *(char *)data= *(char*)(ptr);
             }
         if(chan->data_type==SMI_INT)
             {
-                 //char * ptr=data_rcv+(chan->packet_element_id_rcv)*4;
+                 char * ptr=data_rcv+(chan->packet_element_id_rcv)*4;
                  *(int *)data= *(int*)(ptr);
             }
         if(chan->data_type==SMI_FLOAT)
         {
-              //char * ptr=data_rcv+(chan->packet_element_id_rcv)*4;
+              char * ptr=data_rcv+(chan->packet_element_id_rcv)*4;
                  *(float *)data= *(float*)(ptr);
         }
-        if(chan->data_type==SMI_DOUBLE)
+        if(chan->data_type==SMI_SHORT)
         {
-            //char * ptr=data_rcv+(chan->packet_element_id_rcv)*8;
-                *(double *)data= *(double*)(ptr);
+              char * ptr=data_rcv+(chan->packet_element_id_rcv)*2;
+                 *(short *)data= *(short*)(ptr);
         }
+
+       /* if(chan->data_type==SMI_DOUBLE)
+        {
+            char * ptr=data_rcv+(chan->packet_element_id_rcv)*8;
+                *(double *)data= *(double*)(ptr);
+        }*/
         /*
         switch(chan->data_type)
         {
