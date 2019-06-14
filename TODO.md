@@ -22,3 +22,16 @@
 	can move this to the support kernel, but remains the problem of the data type and the unrolling
 
 - CK_S/CK_R: keep reading from the same interface
+
+
+## DOCUMENTAZIONE
+
+Una volta stabile scrivere documentazione interna.
+Va fatto capire molto chiaramente come sono state gestite le porte, il routing e l'hardware layout
+Le porte identificano endpoint. Ma poi abbiamo due problemi da gestire:
+- routing: far arrivare le informazioni a destinazione. Queste sono scritte dentro il campo TAG (o PORT) nell'header del pacchetto
+- hardware layout: ciascuna porta corrisponde a uno (o piu' se abbiamo rendezvou) connessioni tra applicazione e CKs/CKr. Questo mapping deve essere statico
+
+
+- Rendezvous: spiegare come e' stato implementato
+

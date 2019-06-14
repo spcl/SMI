@@ -57,11 +57,24 @@ channel SMI_Network_message io_in_3 __attribute__((depth(16))) __attribute__((io
 #endif
 
 // internal routing tables
-__constant char internal_sender_rt[2] = { 0, 1 };
-__constant char internal_receiver_rt[2] = { 0, 1 };
+//__constant char internal_sender_rt[2] = { 0, 1 };
+//__constant char internal_receiver_rt[2] = { 0, 1 };
+
+/**
+  These two tables, defined at compile time, maps application endpoints (Port) to CKs/CKr and are
+  used by the compiler to lay down the circuitry. The data routing table is used by push (and collectives)
+  to send the actual communication data, while the control is used by push (and collective) to receive
+  control information (e.g. rendezvous data) from the pairs
+*/
+__constant char internal_to_cks_data_rt[3] = {0,1,2}; //provisional: we put 3just for seeing if it works
+__constant char internal_from_ckr_control_rt[3] ={0,1,2}; //these are for the rendezvous
 
 channel SMI_Network_message channels_to_ck_s[2] __attribute__((depth(16)));
-channel SMI_Network_message channels_from_ck_r[2] __attribute__((depth(1024)));
+
+//NEW: the  buffer size is a constant choosen by the user
+//For the moment being, both FIFO buffers for data and control are defined
+//with the same buffer size. We can think of separating them (then we need to properly code generate)
+channel SMI_Network_message channels_from_ck_r[2] __attribute__((depth(BUFF_SIZE)));
 
 __constant char QSFP_COUNT = 4;
 
@@ -79,14 +92,22 @@ channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __att
 
 #include "smi/push.h"
 
+//NEW: the maximum number of consecutive reads that each CKs/CKr can do from the same channel
+//(there are also small changes in cks/ckr)
 __constant char READS_LIMIT=8;
+//NEW: maximum number of ranks
+__constant int MAX_RANKS=8;
 
-__kernel void CK_S_0(__global volatile char *restrict rt)
+__kernel void CK_S_0(__global volatile char *restrict rt, const int num_ranks)
 {
-    char external_routing_table[RANK_COUNT];
-    for (int i = 0; i < RANK_COUNT; i++)
+    //NEW, instead of having a fixed rank count, we pass it as parameter
+    //MAX_RANKS is the maximum number. It is written in this strange way because it
+    //generates less resource demanding design
+    char external_routing_table[MAX_RANKS];
+    for (int i = 0; i < MAX_RANKS; i++)
     {
-        external_routing_table[i] = rt[i];
+        if(i<num_ranks)
+            external_routing_table[i] = rt[i];
     }
 
     // number of CK_S - 1 + CK_R + 1 tags
@@ -152,7 +173,7 @@ __kernel void CK_S_0(__global volatile char *restrict rt)
             }
         }
 
-        if(!valid || contiguos_reads==READS_LIMIT)
+        if(!valid || contiguos_reads==READS_LIMIT) //NEW, keeps reading from the same channel
         {
             contiguos_reads=0;
             sender_id++;
@@ -165,10 +186,13 @@ __kernel void CK_S_0(__global volatile char *restrict rt)
 }
 __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
 {
-    char external_routing_table[2 /* tag count */];
+
+    char external_routing_table[2 /* tag count */][2];
+    //NEW: for each tag, we have to consider the control and data port
     for (int i = 0; i < 2 /* tag count */; i++)
     {
-        external_routing_table[i] = rt[i];
+        for(int j=0;j<2;j++)
+            external_routing_table[i][j] = rt[i*2+j];
     }
 
     // QSFP + number of CK_Rs - 1 + CK_S
@@ -212,7 +236,7 @@ __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
             {
                 dest = 0;
             }
-            else dest = external_routing_table[GET_HEADER_TAG(message.header)];
+            else dest = external_routing_table[GET_HEADER_TAG(message.header)][GET_HEADER_OP(message.header)==SMI_REQUEST];
             switch (dest)
             {
                 case 0:
@@ -233,7 +257,7 @@ __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
                     break;
                 case 4:
                     // send to app channel with tag 0
-                    write_channel_intel(channels_from_ck_r[internal_receiver_rt[0]], message);
+                    write_channel_intel(channels_from_ck_r[internal_from_ckr_control_rt[0]], message); //NEW: generate connection properly for data and control
                     break;
             }
         }
@@ -249,12 +273,13 @@ __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
         }
     }
 }
-__kernel void CK_S_1(__global volatile char *restrict rt)
+__kernel void CK_S_1(__global volatile char *restrict rt,const int num_ranks)
 {
-    char external_routing_table[RANK_COUNT];
-    for (int i = 0; i < RANK_COUNT; i++)
+    char  external_routing_table[MAX_RANKS];
+    for (int i = 0; i < MAX_RANKS; i++)
     {
-        external_routing_table[i] = rt[i];
+        if(i<num_ranks)
+            external_routing_table[i] = rt[i];
     }
 
     // number of CK_S - 1 + CK_R + 1 tags
@@ -332,10 +357,11 @@ __kernel void CK_S_1(__global volatile char *restrict rt)
 }
 __kernel void CK_R_1(__global volatile char *restrict rt, const char rank)
 {
-    char external_routing_table[2 /* tag count */];
+    char external_routing_table[2 /* tag count */][2];
     for (int i = 0; i < 2 /* tag count */; i++)
     {
-        external_routing_table[i] = rt[i];
+        for(int j=0;j<2;j++)
+            external_routing_table[i][j] = rt[i*2+j];
     }
 
     // QSFP + number of CK_Rs - 1 + CK_S
@@ -380,7 +406,7 @@ __kernel void CK_R_1(__global volatile char *restrict rt, const char rank)
             {
                 dest = 0;
             }
-            else dest = external_routing_table[GET_HEADER_TAG(message.header)];
+            else dest = external_routing_table[GET_HEADER_TAG(message.header)][GET_HEADER_OP(message.header)==SMI_REQUEST]; //NEW
             switch (dest)
             {
                 case 0:
@@ -401,7 +427,7 @@ __kernel void CK_R_1(__global volatile char *restrict rt, const char rank)
                     break;
                 case 4:
                     // send to app channel with tag 1
-                    write_channel_intel(channels_from_ck_r[internal_receiver_rt[1]], message);
+                    write_channel_intel(channels_from_ck_r[internal_from_ckr_control_rt[1]], message);
                     break;
 
             }
@@ -418,12 +444,13 @@ __kernel void CK_R_1(__global volatile char *restrict rt, const char rank)
         }
     }
 }
-__kernel void CK_S_2(__global volatile char *restrict rt)
+__kernel void CK_S_2(__global volatile char *restrict rt, const int num_ranks)
 {
-    char external_routing_table[RANK_COUNT];
-    for (int i = 0; i < RANK_COUNT; i++)
+    char  external_routing_table[MAX_RANKS];
+    for (int i = 0; i < MAX_RANKS; i++)
     {
-        external_routing_table[i] = rt[i];
+        if(i<num_ranks)
+            external_routing_table[i] = rt[i];
     }
 
     // number of CK_S - 1 + CK_R + 0 tags
@@ -497,10 +524,11 @@ __kernel void CK_S_2(__global volatile char *restrict rt)
 }
 __kernel void CK_R_2(__global volatile char *restrict rt, const char rank)
 {
-    char external_routing_table[2 /* tag count */];
+    char external_routing_table[2 /* tag count */][2];
     for (int i = 0; i < 2 /* tag count */; i++)
     {
-        external_routing_table[i] = rt[i];
+        for(int j=0;j<2;j++)
+            external_routing_table[i][j] = rt[i*2+j];
     }
 
     // QSFP + number of CK_Rs - 1 + CK_S
@@ -544,7 +572,7 @@ __kernel void CK_R_2(__global volatile char *restrict rt, const char rank)
             {
                 dest = 0;
             }
-            else dest = external_routing_table[GET_HEADER_TAG(message.header)];
+            else dest = external_routing_table[GET_HEADER_TAG(message.header)][GET_HEADER_OP(message.header)==SMI_REQUEST];
             switch (dest)
             {
                 case 0:
@@ -577,12 +605,13 @@ __kernel void CK_R_2(__global volatile char *restrict rt, const char rank)
         }
     }
 }
-__kernel void CK_S_3(__global volatile char *restrict rt)
+__kernel void CK_S_3(__global volatile char *restrict rt, const int num_ranks)
 {
-    char external_routing_table[RANK_COUNT];
-    for (int i = 0; i < RANK_COUNT; i++)
+    char  external_routing_table[MAX_RANKS];
+    for (int i = 0; i < MAX_RANKS; i++)
     {
-        external_routing_table[i] = rt[i];
+        if(i<num_ranks)
+            external_routing_table[i] = rt[i];
     }
 
     // number of CK_S - 1 + CK_R + 0 tags
@@ -656,10 +685,11 @@ __kernel void CK_S_3(__global volatile char *restrict rt)
 }
 __kernel void CK_R_3(__global volatile char *restrict rt, const char rank)
 {
-    char external_routing_table[2 /* tag count */];
+    char external_routing_table[2 /* tag count */][2];
     for (int i = 0; i < 2 /* tag count */; i++)
     {
-        external_routing_table[i] = rt[i];
+        for(int j=0;j<2;j++)
+            external_routing_table[i][j] = rt[i*2+j];
     }
 
     // QSFP + number of CK_Rs - 1 + CK_S
@@ -703,7 +733,7 @@ __kernel void CK_R_3(__global volatile char *restrict rt, const char rank)
             {
                 dest = 0;
             }
-            else dest = external_routing_table[GET_HEADER_TAG(message.header)];
+            else dest = external_routing_table[GET_HEADER_TAG(message.header)][GET_HEADER_OP(message.header)==SMI_REQUEST];
             switch (dest)
             {
                 case 0:

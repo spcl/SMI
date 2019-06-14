@@ -25,15 +25,12 @@
 void SMI_Pop(SMI_Channel *chan, void *data)
 {
 
-
-
     //in this case we have to copy the data into the target variable
     if(chan->packet_element_id==0)
     {
-        const char chan_idx=internal_receiver_rt[chan->tag];
-        chan->net=read_channel_intel(channels_from_ck_r[chan_idx]);
-
-
+        const char chan_idx_data=internal_from_ckr_data_rt[chan->tag];
+        //const char chan_idx=internal_receiver_rt[chan->tag];
+        chan->net=read_channel_intel(channels_from_ck_r[chan_idx_data]);
     }
     char * ptr=chan->net.data+(chan->packet_element_id)*chan->size_of_type;
     chan->packet_element_id++;                       //first increment and then use it: otherwise compiler detects Fmax problems
@@ -51,6 +48,8 @@ void SMI_Pop(SMI_Channel *chan, void *data)
     if(chan->data_type==SMI_DOUBLE)
         *(double *)data= *(double*)(ptr);
     chan->tokens--;
+    //This is used to prevent this funny compiler to re-oder the two *_channel_intel operations
+
     if(chan->tokens==0) //va nell'if
     {
         //this is also useful for enforcing the ordering
@@ -58,13 +57,13 @@ void SMI_Pop(SMI_Channel *chan, void *data)
         //the new tokens to it
         chan->tokens=MIN(chan->max_tokens/8, MAX(chan->message_size-chan->processed_elements-chan->max_tokens*7/8,0)); //b/2
 
-        const char chan_idx=internal_sender_rt[chan->tag];
+        const char chand_idx_control=internal_to_cks_control_rt[chan->tag];
         SMI_Network_message mess;
         *(uint*)mess.data=chan->tokens;
         SET_HEADER_DST(mess.header,chan->sender_rank);
-        SET_HEADER_TAG(mess.header,chan->tag);
+        SET_HEADER_TAG(mess.header,internal_sender_port_receiving[chan->tag]);  //TODO this must be choosen properly, we have to map it properly
         SET_HEADER_OP(mess.header,SMI_REQUEST);
-        write_channel_intel(channels_to_ck_s[chan_idx],mess);
+        write_channel_intel(channels_to_ck_s[chand_idx_control],mess);
         //printf("Receiver, sent tokens: %d to tag %d\n",chan->tokens,chan->tag);
 
     }

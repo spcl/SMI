@@ -8,7 +8,7 @@
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
-#define BUFF_SIZE 1024    //TODO: understand where this should be put. Must be a multiple of 2
+#define BUFF_SIZE 1024    //TODO: understand where this should be put. Must be a multiple of 8
 /*
  * TODO:
  * - src and rcv rank are duplicated into the channel descriptor and packet.

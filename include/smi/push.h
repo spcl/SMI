@@ -23,13 +23,15 @@
  * @brief SMI_Push push a data elements in the data channel. Data transferring can be delayed
  * @param chan
  * @param data
- * @param immediate: if true the data is immediately sent, without waiting for the completion of the network packet
+ * @param immediate: if true the data is immediately sent, without waiting for the completion of the network packet.
+ *          In general, the user should use the athore Push definition
  */
 void SMI_Push_flush(SMI_Channel *chan, void* data, bool immediate)
 {
 
     char *conv=(char*)data;
-    const char chan_idx=internal_sender_rt[chan->tag];
+    //we have to send the actual data and to receive the rendezvous message
+    const char chan_idx_data=internal_to_cks_data_rt[chan->tag];
     #pragma unroll
     for(int jj=0;jj<chan->size_of_type;jj++) //copy the data
         chan->net.data[chan->packet_element_id*chan->size_of_type+jj]=conv[jj];
@@ -40,15 +42,18 @@ void SMI_Push_flush(SMI_Channel *chan, void* data, bool immediate)
     {
         SET_HEADER_NUM_ELEMS(chan->net.header,chan->packet_element_id);
         chan->packet_element_id=0;
-        write_channel_intel(channels_to_ck_s[chan_idx],chan->net);
+        write_channel_intel(channels_to_ck_s[chan_idx_data],chan->net);
     }
+    //This is used to prevent this funny compiler to re-oder the two *_channel_intel operations
+    mem_fence(CLK_CHANNEL_MEM_FENCE);
+
     //TODO, handle immediate
     if(chan->tokens==0)
     {
         //receives also with tokens=0
         //wait until the message arrives
-        const char chan_idx=internal_receiver_rt[chan->tag];
-        SMI_Network_message mess=read_channel_intel(channels_from_ck_r[chan_idx]);
+        const char chan_idx_control=internal_from_ckr_control_rt[chan->tag];
+        SMI_Network_message mess=read_channel_intel(channels_from_ck_r[chan_idx_control]);
         uint tokens=*(uint *)mess.data;
      //   printf("Sender, recevd rendezvous from tag %d tokens: %d\n",chan->tag,tokens);
 
