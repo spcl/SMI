@@ -215,151 +215,53 @@ int main(int argc, char *argv[])
         }
     }
 
-    if(rank==0)
-    {
-        //copy centroids back
-        queues[0].enqueueReadBuffer(points_device, CL_TRUE,0,sizeof(float)*(input.size()),input.data());
+    //copy centroids back
+    queues[0].enqueueReadBuffer(points_device, CL_TRUE,0,sizeof(float)*(input.size()),input.data());
 
 
-        //get back the results
-        queues[0].enqueueReadBuffer(centroids_device_write,CL_TRUE,0,sizeof(float)*(centroids.size()),centroids.data());
-        // Final centroids
-        std::cout << "Final centroids:\n";
-        for (int k = 0; k < kK; ++k) {
-            std::cout << "  {" << centroids[k * kDims];
-            for (int d = 1; d < kDims; ++d) {
-                std::cout << ", " << centroids[k * kDims + d];
-            }
-            std::cout << "}\n";
+    //get back the results
+    queues[0].enqueueReadBuffer(centroids_device_write,CL_TRUE,0,sizeof(float)*(centroids.size()),centroids.data());
+    // Final centroids
+    std::cout << "Final centroids:\n";
+    for (int k = 0; k < kK; ++k) {
+        std::cout << "  {" << centroids[k * kDims];
+        for (int d = 1; d < kDims; ++d) {
+            std::cout << ", " << centroids[k * kDims + d];
         }
-        double mean=0;
-        for(auto t:times)
-            mean+=t;
-        mean/=runs;
-        //report the mean in usecs
-
-        double stddev=0;
-        for(auto t:times)
-            stddev+=((t-mean)*(t-mean));
-        stddev=sqrt(stddev/runs);
-        double conf_interval_99=2.58*stddev/sqrt(runs);
-
-        cout << "Computation time (usec): " << mean << " (sttdev: " << stddev<<")"<<endl;
-        cout << "Conf interval 99: "<<conf_interval_99<<endl;
-        cout << "Conf interval 99 within " <<(conf_interval_99/mean)*100<<"% from mean" <<endl;
-
-        //save the info into output file
-        std::ostringstream filename;
-        filename << "smi_kmeans_"<<rank_count <<"_"<< n << "_"<<iterations<<"it.dat";
-        ofstream fout(filename.str());
-        fout << "#N = "<<n<<", Iterations = "<<iterations<< ", Runs = "<<runs<<endl;
-        fout << "#Ranks = " <<rank_count<<endl;
-        fout << "#Average Computation time (usecs): "<<mean<<endl;
-        fout << "#Standard deviation (usecs): "<<stddev<<endl;
-        fout << "#Confidence interval 99%: +- "<<conf_interval_99<<endl;
-        fout << "#Execution times (usecs):"<<endl;
-        for(auto t:times)
-            fout << t << endl;
-        fout.close();
-
-
+        std::cout << "}\n";
     }
+    double mean=0;
+    for(auto t:times)
+        mean+=t;
+    mean/=runs;
+    //report the mean in usecs
 
-        std::cout << "Performing host based implementation ..."<<std::endl;
+    double stddev=0;
+    for(auto t:times)
+        stddev+=((t-mean)*(t-mean));
+    stddev=sqrt(stddev/runs);
+    double conf_interval_99=2.58*stddev/sqrt(runs);
 
-    {
-        timestamp_t cpu_start=current_time_usecs();
+    cout << "Computation time (usec): " << mean << " (sttdev: " << stddev<<")"<<endl;
+    cout << "Conf interval 99: "<<conf_interval_99<<endl;
+    cout << "Conf interval 99 within " <<(conf_interval_99/mean)*100<<"% from mean" <<endl;
 
-        std::array<Point_t, kK> means;
-        std::array<unsigned int, kK> count;
-        Data_t total_distance;
-        /*std::array<Point_t, kK> centroids_local;
-            for (int k = 0; k < kK; ++k) {
-                for (int d = 0; d < kDims; ++d) {
-                    centroids_local[k][d] = centroids[is][k][d];
-                }
-            }*/
-        for (int i = 0; i < iterations; ++i) {
-            total_distance = 0;
-            // Reset means to zero
-            for (int k = 0; k < kK; ++k) {
-                for (int d = 0; d < kDims; ++d) {
-                    means[k][d] = 0;
-                }
-                count[k]  = 0;
-            }
+    //save the info into output file
+    std::ostringstream filename;
+    filename << "smi_kmeans_"<<rank_count <<"_"<< n << "_"<<iterations<<"it.dat";
+    ofstream fout(filename.str());
+    fout << "#N = "<<n<<", Iterations = "<<iterations<< ", Runs = "<<runs<<endl;
+    fout << "#Ranks = " <<rank_count<<endl;
+    fout << "#Average Computation time (usecs): "<<mean<<endl;
+    fout << "#Standard deviation (usecs): "<<stddev<<endl;
+    fout << "#Confidence interval 99%: +- "<<conf_interval_99<<endl;
+    fout << "#Execution times (usecs):"<<endl;
+    for(auto t:times)
+        fout << t << endl;
+    fout.close();
 
 
-            for (int ip = 0; ip < points_per_rank; ++ip) {  // Loop over local points
-                Point_t p;
-                for (int d = 0; d < kDims; ++d)
-                    p[d]= points[ip*kDims+d];
 
-                unsigned char min_idx;
-                Data_t min_dist = std::numeric_limits<Data_t>::max();
-                for (int k = 0; k < kK; ++k) {  // Loop over each centroid
-                    Data_t cand_dist = 0;
-                    for (int d = 0; d < kDims; ++d) {  // Compute squared distance
-                        auto dist = centroids_host[k*kDims+d] - p[d];
-                        cand_dist += dist * dist;
-                    }
-                    // Assign to closest centroid
-                    if (cand_dist < min_dist) {
-                        min_dist = cand_dist;
-                        min_idx = k;
-                    }
-                    total_distance += cand_dist;
-                }
-
-                // Add point coordinates to mean for calculating new centroids
-                for (int d = 0; d < kDims; ++d) {
-
-                    means[min_idx][d] += p[d];
-                }
-                count[min_idx] += 1;
-            }
-            //Reduce means and number of assignments
-            MPI_Allreduce(MPI_IN_PLACE, &count[0], kK, MPI_UNSIGNED, MPI_SUM,
-                    MPI_COMM_WORLD);
-            MPI_Allreduce(MPI_IN_PLACE, &means[0], kK * kDims, MPI_FLOAT, MPI_SUM,
-                    MPI_COMM_WORLD);
-            // Divide by N to get new centroids
-            for (int k = 0; k < kK; ++k) {
-                for (int d = 0; d < kDims; ++d) {
-                    centroids_host[k*kDims+d] = means[k][d] / count[k];
-                }
-            }
-
-        }
-        MPI_Reduce((mpi_rank == 0) ? MPI_IN_PLACE : &total_distance,
-                   &total_distance, 1, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
-        timestamp_t cpu_time=current_time_usecs()-cpu_start;
-
-        if(rank==0)
-        {
-            std::cout << "Final centroids host:\n";
-            for (int k = 0; k < kK; ++k) {
-                std::cout << "  {" << centroids_host[k * kDims];
-                for (int d = 1; d < kDims; ++d) {
-                    std::cout << ", " << centroids_host[k * kDims + d];
-                }
-                std::cout << "}\n";
-            }
-            std::cout << "CPU Computation time (usec): " << cpu_time <<std::endl;
-
-            //compute difference with FPGA result
-
-            for (int k = 0; k < kK; ++k) {
-                double diff=0;
-                for (int d = 0; d < kDims; ++d) {
-                    double dd=centroids_host[k * kDims + d]-centroids[k * kDims + d];
-                    diff+=dd*dd;
-
-                }
-                std::cout << "Distance between FPGA and Host on centroid "<<k<<": "<<sqrt(diff)<<std::endl;
-            }
-        }
-    }
 
 
 }
