@@ -145,9 +145,11 @@ kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
           DTYPE recv_val;
 #if !defined(SEQUENTIAL)
           SMI_Reduce_float(&reduce_mean_ch, &send_val, &recv_val);
-#endif
           // It doesn't matter that we write junk on non-0 ranks
           means_reduced[w][d][k] = recv_val;
+#else
+           means_reduced[w][d][k] = send_val;
+#endif
         }
       }
     }
@@ -186,9 +188,11 @@ kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
       int recv_val;
 #if !defined(SEQUENTIAL)
       SMI_Reduce_int(&reduce_count_ch, &send_val, &recv_val);
-#endif
       // Doesn't matter that this is junk on non-root ranks
       count_reduced[k] = recv_val;
+#else
+      count_reduced[k] = send_val;
+#endif
     }
 
     int count_updated[K];
@@ -200,6 +204,7 @@ kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
 #endif
     for (int k = 0; k < K; k++) {
       int bcast_val = count_reduced[k];
+
 #if !defined(SEQUENTIAL)
       SMI_Bcast_int(&broadcast_count_ch, &bcast_val);
 #endif
@@ -213,6 +218,7 @@ kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
     for (int k = 0; k < K; ++k) {
       for (int d = 0; d < DIMS / W; ++d) {
         VTYPE updated = centroids_updated[d][k] / count_updated[k]; 
+
         write_channel_intel(centroid_loop_ch, updated);
         // Write back to global memory
         centroids_global[k * DIMS / W + d] = updated; 
