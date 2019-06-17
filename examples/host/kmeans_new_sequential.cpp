@@ -74,6 +74,7 @@ int main(int argc, char *argv[])
 
     int rank_count=1;
     //Application
+    int rank=0;
     int points_per_rank = n / rank_count;
     int mpi_rank=rank;
     int mpi_size=rank_count;
@@ -145,7 +146,7 @@ int main(int argc, char *argv[])
         std::copy(centroids.begin(),centroids.end(),centroids_host.begin());
     }
 
-
+    std::cout << "Data created..."<<std::endl;
     // Distribute data
 
     cl::Buffer points_device(context,CL_MEM_READ_WRITE,sizeof(float)*(input.size()));
