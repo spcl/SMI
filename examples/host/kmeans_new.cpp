@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
     if(argc<7)
     {
         cerr << "Reduce benchmark " <<endl;
-        cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <length> -i <number of iterations> "<<endl;
+        cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <length> -i <number of iterations> [-r <runs>]"<<endl;
         exit(-1);
     }
     int n;
@@ -42,8 +42,8 @@ int main(int argc, char *argv[])
     std::string program_path;
     char root;
     int fpga,iterations;
-    int rank;
-    while ((c = getopt (argc, argv, "n:b:i:")) != -1)
+    int rank,runs=1;
+    while ((c = getopt (argc, argv, "n:b:i:r:")) != -1)
         switch (c)
         {
             case 'n':
@@ -51,6 +51,9 @@ int main(int argc, char *argv[])
                 break;
             case 'i':
                 iterations=atoi(optarg);
+                break;
+            case 'r':
+                runs=atoi(optarg);
                 break;
             case 'b':
                 program_path=std::string(optarg);
@@ -214,7 +217,7 @@ int main(int argc, char *argv[])
         // Print starting centroids
         std::stringstream ss;
 
-        ss.str("");
+        /*ss.str("");
         ss.clear();
         ss << "Means used to generate data:\n";
         ss << "Initial centroids:\n";
@@ -225,7 +228,7 @@ int main(int argc, char *argv[])
             }
             ss << "}\n";
         }
-        std::cout <<ss.str()<<std::endl;
+        std::cout <<ss.str()<<std::endl;*/
         std::copy(centroids.begin(),centroids.end(),centroids_host.begin());
     }
 
@@ -242,9 +245,6 @@ int main(int argc, char *argv[])
     cl::Buffer centroids_device_write(context,CL_MEM_WRITE_ONLY,sizeof(float)*(centroids.size()));
 
 
-    queues[12].enqueueWriteBuffer(points_device, CL_TRUE,0,sizeof(float)*(points.size()),points.data());
-    queues[12].enqueueWriteBuffer(centroids_device_read, CL_TRUE,0,sizeof(float)*(centroids.size()),centroids.data());
-    queues[12].enqueueWriteBuffer(centroids_device_write, CL_TRUE,0,sizeof(float)*(centroids.size()),centroids.data());
 
 
 
@@ -270,38 +270,50 @@ int main(int argc, char *argv[])
 
     cl::Event events[3];
     // wait for other nodes
-    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+    for(int i=0;i<runs;i++)
+    {
+        queues[12].enqueueWriteBuffer(points_device, CL_TRUE,0,sizeof(float)*(points.size()),points.data());
+        queues[12].enqueueWriteBuffer(centroids_device_read, CL_TRUE,0,sizeof(float)*(centroids.size()),centroids.data());
+        queues[12].enqueueWriteBuffer(centroids_device_write, CL_TRUE,0,sizeof(float)*(centroids.size()),centroids.data());
 
-    queues[12].enqueueTask(kernels[12],nullptr,&events[0]);
-    queues[13].enqueueTask(kernels[13],nullptr,&events[1]);
-    queues[14].enqueueTask(kernels[14],nullptr,&events[2]);
+        CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
 
-    queues[12].finish();
-    queues[13].finish();
-    queues[14].finish();
+        queues[12].enqueueTask(kernels[12],nullptr,&events[0]);
+        queues[13].enqueueTask(kernels[13],nullptr,&events[1]);
+        queues[14].enqueueTask(kernels[14],nullptr,&events[2]);
+
+        queues[12].finish();
+        queues[13].finish();
+        queues[14].finish();
 
 
-    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+        CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+
+        if(rank==0)
+        {
+            ulong min_start=4294967295, max_end=0;
+            ulong end, start;
+            for(int i=0;i<3;i++)
+            {
+                events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
+                events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
+                if(i==0)
+                    min_start=start;
+                if(start<min_start)
+                    min_start=start;
+                if(end>max_end)
+                    max_end=end;
+            }
+            double time= (double)((max_end-min_start)/1000.0f);
+            times.push_back(time);
+        }
+    }
+
     if(rank==0)
     {
         //copy centroids back
         queues[12].enqueueReadBuffer(points_device, CL_TRUE,0,sizeof(float)*(points.size()),points.data());
 
-        ulong min_start=4294967295, max_end=0;
-        ulong end, start;
-        for(int i=0;i<3;i++)
-        {
-            events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
-            events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
-            if(i==0)
-                min_start=start;
-            if(start<min_start)
-                min_start=start;
-            if(end>max_end)
-                max_end=end;
-        }
-        double time= (double)((max_end-min_start)/1000.0f);
-        std::cout << "Computation time (usec): " << time <<std::endl;
 
         //get back the results
         queues[12].enqueueReadBuffer(centroids_device_write,CL_TRUE,0,sizeof(float)*(centroids.size()),centroids.data());
@@ -314,7 +326,35 @@ int main(int argc, char *argv[])
             }
             std::cout << "}\n";
         }
+        double mean=0;
+        for(auto t:times)
+            mean+=t;
+        mean/=runs;
+        //report the mean in usecs
 
+        double stddev=0;
+        for(auto t:times)
+            stddev+=((t-mean)*(t-mean));
+        stddev=sqrt(stddev/runs);
+        double conf_interval_99=2.58*stddev/sqrt(runs);
+
+        cout << "Computation time (usec): " << mean << " (sttdev: " << stddev<<")"<<endl;
+        cout << "Conf interval 99: "<<conf_interval_99<<endl;
+        cout << "Conf interval 99 within " <<(conf_interval_99/mean)*100<<"% from mean" <<endl;
+
+        //save the info into output file
+        std::ostringstream filename;
+        filename << "smi_kmeans_"<<rank_count <<"_"<< n << "_"<<iterations<<"it.dat";
+        ofstream fout(filename.str());
+        fout << "#N = "<<n<<", Iterations = "<<iterations<< ", Runs = "<<runs<<endl;
+        fout << "#Ranks = " <<rank_count<<endl;
+        fout << "#Average Computation time (usecs): "<<mean<<endl;
+        fout << "#Standard deviation (usecs): "<<stddev<<endl;
+        fout << "#Confidence interval 99%: +- "<<conf_interval_99<<endl;
+        fout << "#Execution times (usecs):"<<endl;
+        for(auto t:times)
+            fout << t << endl;
+        fout.close();
 
 
     }
