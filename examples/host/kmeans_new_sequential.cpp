@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
 
     int rank_count=1;
     //Application
-    int rank=0;
+    rank=0;
     int points_per_rank = n / rank_count;
     int mpi_rank=rank;
     int mpi_size=rank_count;
@@ -181,6 +181,7 @@ int main(int argc, char *argv[])
     // wait for other nodes
     for(int i=0;i<runs;i++)
     {
+        std::cout << "Run: " <<i <<endl;
         queues[0].enqueueWriteBuffer(points_device, CL_TRUE,0,sizeof(float)*(input.size()),input.data());
         queues[0].enqueueWriteBuffer(centroids_device_read, CL_TRUE,0,sizeof(float)*(centroids.size()),centroids.data());
         queues[0].enqueueWriteBuffer(centroids_device_write, CL_TRUE,0,sizeof(float)*(centroids.size()),centroids.data());
