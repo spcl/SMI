@@ -13,15 +13,16 @@
  * @param tag
  * @return
  */
-SMI_Channel SMI_Open_send_channel(uint count, SMI_Datatype data_type, char destination, char tag)
+SMI_Channel SMI_Open_send_channel(uint count, SMI_Datatype data_type, uint destination, uint tag)
 {
     SMI_Channel chan;
     //setup channel descriptor
-    chan.tag=tag;
+    chan.tag=(char)tag;
     chan.message_size=count;
     chan.data_type=data_type;
     chan.op_type=SMI_SEND;
     chan.rendezvous=false;
+    chan.receiver_rank=(char)destination;
 
     switch(data_type)
     {
@@ -52,9 +53,9 @@ SMI_Channel SMI_Open_send_channel(uint count, SMI_Datatype data_type, char desti
          //TODO add more data types
     }
     //setup header for the message
-    SET_HEADER_DST(chan.net.header,destination);
+    SET_HEADER_DST(chan.net.header,chan.receiver_rank);
     //SET_HEADER_SRC(chan.net.header,my_rank);
-    SET_HEADER_TAG(chan.net.header,tag);
+    SET_HEADER_TAG(chan.net.header,chan.tag);
     SET_HEADER_OP(chan.net.header,SMI_SEND);
 
     chan.receiver_rank=destination;
@@ -65,11 +66,12 @@ SMI_Channel SMI_Open_send_channel(uint count, SMI_Datatype data_type, char desti
     return chan;
 }
 
-SMI_Channel SMI_Open_receive_channel(uint count, SMI_Datatype data_type, char source, char tag)
+SMI_Channel SMI_Open_receive_channel(uint count, SMI_Datatype data_type, uint source, uint tag)
 {
     SMI_Channel chan;
     //setup channel descriptor
-    chan.tag=tag;
+    chan.tag=(char)tag;
+    chan.sender_rank=(char)source;
     chan.message_size=count;
     chan.data_type=data_type;
     chan.op_type=SMI_RECEIVE;
@@ -105,7 +107,7 @@ SMI_Channel SMI_Open_receive_channel(uint count, SMI_Datatype data_type, char so
     SET_HEADER_NUM_ELEMS(chan.net.header,0);    //at the beginning no data
     chan.packet_element_id=0; //data per packet
     chan.processed_elements=0;
-    chan.sender_rank=source;
+    chan.sender_rank=chan.sender_rank;
 //    /chan.receiver_rank=my_rank;
 
     return chan;

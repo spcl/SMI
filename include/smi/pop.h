@@ -53,7 +53,7 @@ void SMI_Pop(SMI_Channel *chan, void *data)
     if(chan->tokens==0) //va nell'if
     {
         //this is also useful for enforcing the ordering
-        //At this point, the sender has still max_tokens/2 tokens: we have to consider this while we send
+        //At this point, the sender has still max_tokens*7/8 tokens: we have to consider this while we send
         //the new tokens to it
         chan->tokens=MIN(chan->max_tokens/8, MAX(chan->message_size-chan->processed_elements-chan->max_tokens*7/8,0)); //b/2
 
