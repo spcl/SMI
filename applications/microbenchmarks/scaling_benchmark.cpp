@@ -15,7 +15,7 @@
 #include <limits.h>
 #include <cmath>
 #include "../../include/utils/smi_utils.hpp"
-#define ROUTING_DIR "applications/microbenchmarks/scaling_benchmark/"
+#define ROUTING_DIR "routing_torus"
 
 //#define CHECK
 using namespace std;
@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
         {
             case 'k':
                 kb=atoi(optarg);
-                n=(int)kb*54.8571; //the payload of each network packet is 28B, on each packet there is space for 3 doubles
+                n=(int)ceil(kb*54.8571); //the payload of each network packet is 28B, on each packet there is space for 3 doubles
                 break;
             case 'i':
                 runs=atoi(optarg);
@@ -72,11 +72,11 @@ int main(int argc, char *argv[])
     fpga = rank % 2; // in this case is ok, pay attention
     //fpga=0; //executed on 15 and 16
     std::cout << "Rank: " << rank << " out of " << rank_count << " ranks, executing on fpga " <<fpga<< std::endl;
-    /*if(rank==0)
+    if(rank==0)
         program_path = replace(program_path, "<rank>", std::string("0"));
     else
         program_path = replace(program_path, "<rank>", std::string("1"));
-*/
+
     //for emulation
     program_path = replace(program_path, "<rank>", std::to_string(rank));
     std::cout << "Program: " << program_path << std::endl;
@@ -198,7 +198,7 @@ int main(int argc, char *argv[])
     for(int i=0;i<runs;i++)
     {
 
-        cl::Event events[1]; //this defination must stay here
+        cl::Event events[2]; //this defination must stay here
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
         //ATTENTION: If you are executing on the same host
         //since the PCIe is shared that could be problems in taking times
