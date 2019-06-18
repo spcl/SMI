@@ -59,7 +59,7 @@ void SMI_Pop(SMI_Channel *chan, void *data)
         SMI_Network_message mess;
         *(uint*)mess.data=chan->tokens;
         SET_HEADER_DST(mess.header,chan->sender_rank);
-        SET_HEADER_PORT(mess.header,internal_sender_port_receiving[chan->port]);  //TODO this must be choosen properly, we have to map it properly
+        SET_HEADER_PORT(mess.header,chan->port);
         SET_HEADER_OP(mess.header,SMI_REQUEST);
         write_channel_intel(channels_to_ck_s[chand_idx_control],mess);
         //printf("Receiver, sent tokens: %d to tag %d\n",chan->tokens,chan->tag);

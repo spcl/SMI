@@ -70,7 +70,7 @@ __constant char internal_to_cks_control_rt[3] = {0,1,2}; //these are for the ren
 __constant char internal_from_ckr_data_rt[3] ={0,1,2}; //provisional: we put 3just for seeing if it works
 //probably we need this one to properly send  the rendezvous message to the sender
 //this should be statically conputed
-__constant char internal_sender_port_receiving[3] ={0,1,2}; //these are for the rendezvous
+//__constant char internal_sender_port_receiving[3] ={0,1,2}; //these are for the rendezvous
 
 channel SMI_Network_message channels_to_ck_s[2] __attribute__((depth(16)));
 channel SMI_Network_message channels_from_ck_r[2] __attribute__((depth(BUFF_SIZE)));
