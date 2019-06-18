@@ -81,7 +81,6 @@ int main(int argc, char *argv[])
     const int num_points = n;
 
     AlignedVec_t input;
-    AlignedVec_t points(kDims * points_per_rank);
     AlignedVec_t centroids(kK * kDims);
     AlignedVec_t centroids_host(kK * kDims);    //for host checking
     if (mpi_rank == 0) {

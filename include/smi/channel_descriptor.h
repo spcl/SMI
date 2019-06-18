@@ -8,7 +8,9 @@
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
+//NEW
 #define BUFF_SIZE 1024    //TODO: understand where this should be put. Must be a multiple of 8
+
 /*
  * TODO:
  * - src and rcv rank are duplicated into the channel descriptor and packet.
@@ -18,7 +20,7 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     SMI_Network_message net;          //buffered network message
     char sender_rank;
     char receiver_rank;
-    char tag;
+    char port;
     uint message_size;              //given in number of data elements
     uint processed_elements;        //how many data elements we have sent/received
     uint packet_element_id;         //given a packet, the id of the element that we are currently processing (from 0 to the data elements per packet)
@@ -29,8 +31,6 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     bool rendezvous;                //true if rendezvous has been done, false otherwise
     uint tokens;                    //current number of tokens
     uint max_tokens;                //max tokens on the sender side
-    //uint tokens_sender;             //starting number of tokens on the sender side
-   // uint tokens_recv;               //starting number of tokens on the receiver side
 }SMI_Channel;
 
 

@@ -31,7 +31,7 @@ void SMI_Push_flush(SMI_Channel *chan, void* data, bool immediate)
 
     char *conv=(char*)data;
     //we have to send the actual data and to receive the rendezvous message
-    const char chan_idx_data=internal_to_cks_data_rt[chan->tag];
+    const char chan_idx_data=internal_to_cks_data_rt[chan->port];
     #pragma unroll
     for(int jj=0;jj<chan->size_of_type;jj++) //copy the data
         chan->net.data[chan->packet_element_id*chan->size_of_type+jj]=conv[jj];
@@ -52,15 +52,14 @@ void SMI_Push_flush(SMI_Channel *chan, void* data, bool immediate)
     {
         //receives also with tokens=0
         //wait until the message arrives
-        const char chan_idx_control=internal_from_ckr_control_rt[chan->tag];
+        const char chan_idx_control=internal_from_ckr_control_rt[chan->port];
         SMI_Network_message mess=read_channel_intel(channels_from_ck_r[chan_idx_control]);
         uint tokens=*(uint *)mess.data;
-     //   printf("Sender, recevd rendezvous from tag %d tokens: %d\n",chan->tag,tokens);
 
         chan->tokens+=tokens; //tokens += Buffer size/2 .. TODO
 
     }
-    
+
 }
 
 

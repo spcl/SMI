@@ -65,7 +65,7 @@ channel SMI_Network_message io_in_3 __attribute__((depth(16))) __attribute__((io
   used by the compiler to lay down the circuitry. The data routing table is used by push (and collectives)
   to send the actual communication data, while the control is used by push (and collective) to receive
   control information (e.g. rendezvous data) from the pairs
-*/
+*/ //NEW
 __constant char internal_to_cks_data_rt[3] = {0,1,2}; //provisional: we put 3just for seeing if it works
 __constant char internal_from_ckr_control_rt[3] ={0,1,2}; //these are for the rendezvous
 
@@ -236,7 +236,7 @@ __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
             {
                 dest = 0;
             }
-            else dest = external_routing_table[GET_HEADER_TAG(message.header)][GET_HEADER_OP(message.header)==SMI_REQUEST];
+            else dest = external_routing_table[GET_HEADER_PORT(message.header)][GET_HEADER_OP(message.header)==SMI_REQUEST];
             switch (dest)
             {
                 case 0:
@@ -406,7 +406,7 @@ __kernel void CK_R_1(__global volatile char *restrict rt, const char rank)
             {
                 dest = 0;
             }
-            else dest = external_routing_table[GET_HEADER_TAG(message.header)][GET_HEADER_OP(message.header)==SMI_REQUEST]; //NEW
+            else dest = external_routing_table[GET_HEADER_PORT(message.header)][GET_HEADER_OP(message.header)==SMI_REQUEST]; //NEW
             switch (dest)
             {
                 case 0:
@@ -572,7 +572,7 @@ __kernel void CK_R_2(__global volatile char *restrict rt, const char rank)
             {
                 dest = 0;
             }
-            else dest = external_routing_table[GET_HEADER_TAG(message.header)][GET_HEADER_OP(message.header)==SMI_REQUEST];
+            else dest = external_routing_table[GET_HEADER_PORT(message.header)][GET_HEADER_OP(message.header)==SMI_REQUEST];
             switch (dest)
             {
                 case 0:
@@ -733,7 +733,7 @@ __kernel void CK_R_3(__global volatile char *restrict rt, const char rank)
             {
                 dest = 0;
             }
-            else dest = external_routing_table[GET_HEADER_TAG(message.header)][GET_HEADER_OP(message.header)==SMI_REQUEST];
+            else dest = external_routing_table[GET_HEADER_PORT(message.header)][GET_HEADER_OP(message.header)==SMI_REQUEST];
             switch (dest)
             {
                 case 0:

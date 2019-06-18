@@ -230,7 +230,7 @@ __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
             {
                 dest = 0;
             }
-            else dest = external_routing_table[GET_HEADER_TAG(message.header)][GET_HEADER_OP(message.header)==SMI_REQUEST];
+            else dest = external_routing_table[GET_HEADER_PORT(message.header)][GET_HEADER_OP(message.header)==SMI_REQUEST];
             switch (dest)
             {
                 case 0:
@@ -400,7 +400,7 @@ __kernel void CK_R_1(__global volatile char *restrict rt, const char rank)
             {
                 dest = 0;
             }
-            else dest = external_routing_table[GET_HEADER_TAG(message.header)][GET_HEADER_OP(message.header)==SMI_REQUEST];
+            else dest = external_routing_table[GET_HEADER_PORT(message.header)][GET_HEADER_OP(message.header)==SMI_REQUEST];
             switch (dest)
             {
                 case 0:
@@ -565,7 +565,7 @@ __kernel void CK_R_2(__global volatile char *restrict rt, const char rank)
             {
                 dest = 0;
             }
-            else dest = external_routing_table[GET_HEADER_TAG(message.header)][GET_HEADER_OP(message.header)==SMI_REQUEST];
+            else dest = external_routing_table[GET_HEADER_PORT(message.header)][GET_HEADER_OP(message.header)==SMI_REQUEST];
             switch (dest)
             {
                 case 0:
@@ -726,7 +726,7 @@ __kernel void CK_R_3(__global volatile char *restrict rt, const char rank)
             {
                 dest = 0;
             }
-            else dest = external_routing_table[GET_HEADER_TAG(message.header)][GET_HEADER_OP(message.header)==SMI_REQUEST];
+            else dest = external_routing_table[GET_HEADER_PORT(message.header)][GET_HEADER_OP(message.header)==SMI_REQUEST];
             switch (dest)
             {
                 case 0:

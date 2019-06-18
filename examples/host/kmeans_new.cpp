@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
     if(argc<7)
     {
         cerr << "Reduce benchmark " <<endl;
-        cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <length> -i <number of iterations> [-r <runs>]"<<endl;
+        cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <length> -i <number of iterations> "<<endl;
         exit(-1);
     }
     int n;
