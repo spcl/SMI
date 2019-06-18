@@ -23,7 +23,8 @@ SMI_Channel SMI_Open_send_channel(uint count, SMI_Datatype data_type, uint desti
     chan.op_type=SMI_SEND;
     chan.rendezvous=false;
     chan.receiver_rank=(char)destination;
-
+    //At the beginning, the sender can sends as many data items as the buffer size
+    //in the receiver allows
     switch(data_type)
     {
         case(SMI_CHAR):
@@ -54,8 +55,7 @@ SMI_Channel SMI_Open_send_channel(uint count, SMI_Datatype data_type, uint desti
     }
     //setup header for the message
     SET_HEADER_DST(chan.net.header,chan.receiver_rank);
-    //SET_HEADER_SRC(chan.net.header,my_rank);
-    SET_HEADER_TAG(chan.net.header,chan.port);
+    SET_HEADER_PORT(chan.net.header,chan.port);
     SET_HEADER_OP(chan.net.header,SMI_SEND);
 
     chan.receiver_rank=destination;
@@ -76,7 +76,6 @@ SMI_Channel SMI_Open_receive_channel(uint count, SMI_Datatype data_type, uint so
     chan.data_type=data_type;
     chan.op_type=SMI_RECEIVE;
     chan.rendezvous=false;
-
 
     switch(data_type)
     {
@@ -102,13 +101,14 @@ SMI_Channel SMI_Open_receive_channel(uint count, SMI_Datatype data_type, uint so
             break;
          //TODO add more data types
     }
+    //NEW
+    //The receiver sends tokens to the sender once every chan.max_tokens/8 received data elements
     chan.tokens=chan.max_tokens/8;
 
     SET_HEADER_NUM_ELEMS(chan.net.header,0);    //at the beginning no data
     chan.packet_element_id=0; //data per packet
     chan.processed_elements=0;
     chan.sender_rank=chan.sender_rank;
-//    /chan.receiver_rank=my_rank;
 
     return chan;
 }

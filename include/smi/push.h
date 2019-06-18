@@ -55,8 +55,7 @@ void SMI_Push_flush(SMI_Channel *chan, void* data, bool immediate)
         const char chan_idx_control=internal_from_ckr_control_rt[chan->port];
         SMI_Network_message mess=read_channel_intel(channels_from_ck_r[chan_idx_control]);
         uint tokens=*(uint *)mess.data;
-
-        chan->tokens+=tokens; //tokens += Buffer size/2 .. TODO
+        chan->tokens+=tokens; //tokens
 
     }
 

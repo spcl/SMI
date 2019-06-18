@@ -48,9 +48,9 @@ void SMI_Pop(SMI_Channel *chan, void *data)
     chan->tokens--;
     //This is used to prevent this funny compiler to re-oder the two *_channel_intel operations
 
-    if(chan->tokens==0) //va nell'if
+    if(chan->tokens==0)
     {
-        //this is also useful for enforcing the ordering
+
         //At this point, the sender has still max_tokens*7/8 tokens: we have to consider this while we send
         //the new tokens to it
         chan->tokens=MIN(chan->max_tokens/8, MAX(chan->message_size-chan->processed_elements-chan->max_tokens*7/8,0)); //b/2
@@ -59,7 +59,7 @@ void SMI_Pop(SMI_Channel *chan, void *data)
         SMI_Network_message mess;
         *(uint*)mess.data=chan->tokens;
         SET_HEADER_DST(mess.header,chan->sender_rank);
-        SET_HEADER_TAG(mess.header,internal_sender_port_receiving[chan->port]);  //TODO this must be choosen properly, we have to map it properly
+        SET_HEADER_PORT(mess.header,internal_sender_port_receiving[chan->port]);  //TODO this must be choosen properly, we have to map it properly
         SET_HEADER_OP(mess.header,SMI_REQUEST);
         write_channel_intel(channels_to_ck_s[chand_idx_control],mess);
         //printf("Receiver, sent tokens: %d to tag %d\n",chan->tokens,chan->tag);

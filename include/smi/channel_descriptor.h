@@ -29,7 +29,7 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     char size_of_type;              //size of data type
     char elements_per_packet;       //number of data elements per packet
     bool rendezvous;                //true if rendezvous has been done, false otherwise
-    uint tokens;                    //current number of tokens
+    uint tokens;                    //current number of tokens (one tokens allow the sender to transmit one data element)
     uint max_tokens;                //max tokens on the sender side
 }SMI_Channel;
 

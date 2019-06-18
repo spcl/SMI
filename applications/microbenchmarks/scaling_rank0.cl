@@ -18,10 +18,10 @@ __kernel void app(const int N, const char dest_rank)
     {
         double send=start+i;
         SMI_Push(&chan,&send);
-       // printf("[APP 0] inviato %d\n",i);
+       // printf("[APP 0] sent %d\n",i);
     }
 }
-/*
+
 __kernel void app_1(const int N, const char dest_rank)
 {
     SMI_Channel chan=SMI_Open_send_channel(N,SMI_DOUBLE,dest_rank,1);
@@ -30,8 +30,7 @@ __kernel void app_1(const int N, const char dest_rank)
     {
         double send=start+i;
         SMI_Push(&chan,&send);
-        //printf("[APP 1] inviato %d\n",i);
+        //printf("[APP 1] sent %d\n",i);
     }
-    //printf("Finito\n");
 }
-*/
+
