@@ -1,10 +1,10 @@
-import re
-from typing import List
+from typing import List, Tuple, Dict
 
 import networkx
 from networkx import Graph
 
 from common import COST_INTRA_FPGA, COST_INTER_FPGA, FPGA, RoutingContext
+from program import ProgramMapping
 
 """
 Each CK_R/CK_S separate QSFP
@@ -15,35 +15,33 @@ fpga-0014:acl0:ch0 - fpga-0014:acl1:ch0
 """
 
 
-def create_routing_context(stream):
+def create_routing_context(fpga_connections: Dict[Tuple[str, int], Tuple[str, int]], program_mapping: ProgramMapping):
     graph = networkx.Graph()
-    fpgas = load_inter_fpga_connections(graph, stream)
+    fpgas = load_inter_fpga_connections(graph, fpga_connections, program_mapping)
     add_intra_fpga_connections(graph, fpgas)
     routes = shortest_paths(graph)
     fpgas = create_ranks_for_fpgas(fpgas)
     return RoutingContext(graph, routes, fpgas)
 
 
-def load_inter_fpga_connections(graph, stream) -> List[FPGA]:
+def load_inter_fpga_connections(graph: networkx.Graph,
+                                fpga_connections: Dict[Tuple[str, int], Tuple[str, int]],
+                                program_mapping: ProgramMapping) -> List[FPGA]:
+    """
+    Parses FPGA connections and embeds them into a graph.
+    """
     fpgas = {}
-    channel_regex = re.compile(r".*(\d+)$")
 
-    def parse_channel(data):
-        node, fpga_name, channel = data.split(":")
-        fpga_key = "{}:{}".format(node, fpga_name)
+    def get_channel(fpga_key, channel):
         if fpga_key not in fpgas:
-            fpgas[fpga_key] = FPGA(node, fpga_name)
+            node, fpga_name = fpga_key.split(":")
+            fpgas[fpga_key] = FPGA(node, fpga_name, program_mapping.fpga_map[fpga_key])
         fpga = fpgas[fpga_key]
+        return fpga.channels[channel]
 
-        match = channel_regex.match(channel)
-        index = int(match.group(1))
-        return fpga.channels[index]
-
-    for line in stream:
-        line = line.strip()
-        if line:
-            src, dst = [parse_channel(l.strip()) for l in line.split("<->")]
-            graph.add_edge(src, dst, weight=COST_INTER_FPGA, label="{}-{}".format(src, dst))
+    for (src, dst) in fpga_connections.items():
+        src, dst = [get_channel(p[0], p[1]) for p in (src, dst)]
+        graph.add_edge(src, dst, weight=COST_INTER_FPGA, label="{}-{}".format(src, dst))
 
     return list(fpgas.values())
 

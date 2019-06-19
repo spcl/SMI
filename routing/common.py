@@ -2,6 +2,8 @@ from typing import List
 
 from networkx import Graph
 
+from program import Program
+
 COST_INTER_FPGA = 100
 COST_INTRA_FPGA = 1
 CHANNELS_PER_FPGA = 4
@@ -34,11 +36,12 @@ class Channel:
 
 
 class FPGA:
-    def __init__(self, node: str, name: str):
+    def __init__(self, node: str, name: str, program: Program):
         self.node = node
         self.name = name
         self.channels: List[Channel] = [Channel(self, i) for i in range(CHANNELS_PER_FPGA)]
         self.rank = None
+        self.program = program
 
     def has_channel(self, index: int):
         return self.channels[index] is not None
