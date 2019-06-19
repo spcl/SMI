@@ -1,4 +1,4 @@
-from parser import parse_programs
+from parser import parse_programs, parse_fpga_connections
 
 
 def test_parse_programs():
@@ -44,3 +44,26 @@ def test_parse_programs():
     assert program.ports[0].type == "collective"
 
     assert mapping.fpga_map["fpga-0014"] is program
+
+
+def test_parse_connections():
+    connections = parse_fpga_connections("""
+fpga-0015:acl0:ch0 <-> fpga-0016:acl0:ch0
+fpga-0015:acl0:ch1 <-> fpga-0015:acl1:ch1
+fpga-0015:acl0:ch2 <-> fpga-0016:acl1:ch2
+fpga-0015:acl1:ch0 <-> fpga-0016:acl1:ch0
+fpga-0015:acl1:ch2 <-> fpga-0016:acl0:ch2
+fpga-0016:acl0:ch1 <-> fpga-0016:acl1:ch1    
+""")
+    assert connections == {('fpga-0015:acl0', 0): ('fpga-0016:acl0', 0),
+                           ('fpga-0015:acl0', 1): ('fpga-0015:acl1', 1),
+                           ('fpga-0015:acl0', 2): ('fpga-0016:acl1', 2),
+                           ('fpga-0015:acl1', 0): ('fpga-0016:acl1', 0),
+                           ('fpga-0015:acl1', 1): ('fpga-0015:acl0', 1),
+                           ('fpga-0015:acl1', 2): ('fpga-0016:acl0', 2),
+                           ('fpga-0016:acl0', 0): ('fpga-0015:acl0', 0),
+                           ('fpga-0016:acl0', 1): ('fpga-0016:acl1', 1),
+                           ('fpga-0016:acl0', 2): ('fpga-0015:acl1', 2),
+                           ('fpga-0016:acl1', 0): ('fpga-0015:acl1', 0),
+                           ('fpga-0016:acl1', 1): ('fpga-0016:acl0', 1),
+                           ('fpga-0016:acl1', 2): ('fpga-0015:acl0', 2)}

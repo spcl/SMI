@@ -1,5 +1,6 @@
 import json
-from typing import List
+import re
+from typing import List, Tuple, Dict
 
 from program import ProgramMapping, Program, PortInfo
 
@@ -23,3 +24,29 @@ def parse_programs(input: str) -> ProgramMapping:
             assert fpga not in fpga_mapping
             fpga_mapping[fpga] = program
     return ProgramMapping(programs, fpga_mapping)
+
+
+def parse_fpga_connections(input: str) -> Dict[Tuple[str, int], Tuple[str, int]]:
+    channel_regex = re.compile(r".*(\d+)$")
+    connections = {}
+
+    def parse_key(data):
+        node, fpga_name, channel = data
+        return "{}:{}".format(node, fpga_name)
+
+    def parse_channel(data):
+        node, fpga_name, channel = data
+        match = channel_regex.match(channel)
+        return int(match.group(1))
+
+    for line in input.splitlines():
+        line = line.strip()
+        if line:
+            src, dst = [l.strip().split(":") for l in line.split("<->")]
+            src, dst = [(parse_key(d), parse_channel(d)) for d in (src, dst)]
+            assert src not in connections
+            assert dst not in connections
+            connections[src] = dst
+            connections[dst] = src
+
+    return connections
