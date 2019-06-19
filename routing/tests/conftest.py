@@ -20,3 +20,7 @@ def get_channel(graph, key, index) -> Union[Channel, None]:
         if channel.fpga.key() == key and channel.index == index:
             return channel
     return None
+
+
+def get_data(path) -> str:
+    return os.path.join(os.path.dirname(__file__), "data", path)
