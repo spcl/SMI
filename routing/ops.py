@@ -1,4 +1,4 @@
-from typing import Tuple, List, Set
+from typing import Tuple, Set
 
 
 class SmiOperation:
@@ -64,3 +64,6 @@ class Broadcast(SmiOperation):
 
     def uses_ckr_control(self) -> bool:
         return True
+
+    def __repr__(self):
+        return "Broadcast({})".format(self.logical_port)
