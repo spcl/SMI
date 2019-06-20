@@ -5,7 +5,7 @@ from typing import List
 import jinja2
 from networkx import Graph
 
-from common import Channel, target_index, FPGA
+from program import Channel, target_index, FPGA
 
 
 def read_template_file(path):
@@ -40,6 +40,16 @@ def channel_name(src: Channel, out: bool, graph: Graph) -> str:
         remote_channel = tmp
 
     return "{}_{}".format(local_channel, remote_channel)
+
+
+def generate_program(fpga: FPGA, fpgas: List[FPGA], graph: Graph, channels_per_fpga) -> str:
+    template = read_template_file("routing.cl")
+    return template.render(channels=fpga.channels,
+                           channels_per_fpga=channels_per_fpga,
+                           target_index=target_index,
+                           program=fpga.program,
+                           fpgas=fpgas,
+                           channel_name=lambda channel, out: channel_name(channel, out, graph))
 
 
 def generate_kernels(fpgas: List[FPGA], graph: Graph, channels: List[Channel],

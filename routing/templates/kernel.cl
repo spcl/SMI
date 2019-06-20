@@ -1,20 +1,24 @@
-{% macro cks(channel, channel_count, target_index) -%}
-__kernel void CK_S_{{ channel.index }}(__global volatile char *restrict rt)
+{% macro cks(program, channel, channel_count, target_index) -%}
+__kernel void CK_S_{{ channel.index }}(__global volatile char *restrict rt, const int num_ranks)
 {
-    char external_routing_table[RANK_COUNT];
-    for (int i = 0; i < RANK_COUNT; i++)
+    char external_routing_table[MAX_RANKS];
+    for (int i = 0; i < MAX_RANKS; i++)
     {
-        external_routing_table[i] = rt[i];
+        if (i < num_ranks)
+        {
+            external_routing_table[i] = rt[i];
+        }
     }
 
-    // number of CK_S - 1 + CK_R + {{ channel.tags|length }} tags
-    const char num_sender = {{ channel_count + channel.tags|length }};
+{% set hw_ports = program.cks_hw_ports(channel, channel_count) %}
+    // number of CK_S - 1 + CK_R + {{ hw_ports|length }} CKS hardware ports
+    const char num_sender = {{ channel_count + hw_ports|length }};
     char sender_id = 0;
     SMI_Network_message message;
 
-    const char READS_LIMIT=8;
-    char contiguos_reads=0;
-    while(1)
+    char contiguous_reads = 0;
+
+    while (1)
     {
         bool valid = false;
         switch (sender_id)
@@ -29,17 +33,17 @@ __kernel void CK_S_{{ channel.index }}(__global volatile char *restrict rt)
                 // receive from CK_R_{{ channel.index }}
                 message = read_channel_nb_intel(channels_interconnect_ck_r_to_ck_s[{{ channel.index }}], &valid);
                 break;
-            {% for tag in channel.tags %}
+            {% for hw_port in hw_ports %}
             case {{ channel_count + loop.index0 }}:
-                // receive from app channel with tag {{ tag }}
-                message = read_channel_nb_intel(channels_to_ck_s[{{ tag }}], &valid);
+                // receive from app channel on hardware port {{ hw_port }}
+                message = read_channel_nb_intel(channels_to_ck_s[{{ hw_port }}], &valid);
                 break;
             {% endfor %}
         }
 
         if (valid)
         {
-            contiguos_reads++;
+            contiguous_reads++;
             char idx = external_routing_table[GET_HEADER_DST(message.header)];
             switch (idx)
             {
@@ -59,9 +63,9 @@ __kernel void CK_S_{{ channel.index }}(__global volatile char *restrict rt)
                 {% endfor %}
             }
         }
-        if(!valid || contiguos_reads==READS_LIMIT)
+        if (!valid || contiguous_reads == READS_LIMIT)
         {
-            contiguos_reads=0;
+            contiguous_reads = 0;
             sender_id++;
             if (sender_id == num_sender)
             {
@@ -72,22 +76,27 @@ __kernel void CK_S_{{ channel.index }}(__global volatile char *restrict rt)
 }
 {%- endmacro %}
 
-{% macro ckr(channel, channel_count, target_index, tag_count) -%}
+{% macro ckr(program, channel, channel_count, target_index) -%}
 __kernel void CK_R_{{ channel.index }}(__global volatile char *restrict rt, const char rank)
 {
-    char external_routing_table[{{ tag_count }} /* tag count */];
-    for (int i = 0; i < {{ tag_count }} /* tag count */; i++)
+    // rt contains intertwined (dp0, cp0, dp1, cp1, ...)
+{% set logical_ports = program.logical_port_count() %}
+    char external_routing_table[{{ logical_ports }} /* logical port count */][2];
+    for (int i = 0; i < {{ logical_ports }}; i++)
     {
-        external_routing_table[i] = rt[i];
+        for (int j = 0; j < 2; j++)
+        {
+            external_routing_table[i][j] = rt[i * 2 + j];
+        }
     }
 
     // QSFP + number of CK_Rs - 1 + CK_S
     const char num_sender = {{ channel_count + 1 }};
     char sender_id = 0;
     SMI_Network_message message;
-    const char READS_LIMIT=8;
-    char contiguos_reads=0;
-    while(1)
+
+    char contiguous_reads = 0;
+    while (1)
     {
         bool valid = false;
         switch (sender_id)
@@ -110,13 +119,14 @@ __kernel void CK_R_{{ channel.index }}(__global volatile char *restrict rt, cons
 
         if (valid)
         {
-            contiguos_reads++;
+            contiguous_reads++;
             char dest;
             if (GET_HEADER_DST(message.header) != rank)
             {
                 dest = 0;
             }
-            else dest = external_routing_table[GET_HEADER_TAG(message.header)];
+            else dest = external_routing_table[GET_HEADER_PORT(message.header)][GET_HEADER_OP(message.header) == SMI_REQUEST];
+
             switch (dest)
             {
                 case 0:
@@ -129,18 +139,20 @@ __kernel void CK_R_{{ channel.index }}(__global volatile char *restrict rt, cons
                     write_channel_intel(channels_interconnect_ck_r[{{ (channel_count - 1) * ck_r + target_index(ck_r, channel.index) }}], message);
                     break;
                 {% endfor %}
-                {% for tag in channel.tags %}
+
+                {% set hw_ports = program.ckr_hw_ports(channel, channel_count) %}
+                {% for hw_port in hw_ports %}
                 case {{ channel_count + loop.index0 }}:
-                    // send to app channel with tag {{ tag }}
-                    write_channel_intel(channels_from_ck_r[internal_receiver_rt[{{ tag }}]], message);
+                    // send to app channel with hardware port {{ hw_port }}
+                    write_channel_intel(channels_from_ck_r[{{ hw_port }}], message);
                     break;
                 {% endfor %}
             }
         }
 
-       if(!valid || contiguos_reads==READS_LIMIT)
+        if (!valid || contiguous_reads == READS_LIMIT)
         {
-            contiguos_reads=0;
+            contiguous_reads = 0;
             sender_id++;
             if (sender_id == num_sender)
             {

@@ -2,7 +2,13 @@
 
 {% import 'kernel.cl' as kernel %}
 
-#define RANK_COUNT {{ fpgas|length }}
+#define BUFFER_SIZE {{ program.buffer_size }}
+
+// the maximum number of consecutive reads that each CKs/CKr can do from the same channel
+#define READS_LIMIT = 8;
+// maximum number of ranks in the cluster
+#define MAX_RANKS = 8;
+
 
 // QSFP channels
 #ifndef SMI_EMULATION_RANK
@@ -21,12 +27,22 @@ channel SMI_Network_message io_in_{{ channel }} __attribute__((depth(16))) __att
 {% endfor %}
 #endif
 
-// internal routing tables
-__constant char internal_sender_rt[{{ tag_count }}] = { {{ range(tag_count)|join(", ") }} };
-__constant char internal_receiver_rt[{{ tag_count }}] = { {{ range(tag_count)|join(", ") }} };
+/**
+  These four tables, defined at compile time, maps application endpoints (Port) to CKs/CKr and are
+  used by the compiler to lay down the circuitry. The data routing table is used by push (and collectives)
+  to send the actual communication data, while the control is used by push (and collective) to receive
+  control information (e.g. rendezvous data) from the pairs
+*/
+// logical port -> index in channels_to_ck_s -> ck_s channel
+__constant char internal_to_cks_data_rt[{{ program.logical_port_count() }}] = { {{ program.cks_data_mapping()|join(", ") }} };
+__constant char internal_to_cks_control_rt[{{ program.logical_port_count() }}] = { {{ program.cks_control_mapping()|join(", ") }} };
 
-channel SMI_Network_message channels_to_ck_s[{{ tag_count }}] __attribute__((depth(16)));
-channel SMI_Network_message channels_from_ck_r[{{ tag_count }}] __attribute__((depth(16)));
+// logical port -> index in channels_to_ck_r -> ck_r channel
+__constant char internal_from_ckr_data_rt[{{ program.logical_port_count() }}] = { {{ program.ckr_data_mapping()|join(", ") }} };
+__constant char internal_from_ckr_control_rt[{{ program.logical_port_count() }}] = { {{ program.ckr_control_mapping()|join(", ") }} };
+
+channel SMI_Network_message channels_to_ck_s[{{ program.cks_hw_port_count() }}] __attribute__((depth(16)));
+channel SMI_Network_message channels_from_ck_r[{{ program.ckr_hw_port_count() }}] __attribute__((depth(BUFFER_SIZE)));
 
 __constant char QSFP_COUNT = {{ channels_per_fpga }};
 
@@ -46,6 +62,6 @@ channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __att
 #include "smi/push.h"
 
 {% for channel in channels %}
-{{ kernel.cks(channel, channels|length, target_index) }}
-{{ kernel.ckr(channel, channels|length, target_index, tag_count) }}
+{{ kernel.cks(program, channel, channels|length, target_index) }}
+{{ kernel.ckr(program, channel, channels|length, target_index) }}
 {% endfor %}

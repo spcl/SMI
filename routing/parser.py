@@ -2,11 +2,20 @@ import json
 import re
 from typing import List, Tuple, Dict
 
-from program import ProgramMapping, Program, PortInfo
+from program import ProgramMapping, Program, PortType, Push, Pop
 
 
-def parse_ports(ports) -> List[PortInfo]:
-    return [PortInfo(int(p["id"]), p["type"]) for p in ports]
+def parse_port_type(id: int, type: str) -> PortType:
+    types = {
+        "push": Push,
+        "pop": Pop
+    }
+    assert type in types
+    return types[type](id)
+
+
+def parse_ports(ports) -> List[PortType]:
+    return [parse_port_type(int(p["id"]), p["type"]) for p in ports]
 
 
 def parse_programs(input: str) -> ProgramMapping:

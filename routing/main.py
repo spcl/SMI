@@ -4,10 +4,10 @@ from typing import List
 import click
 
 from codegen import generate_kernels
-from common import Channel, write_nodefile, CHANNELS_PER_FPGA
+from common import write_nodefile
+from program import Channel, CHANNELS_PER_FPGA
 from routing import create_routing_context
 from table import serialize_to_array, cks_routing_table, ckr_routing_table
-from tag import assign_tags
 
 
 def prepare_directory(path):
@@ -33,20 +33,13 @@ def build(connection_list, output_folder, tag_count):
 
     prepare_directory(output_folder)
 
-    # print("Number of FPGAs: {}".format(len(ctx.fpgas)))
-
     for fpga in ctx.fpgas:
-        assign_tags(fpga, tag_count)
+        assign_ports(fpga, tag_count)
         for channel in fpga.channels:
-            # print(channel)
-
             cks_table = cks_routing_table(ctx.routes, ctx.fpgas, channel)
             write_table(channel, "cks", cks_table, output_folder)
-            # print("CKS: {}".format(cks_table))
-
             ckr_table = ckr_routing_table(channel, CHANNELS_PER_FPGA, tag_count)
             write_table(channel, "ckr", ckr_table, output_folder)
-            # print("CKR: {}\n".format(ckr_table))
 
     with open(os.path.join(output_folder, "smi.h"), "w") as f:
         f.write(generate_kernels(ctx.fpgas, ctx.graph, ctx.fpgas[0].channels, CHANNELS_PER_FPGA, tag_count))

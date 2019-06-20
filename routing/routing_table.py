@@ -2,7 +2,7 @@ from typing import List
 
 import bitstring
 
-from common import Channel, FPGA
+from program import Channel, FPGA
 
 CKS_TARGET_QSFP = 0
 CKS_TARGET_CKR = 1

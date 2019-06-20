@@ -5,6 +5,13 @@ from table import cks_routing_table, NoRouteFound
 
 
 def test_cks_table():
+    tag_count = 9
+    fpga = FPGA("n", "f")
+
+    assert ckr_routing_table(fpga.channels[0], CHANNELS_PER_FPGA, tag_count) == [4, 1, 2, 3, 5, 1, 2, 3, 6]
+
+
+def test_cks_table():
     ctx = init_graph("""
     N0:F0:ch0 <-> N0:F1:ch0
     N1:F0:ch0 <-> N0:F0:ch1

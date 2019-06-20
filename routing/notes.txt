@@ -1,0 +1,11 @@
+Routing
+There are 3 routing tables on each rank.
+Send routing table
+- maps <port_id> to
+
+push/pop
+- cannot be codegenerated in the header
+- must have only one access to channel, cannot dynamically select
+if (chan->port == 0) access channel X
+if (chan->port == 1) access channel Y
+- doesn't inline

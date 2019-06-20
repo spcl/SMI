@@ -3,8 +3,8 @@ from typing import List, Tuple, Dict
 import networkx
 from networkx import Graph
 
-from common import COST_INTRA_FPGA, COST_INTER_FPGA, FPGA, RoutingContext
-from program import ProgramMapping
+from common import RoutingContext
+from program import COST_INTRA_FPGA, COST_INTER_FPGA, FPGA, ProgramMapping
 
 """
 Each CK_R/CK_S separate QSFP
