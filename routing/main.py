@@ -28,8 +28,7 @@ def write_table(channel: Channel, prefix: str, table: List[int], output_folder):
 @click.argument("program-description")
 @click.argument("connection-list")
 @click.argument("output-folder")
-@click.argument("tag-count", default=8)
-def build(program_description, connection_list, output_folder, tag_count):
+def build(program_description, connection_list, output_folder):
     with open(program_description) as program_file:
         with open(connection_list) as connection_file:
             program_mapping = parse_programs(program_file.read())
