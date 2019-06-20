@@ -36,11 +36,11 @@ __kernel void CK_S_{{ channel.index }}(__global volatile char *restrict rt, cons
             {% for (method, hw_port) in allocations %}
             case {{ channel_count + loop.index0 }}:
                 // receive from app channel on hardware port {{ hw_port }}/{{ method }}
-                {% if method == "data" %}
-                    message = read_channel_nb_intel(channels_cks_data[{{ hw_port }}], &valid);
-                {% else %}
-                    message = read_channel_nb_intel(channels_cks_control[{{ hw_port }}], &valid);
-                {% endif %}
+            {% if method == "data" %}
+                message = read_channel_nb_intel(channels_cks_data[{{ hw_port }}], &valid);
+            {% else %}
+                message = read_channel_nb_intel(channels_cks_control[{{ hw_port }}], &valid);
+            {% endif %}
                 break;
             {% endfor %}
         }
@@ -143,7 +143,6 @@ __kernel void CK_R_{{ channel.index }}(__global volatile char *restrict rt, cons
                     write_channel_intel(channels_interconnect_ck_r[{{ (channel_count - 1) * ck_r + target_index(ck_r, channel.index) }}], message);
                     break;
                 {% endfor %}
-
                 {% set allocations = program.get_channel_allocations(channel.index)["ckr"] %}
                 {% for (method, hw_port) in allocations %}
                 case {{ channel_count + loop.index0 }}:
@@ -151,7 +150,7 @@ __kernel void CK_R_{{ channel.index }}(__global volatile char *restrict rt, cons
                 {% if method == "data" %}
                     write_channel_intel(channels_ckr_data[{{ hw_port }}], message);
                 {% else %}
-                    write_channel_intel(channels_ckr_data[{{ hw_port }}], message);
+                    write_channel_intel(channels_ckr_control[{{ hw_port }}], message);
                 {% endif %}
                     break;
                 {% endfor %}

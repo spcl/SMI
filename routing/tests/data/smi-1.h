@@ -139,11 +139,11 @@ __kernel void CK_S_0(__global volatile char *restrict rt, const int num_ranks)
                 break;
             case 4:
                 // receive from app channel on hardware port 0/data
-                    message = read_channel_nb_intel(channels_cks_data[0], &valid);
+                message = read_channel_nb_intel(channels_cks_data[0], &valid);
                 break;
             case 5:
                 // receive from app channel on hardware port 2/control
-                    message = read_channel_nb_intel(channels_cks_control[2], &valid);
+                message = read_channel_nb_intel(channels_cks_control[2], &valid);
                 break;
         }
 
@@ -259,14 +259,13 @@ __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
                     // send to CK_R_3
                     write_channel_intel(channels_interconnect_ck_r[9], message);
                     break;
-
                 case 4:
                     // send to app channel with hardware port 0/data
                     write_channel_intel(channels_ckr_data[0], message);
                     break;
                 case 5:
                     // send to app channel with hardware port 1/control
-                    write_channel_intel(channels_ckr_data[1], message);
+                    write_channel_intel(channels_ckr_control[1], message);
                     break;
             }
         }
@@ -323,7 +322,7 @@ __kernel void CK_S_1(__global volatile char *restrict rt, const int num_ranks)
                 break;
             case 4:
                 // receive from app channel on hardware port 1/data
-                    message = read_channel_nb_intel(channels_cks_data[1], &valid);
+                message = read_channel_nb_intel(channels_cks_data[1], &valid);
                 break;
         }
 
@@ -439,7 +438,6 @@ __kernel void CK_R_1(__global volatile char *restrict rt, const char rank)
                     // send to CK_R_3
                     write_channel_intel(channels_interconnect_ck_r[10], message);
                     break;
-
                 case 4:
                     // send to app channel with hardware port 1/data
                     write_channel_intel(channels_ckr_data[1], message);
@@ -499,7 +497,7 @@ __kernel void CK_S_2(__global volatile char *restrict rt, const int num_ranks)
                 break;
             case 4:
                 // receive from app channel on hardware port 0/control
-                    message = read_channel_nb_intel(channels_cks_control[0], &valid);
+                message = read_channel_nb_intel(channels_cks_control[0], &valid);
                 break;
         }
 
@@ -615,7 +613,6 @@ __kernel void CK_R_2(__global volatile char *restrict rt, const char rank)
                     // send to CK_R_3
                     write_channel_intel(channels_interconnect_ck_r[11], message);
                     break;
-
                 case 4:
                     // send to app channel with hardware port 2/data
                     write_channel_intel(channels_ckr_data[2], message);
@@ -675,7 +672,7 @@ __kernel void CK_S_3(__global volatile char *restrict rt, const int num_ranks)
                 break;
             case 4:
                 // receive from app channel on hardware port 1/control
-                    message = read_channel_nb_intel(channels_cks_control[1], &valid);
+                message = read_channel_nb_intel(channels_cks_control[1], &valid);
                 break;
         }
 
@@ -791,10 +788,9 @@ __kernel void CK_R_3(__global volatile char *restrict rt, const char rank)
                     // send to CK_R_2
                     write_channel_intel(channels_interconnect_ck_r[8], message);
                     break;
-
                 case 4:
                     // send to app channel with hardware port 0/control
-                    write_channel_intel(channels_ckr_data[0], message);
+                    write_channel_intel(channels_ckr_control[0], message);
                     break;
             }
         }
