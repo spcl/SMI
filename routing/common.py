@@ -15,5 +15,5 @@ class RoutingContext:
 def write_nodefile(fpgas: List[FPGA], stream):
     fpgas = sorted(fpgas, key=lambda f: f.rank)
 
-    for fpga in fpgas:
-        stream.write("{}  # {}\n".format(fpga.node, fpga.name))
+    for (index, fpga) in enumerate(fpgas):
+        stream.write("{}  # {}, rank{}\n".format(fpga.node, fpga.name, index))

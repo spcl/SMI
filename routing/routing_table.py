@@ -63,7 +63,7 @@ def get_input_target(channel: Channel, logical_port: int, program: Program,
     """
     hw_port = to_hw_mapping[logical_port]
     if hw_port == INVALID_HARDWARE_PORT:
-        return INVALID_HARDWARE_PORT
+        return 0
 
     target_channel_index = program.get_channel_for_hw_port(hw_port, channels_per_fpga)
     if target_channel_index != channel.index:

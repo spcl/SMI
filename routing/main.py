@@ -3,11 +3,12 @@ from typing import List
 
 import click
 
-from codegen import generate_kernels
+from codegen import generate_program
 from common import write_nodefile
+from parser import parse_programs, parse_fpga_connections
 from program import Channel, CHANNELS_PER_FPGA
 from routing import create_routing_context
-from table import serialize_to_array, cks_routing_table, ckr_routing_table
+from routing_table import serialize_to_array, cks_routing_table, ckr_routing_table
 
 
 def prepare_directory(path):
@@ -24,25 +25,31 @@ def write_table(channel: Channel, prefix: str, table: List[int], output_folder):
 
 
 @click.command()
+@click.argument("program-description")
 @click.argument("connection-list")
 @click.argument("output-folder")
 @click.argument("tag-count", default=8)
-def build(connection_list, output_folder, tag_count):
-    with open(connection_list) as f:
-        ctx = create_routing_context(f)
+def build(program_description, connection_list, output_folder, tag_count):
+    with open(program_description) as program_file:
+        with open(connection_list) as connection_file:
+            program_mapping = parse_programs(program_file.read())
+            connections = parse_fpga_connections(connection_file.read())
+            ctx = create_routing_context(connections, program_mapping)
 
     prepare_directory(output_folder)
 
     for fpga in ctx.fpgas:
-        assign_ports(fpga, tag_count)
         for channel in fpga.channels:
             cks_table = cks_routing_table(ctx.routes, ctx.fpgas, channel)
             write_table(channel, "cks", cks_table, output_folder)
-            ckr_table = ckr_routing_table(channel, CHANNELS_PER_FPGA, tag_count)
+            ckr_table = ckr_routing_table(channel, CHANNELS_PER_FPGA, fpga.program)
             write_table(channel, "ckr", ckr_table, output_folder)
 
-    with open(os.path.join(output_folder, "smi.h"), "w") as f:
-        f.write(generate_kernels(ctx.fpgas, ctx.graph, ctx.fpgas[0].channels, CHANNELS_PER_FPGA, tag_count))
+    for (index, program) in enumerate(program_mapping.programs):
+        fpgas = [fpga for fpga in ctx.fpgas if fpga.program is program]
+        if fpgas:
+            with open(os.path.join(output_folder, "smi-{}.h".format(index)), "w") as f:
+                f.write(generate_program(fpgas[0], fpgas, ctx.graph, CHANNELS_PER_FPGA))
 
     with open(os.path.join(output_folder, "hostfile"), "w") as f:
         write_nodefile(ctx.fpgas, f)
