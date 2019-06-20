@@ -7,6 +7,9 @@ from typing import Union
 import pytest
 from networkx import Graph
 
+from common import RoutingContext
+from parser import parse_fpga_connections, parse_programs
+
 sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 
 from program import Channel
@@ -39,9 +42,10 @@ def prepare():
     os.chdir(WORK_DIR)
 
 
-def init_graph(input):
-    stream = StringIO(input)
-    return create_routing_context(stream)
+def get_routing_ctx(programs: str, connections: str) -> RoutingContext:
+    connections = parse_fpga_connections(connections)
+    programs = parse_programs(programs)
+    return create_routing_context(connections, programs)
 
 
 def get_channel(graph: Graph, key: str, index: int) -> Union[Channel, None]:

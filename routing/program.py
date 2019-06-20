@@ -118,15 +118,18 @@ class Program:
         return map_ports(self.ports, lambda p: p.ckr_control_ports(),
                          count_allocations(self.ports, lambda p: p.ckr_data_ports()))
 
-    def cks_hw_ports(self, channel: Channel, channel_count=CHANNELS_PER_FPGA) -> List[int]:
+    def cks_hw_ports(self, channel: Channel, channel_count) -> List[int]:
         return round_robin(list(range(self.cks_hw_port_count())), channel.index, channel_count)
 
-    def ckr_hw_ports(self, channel: Channel, channel_count=CHANNELS_PER_FPGA) -> List[int]:
+    def ckr_hw_ports(self, channel: Channel, channel_count) -> List[int]:
         return round_robin(list(range(self.ckr_hw_port_count())), channel.index, channel_count)
+
+    def get_channel_for_hw_port(self, hw_port, channel_count):
+        return hw_port % channel_count
 
 
 class FPGA:
-    def __init__(self, node: str, name: str, program: "Program"):
+    def __init__(self, node: str, name: str, program: Program):
         self.node = node
         self.name = name
         self.channels: List[Channel] = [Channel(self, i) for i in range(CHANNELS_PER_FPGA)]

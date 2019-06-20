@@ -2,7 +2,7 @@ from typing import List
 
 import bitstring
 
-from program import Channel, FPGA
+from program import Channel, FPGA, Program, INVALID_HARDWARE_PORT
 
 CKS_TARGET_QSFP = 0
 CKS_TARGET_CKR = 1
@@ -50,27 +50,33 @@ def cks_routing_table(paths, fpgas: List[FPGA], channel: Channel) -> List[int]:
     return table
 
 
-def get_input_target(channel: Channel, tag: int, channels_per_fpga: int) -> int:
+def get_input_target(channel: Channel, logical_port: int, program: Program,
+                     channels_per_fpga: int, to_hw_mapping: List[int]) -> int:
     """
     0 -> local CK_S (never generated here)
     1 -> CK_R_0
     2 -> CK_R_1
     ...
     [channels_per_fpga - 1] -> CK_R_N-1
-    N -> app 0 on the given channel
-    N + 1 -> app 1 on the given channel
+    N -> first hardware port assigned to the given channel
+    N + 1 -> second hardware port assigned to the given channel
     """
-    target_channel_index = tag % channels_per_fpga
-    if target_channel_index == channel.index:
-        return channels_per_fpga + tag // channels_per_fpga
-    else:
+    hw_port = to_hw_mapping[logical_port]
+    if hw_port == INVALID_HARDWARE_PORT:
+        return INVALID_HARDWARE_PORT
+
+    target_channel_index = program.get_channel_for_hw_port(hw_port, channels_per_fpga)
+    if target_channel_index != channel.index:
         return 1 + channel.target_index(target_channel_index)
 
+    return channels_per_fpga + program.ckr_hw_ports(channel, channels_per_fpga).index(hw_port)
 
-def ckr_routing_table(channel: Channel, channels_per_fpga: int, tag_count: int) -> List[int]:
+
+def ckr_routing_table(channel: Channel, channels_per_fpga: int, program: Program) -> List[int]:
     table = []
-    for tag in range(tag_count):
-        table.append(get_input_target(channel, tag, channels_per_fpga))
+    for port in range(program.logical_port_count()):
+        table.append(get_input_target(channel, port, program, channels_per_fpga, program.ckr_data_mapping()))
+        table.append(get_input_target(channel, port, program, channels_per_fpga, program.ckr_control_mapping()))
     return table
 
 
