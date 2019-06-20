@@ -33,16 +33,22 @@ channel SMI_Network_message io_in_{{ channel }} __attribute__((depth(16))) __att
   to send the actual communication data, while the control is used by push (and collective) to receive
   control information (e.g. rendezvous data) from the pairs
 */
+{% set cks_data = program.create_group(("cks", "data")) %}
+{% set cks_control = program.create_group(("cks", "control")) %}
+{% set ckr_data = program.create_group(("ckr", "data")) %}
+{% set ckr_control = program.create_group(("ckr", "control")) %}
 // logical port -> index in channels_to_ck_s -> ck_s channel
-__constant char internal_to_cks_data_rt[{{ program.logical_port_count() }}] = { {{ program.cks_data_mapping()|join(", ") }} };
-__constant char internal_to_cks_control_rt[{{ program.logical_port_count() }}] = { {{ program.cks_control_mapping()|join(", ") }} };
+__constant char internal_to_cks_data_rt[{{ program.logical_port_count }}] = { {{ cks_data.hw_mapping()|join(", ") }} };
+__constant char internal_to_cks_control_rt[{{ program.logical_port_count }}] = { {{ cks_control.hw_mapping()|join(", ") }} };
 
 // logical port -> index in channels_to_ck_r -> ck_r channel
-__constant char internal_from_ckr_data_rt[{{ program.logical_port_count() }}] = { {{ program.ckr_data_mapping()|join(", ") }} };
-__constant char internal_from_ckr_control_rt[{{ program.logical_port_count() }}] = { {{ program.ckr_control_mapping()|join(", ") }} };
+__constant char internal_from_ckr_data_rt[{{ program.logical_port_count }}] = { {{ ckr_data.hw_mapping()|join(", ") }} };
+__constant char internal_from_ckr_control_rt[{{ program.logical_port_count }}] = { {{ ckr_control.hw_mapping()|join(", ") }} };
 
-channel SMI_Network_message channels_to_ck_s[{{ program.cks_hw_port_count() }}] __attribute__((depth(16)));
-channel SMI_Network_message channels_from_ck_r[{{ program.ckr_hw_port_count() }}] __attribute__((depth(BUFFER_SIZE)));
+channel SMI_Network_message channels_cks_data[{{ cks_data.hw_port_count() }}] __attribute__((depth(16)));
+channel SMI_Network_message channels_cks_control[{{ cks_control.hw_port_count() }}] __attribute__((depth(16)));
+channel SMI_Network_message channels_ckr_data[{{ ckr_data.hw_port_count() }}] __attribute__((depth(BUFFER_SIZE)));
+channel SMI_Network_message channels_ckr_control[{{ ckr_control.hw_port_count() }}] __attribute__((depth(BUFFER_SIZE)));
 
 __constant char QSFP_COUNT = {{ channels_per_fpga }};
 

@@ -1,6 +1,7 @@
 from codegen import generate_program
+from ops import Push, Pop
 from parser import parse_fpga_connections
-from program import Program, Push, Pop, ProgramMapping
+from program import Program, ProgramMapping
 from routing import create_routing_context
 
 

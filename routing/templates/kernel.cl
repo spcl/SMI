@@ -10,9 +10,9 @@ __kernel void CK_S_{{ channel.index }}(__global volatile char *restrict rt, cons
         }
     }
 
-{% set hw_ports = program.cks_hw_ports(channel, channel_count) %}
-    // number of CK_S - 1 + CK_R + {{ hw_ports|length }} CKS hardware ports
-    const char num_sender = {{ channel_count + hw_ports|length }};
+{% set allocations = program.get_channel_allocations(channel.index)["cks"] %}
+    // number of CK_S - 1 + CK_R + {{ allocations|length }} CKS hardware ports
+    const char num_sender = {{ channel_count + allocations|length }};
     char sender_id = 0;
     SMI_Network_message message;
 
@@ -33,10 +33,14 @@ __kernel void CK_S_{{ channel.index }}(__global volatile char *restrict rt, cons
                 // receive from CK_R_{{ channel.index }}
                 message = read_channel_nb_intel(channels_interconnect_ck_r_to_ck_s[{{ channel.index }}], &valid);
                 break;
-            {% for hw_port in hw_ports %}
+            {% for (method, hw_port) in allocations %}
             case {{ channel_count + loop.index0 }}:
-                // receive from app channel on hardware port {{ hw_port }}
-                message = read_channel_nb_intel(channels_to_ck_s[{{ hw_port }}], &valid);
+                // receive from app channel on hardware port {{ hw_port }}/{{ method }}
+                {% if method == "data" %}
+                    message = read_channel_nb_intel(channels_cks_data[{{ hw_port }}], &valid);
+                {% else %}
+                    message = read_channel_nb_intel(channels_cks_control[{{ hw_port }}], &valid);
+                {% endif %}
                 break;
             {% endfor %}
         }
@@ -80,7 +84,7 @@ __kernel void CK_S_{{ channel.index }}(__global volatile char *restrict rt, cons
 __kernel void CK_R_{{ channel.index }}(__global volatile char *restrict rt, const char rank)
 {
     // rt contains intertwined (dp0, cp0, dp1, cp1, ...)
-{% set logical_ports = program.logical_port_count() %}
+{% set logical_ports = program.logical_port_count %}
     char external_routing_table[{{ logical_ports }} /* logical port count */][2];
     for (int i = 0; i < {{ logical_ports }}; i++)
     {
@@ -140,11 +144,15 @@ __kernel void CK_R_{{ channel.index }}(__global volatile char *restrict rt, cons
                     break;
                 {% endfor %}
 
-                {% set hw_ports = program.ckr_hw_ports(channel, channel_count) %}
-                {% for hw_port in hw_ports %}
+                {% set allocations = program.get_channel_allocations(channel.index)["ckr"] %}
+                {% for (method, hw_port) in allocations %}
                 case {{ channel_count + loop.index0 }}:
-                    // send to app channel with hardware port {{ hw_port }}
-                    write_channel_intel(channels_from_ck_r[{{ hw_port }}], message);
+                    // send to app channel with hardware port {{ hw_port }}/{{ method }}
+                {% if method == "data" %}
+                    write_channel_intel(channels_ckr_data[{{ hw_port }}], message);
+                {% else %}
+                    write_channel_intel(channels_ckr_data[{{ hw_port }}], message);
+                {% endif %}
                     break;
                 {% endfor %}
             }

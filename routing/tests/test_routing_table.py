@@ -1,7 +1,8 @@
 import pytest
 from conftest import get_routing_ctx, get_channel
 
-from program import FPGA, Program, CHANNELS_PER_FPGA, Push, Pop
+from ops import Push, Pop
+from program import FPGA, Program, CHANNELS_PER_FPGA
 from routing_table import cks_routing_table, NoRouteFound, ckr_routing_table
 
 
@@ -51,10 +52,10 @@ def test_ckr_table():
     ])
     fpga = FPGA("n", "f", program)
 
-    assert ckr_routing_table(fpga.channels[0], CHANNELS_PER_FPGA, program) == [-1, 3, 4, -1, -1, 5, 1, -1, 2, -1]
-    assert ckr_routing_table(fpga.channels[1], CHANNELS_PER_FPGA, program) == [-1, 3, 1, -1, -1, 1, 4, -1, 2, -1]
-    assert ckr_routing_table(fpga.channels[2], CHANNELS_PER_FPGA, program) == [-1, 3, 1, -1, -1, 1, 2, -1, 4, -1]
-    assert ckr_routing_table(fpga.channels[3], CHANNELS_PER_FPGA, program) == [-1, 4, 1, -1, -1, 1, 2, -1, 3, -1]
+    assert ckr_routing_table(fpga.channels[0], CHANNELS_PER_FPGA, program) == [0, 3, 4, 0, 0, 5, 1, 0, 2, 0]
+    assert ckr_routing_table(fpga.channels[1], CHANNELS_PER_FPGA, program) == [0, 3, 1, 0, 0, 1, 4, 0, 2, 0]
+    assert ckr_routing_table(fpga.channels[2], CHANNELS_PER_FPGA, program) == [0, 3, 1, 0, 0, 1, 2, 0, 4, 0]
+    assert ckr_routing_table(fpga.channels[3], CHANNELS_PER_FPGA, program) == [0, 4, 1, 0, 0, 1, 2, 0, 3, 0]
 
 
 def test_ckr_no_route():

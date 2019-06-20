@@ -51,7 +51,7 @@ def cks_routing_table(paths, fpgas: List[FPGA], channel: Channel) -> List[int]:
 
 
 def get_input_target(channel: Channel, logical_port: int, program: Program,
-                     channels_per_fpga: int, to_hw_mapping: List[int]) -> int:
+                     channels_per_fpga: int, key) -> int:
     """
     0 -> local CK_S (never generated here)
     1 -> CK_R_0
@@ -61,22 +61,27 @@ def get_input_target(channel: Channel, logical_port: int, program: Program,
     N -> first hardware port assigned to the given channel
     N + 1 -> second hardware port assigned to the given channel
     """
-    hw_port = to_hw_mapping[logical_port]
+    group = program.create_group(key)
+    hw_mapping = group.hw_mapping()
+
+    hw_port = hw_mapping[logical_port]
     if hw_port == INVALID_HARDWARE_PORT:
         return 0
 
-    target_channel_index = program.get_channel_for_hw_port(hw_port, channels_per_fpga)
+    target_channel_index = program.get_channel_for_logical_port(logical_port, key)
     if target_channel_index != channel.index:
         return 1 + channel.target_index(target_channel_index)
 
-    return channels_per_fpga + program.ckr_hw_ports(channel, channels_per_fpga).index(hw_port)
+    kernel = key[0]
+    method = key[1]
+    return channels_per_fpga + program.get_channel_allocations(channel.index)[kernel].index((method, hw_port))
 
 
 def ckr_routing_table(channel: Channel, channels_per_fpga: int, program: Program) -> List[int]:
     table = []
-    for port in range(program.logical_port_count()):
-        table.append(get_input_target(channel, port, program, channels_per_fpga, program.ckr_data_mapping()))
-        table.append(get_input_target(channel, port, program, channels_per_fpga, program.ckr_control_mapping()))
+    for port in range(program.logical_port_count):
+        table.append(get_input_target(channel, port, program, channels_per_fpga, ("ckr", "data")))
+        table.append(get_input_target(channel, port, program, channels_per_fpga, ("ckr", "control")))
     return table
 
 

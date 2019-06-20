@@ -1,5 +1,5 @@
+from ops import Push, Pop
 from parser import parse_programs, parse_fpga_connections
-from program import Push, Pop
 
 
 def test_parse_programs():
@@ -29,20 +29,20 @@ def test_parse_programs():
     assert len(mapping.programs) == 2
     program = mapping.programs[0]
     assert program.buffer_size == 4096
-    assert len(program.ports) == 3
-    assert isinstance(program.ports[0], Push)
-    assert program.ports[0].id == 0
-    assert isinstance(program.ports[2], Pop)
-    assert program.ports[2].id == 2
+    assert len(program.operations) == 3
+    assert isinstance(program.operations[0], Push)
+    assert program.operations[0].logical_port == 0
+    assert isinstance(program.operations[2], Pop)
+    assert program.operations[2].logical_port == 2
 
     assert mapping.fpga_map["fpga-0015"] is program
     assert mapping.fpga_map["fpga-0016"] is program
 
     program = mapping.programs[1]
     assert program.buffer_size == 8192
-    assert len(program.ports) == 1
-    assert isinstance(program.ports[0], Push)
-    assert program.ports[0].id == 0
+    assert len(program.operations) == 1
+    assert isinstance(program.operations[0], Push)
+    assert program.operations[0].logical_port == 0
 
     assert mapping.fpga_map["fpga-0014"] is program
 

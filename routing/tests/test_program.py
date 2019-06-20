@@ -1,54 +1,69 @@
-import networkx
+import pytest
 
-from parser import parse_fpga_connections
-from program import ProgramMapping, Program, Push, Pop, Channel, FPGA
-from routing import load_inter_fpga_connections, create_routing_context
+from ops import Push, Pop, Broadcast
+from program import Program, FailedAllocation
 
 
-def test_hardware_port_mapping():
+def test_allocation_fail():
+    with pytest.raises(FailedAllocation):
+        Program(4096, [
+            Push(0),
+            Push(0)
+        ])
+
+
+def test_allocation_overlap():
     program = Program(4096, [
         Push(0),
-        Pop(1),
-        Push(2),
-        Pop(3),
-        Pop(4)
+        Broadcast(1)
     ])
 
-    assert program.logical_port_count() == 5
-    assert program.hw_port_count() == 10
+    group = program.create_group(("cks", "data"))
+    assert group.hw_port_count() == 2
+    assert group.hw_mapping() == [0, 1]
 
-    # Push
-    assert program.cks_data_mapping() == [0, -1, 1, -1, -1]
-    assert program.ckr_control_mapping() == [3, -1, 4, -1, -1]
-
-    # Pop
-    assert program.ckr_data_mapping() == [-1, 0, -1, 1, 2]
-    assert program.cks_control_mapping() == [-1, 2, -1, 3, 4]
+    group = program.create_group(("cks", "control"))
+    assert group.hw_port_count() == 1
+    assert group.hw_mapping() == [-1, 0]
 
 
-def test_hardware_cks_port_allocation():
+def test_allocation_channel_to_ports():
     program = Program(4096, [
         Push(0),
-        Pop(1),
+        Pop(0),
+        Push(1),
         Push(2),
-        Pop(3),
-        Pop(4)
+        Pop(2)
     ])
 
-    fpga = FPGA("", "", program)
-    assert program.cks_hw_ports(Channel(fpga, 0), 2) == [0, 2, 4]
-    assert program.cks_hw_ports(Channel(fpga, 1), 2) == [1, 3]
+    assert program.get_channel_allocations(0) == {
+        "cks": [("data", 0), ("control", 1)],
+        "ckr": [("data", 0), ("control", 2)]
+    }
+    assert program.get_channel_allocations(1) == {
+        "cks": [("data", 1)],
+        "ckr": [("data", 1)]
+    }
+    assert program.get_channel_allocations(2) == {
+        "cks": [("data", 2)],
+        "ckr": [("control", 0)]
+    }
+    assert program.get_channel_allocations(3) == {
+        "cks": [("control", 0)],
+        "ckr": [("control", 1)]
+    }
 
 
-def test_hardware_ckr_port_allocation():
+def test_allocation_get_channel():
     program = Program(4096, [
         Push(0),
-        Pop(1),
+        Pop(0),
+        Push(1),
         Push(2),
-        Pop(3),
-        Pop(4)
+        Pop(2)
     ])
 
-    fpga = FPGA("", "", program)
-    assert program.ckr_hw_ports(Channel(fpga, 0), 2) == [0, 2, 4]
-    assert program.ckr_hw_ports(Channel(fpga, 1), 2) == [1, 3]
+    assert program.get_channel_for_logical_port(0, ("cks", "data")) == 0
+    assert program.get_channel_for_logical_port(0, ("cks", "control")) == 3
+    assert program.get_channel_for_logical_port(1, ("ckr", "data")) is None
+    assert program.get_channel_for_logical_port(2, ("cks", "data")) == 2

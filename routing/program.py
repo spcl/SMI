@@ -1,5 +1,6 @@
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
+from ops import SmiOperation
 from utils import round_robin
 
 COST_INTER_FPGA = 100
@@ -9,58 +10,33 @@ CHANNELS_PER_FPGA = 4
 INVALID_HARDWARE_PORT = -1
 
 
-class PortType:
-    def __init__(self, id):
-        # TODO: check if id is needed
-        self.id = id
-
-    def cks_data_ports(self) -> int:
-        return 0
-
-    def cks_control_ports(self) -> int:
-        return 0
-
-    def ckr_data_ports(self) -> int:
-        return 0
-
-    def ckr_control_ports(self) -> int:
-        return 0
-
-    def cks_hw_port_count(self) -> int:
-        return sum((
-            self.cks_data_ports(),
-            self.cks_control_ports()
-        ))
-
-    def ckr_hw_port_count(self) -> int:
-        return sum((
-            self.ckr_data_ports(),
-            self.ckr_control_ports()
-        ))
+class ChannelGroup:
+    def __init__(self, logical_port_count: int, hw_ports, op_allocations, key):
+        self.logical_port_count = logical_port_count
+        self.hw_ports = dict(hw_ports)
+        self.op_allocations = dict(op_allocations)
+        self.key = key
 
     def hw_port_count(self) -> int:
-        return sum((
-            self.cks_data_ports(),
-            self.cks_control_ports(),
-            self.ckr_data_ports(),
-            self.ckr_control_ports()
-        ))
+        return self.hw_ports[self.key]
+
+    def hw_mapping(self) -> List[int]:
+        mapping = []
+
+        for i in range(self.logical_port_count):
+            if i in self.op_allocations and self.key in self.op_allocations[i]:
+                mapping.append(self.op_allocations[i][self.key])
+            else:
+                mapping.append(INVALID_HARDWARE_PORT)
+        return mapping
 
 
-class Push(PortType):
-    def cks_data_ports(self) -> int:
-        return 1
+class FailedAllocation(Exception):
+    def __init__(self, op: SmiOperation):
+        self.op = op
 
-    def ckr_control_ports(self) -> int:
-        return 1
-
-
-class Pop(PortType):
-    def ckr_data_ports(self) -> int:
-        return 1
-
-    def cks_control_ports(self) -> int:
-        return 1
+    def __repr__(self):
+        return "Allocation failed for op {}".format(self.op)
 
 
 class Channel:
@@ -83,49 +59,92 @@ class Channel:
 class Program:
     """
     Contains all information necessary to generate code for a single rank.
+
+    Program has to provide:
+
+    Globally:
+    - number of logical ports
+    - number of HW ports per cks/ckr x data/control
+    For each channel:
+    - allocated cks data/control
+    - allocated ckr data/control
+    For a logical port and data/control:
+    - allocated channel
     """
-    def __init__(self, buffer_size: int, ports: List[PortType]):
+    def __init__(self, buffer_size: int, operations: List[SmiOperation]):
+        assert are_ops_consecutive(operations)
+
         self.buffer_size = buffer_size
-        self.ports = ports
+        self.operations = sorted(operations, key=lambda op: op.logical_port)
+        self.logical_port_count = max((op.logical_port for op in operations), default=0) + 1
 
-    def logical_port_count(self) -> int:
-        return len(self.ports)
+        self.hardware_ports = {
+            ("cks", "data"):    0,
+            ("cks", "control"): 0,
+            ("ckr", "data"):    0,
+            ("ckr", "control"): 0
+        }
+        self.op_allocations = {}
+        self.channel_allocations = {}
 
-    def hw_port_count(self) -> int:
-        return sum([p.hw_port_count() for p in self.ports])
+        for op in operations:
+            self._allocate_op(op)
+        self._allocate_channels(CHANNELS_PER_FPGA)
 
-    def cks_hw_port_count(self) -> int:
-        return sum([p.cks_hw_port_count() for p in self.ports])
+    def create_group(self, key: Tuple[str, str]) -> ChannelGroup:
+        return ChannelGroup(self.logical_port_count, self.hardware_ports, self.op_allocations, key)
 
-    def ckr_hw_port_count(self) -> int:
-        return sum([p.ckr_hw_port_count() for p in self.ports])
+    def get_channel_allocations(self, channel: int):
+        return self.channel_allocations[channel]
 
-    def cks_data_mapping(self) -> List[int]:
-        """
-        Maps logical ports to hardware ports, for cks data ports.
-        If the port mapping should not be used, -1 is returned in its place.
-        """
-        return map_ports(self.ports, lambda p: p.cks_data_ports())
+    def get_channel_for_logical_port(self, logical_port: int, key):
+        hw_port = self.create_group(key).hw_mapping()[logical_port]
+        if hw_port == INVALID_HARDWARE_PORT:
+            return None
 
-    def cks_control_mapping(self) -> List[int]:
-        return map_ports(self.ports, lambda p: p.cks_control_ports(),
-                         count_allocations(self.ports, lambda p: p.cks_data_ports()))
+        (kernel, method) = key
 
-    def ckr_data_mapping(self) -> List[int]:
-        return map_ports(self.ports, lambda p: p.ckr_data_ports())
+        for (channel, kernels) in self.channel_allocations.items():
+            allocations = kernels[kernel]
+            for (allocated_method, allocated_hw_port) in allocations:
+                if allocated_method == method and allocated_hw_port == hw_port:
+                    return channel
+        return None
 
-    def ckr_control_mapping(self) -> List[int]:
-        return map_ports(self.ports, lambda p: p.ckr_control_ports(),
-                         count_allocations(self.ports, lambda p: p.ckr_data_ports()))
+    def _allocate_op(self, op: SmiOperation):
+        logical_port = op.logical_port
+        mapping = self.op_allocations.setdefault(logical_port, {})
 
-    def cks_hw_ports(self, channel: Channel, channel_count) -> List[int]:
-        return round_robin(list(range(self.cks_hw_port_count())), channel.index, channel_count)
+        port_usage = op.hw_port_usage()
+        for key in self.hardware_ports:
+            if key in port_usage:
+                if key in mapping:
+                    raise FailedAllocation(op)
+                mapping[key] = self.hardware_ports[key]
+                self.hardware_ports[key] += 1
 
-    def ckr_hw_ports(self, channel: Channel, channel_count) -> List[int]:
-        return round_robin(list(range(self.ckr_hw_port_count())), channel.index, channel_count)
+    def _allocate_channels(self, count: int):
+        for channel in range(count):
+            self.channel_allocations[channel] = {
+                "cks": [],
+                "ckr": []
+            }
 
-    def get_channel_for_hw_port(self, hw_port, channel_count):
-        return hw_port % channel_count
+        required_ports = {
+            "cks": [],
+            "ckr": []
+        }
+
+        for key in self.hardware_ports:
+            group = self.create_group(key)
+            hw_ports = [m for m in group.hw_mapping() if m != INVALID_HARDWARE_PORT]
+            kernel = key[0]
+            required_ports[kernel] += [(key[1], hw_port) for hw_port in hw_ports]
+
+        for kernel in required_ports:
+            ports = required_ports[kernel]
+            for channel in range(count):
+                self.channel_allocations[channel][kernel] = round_robin(ports, channel, count)
 
 
 class FPGA:
@@ -159,6 +178,16 @@ class ProgramMapping:
         self.fpga_map = fpga_map
 
 
+def are_ops_consecutive(ops: List[SmiOperation]) -> bool:
+    if not ops:
+        return True
+
+    ports = set([op.logical_port for op in ops])
+    start = min(ports)
+    end = max(ports)
+    return sorted(ports) == list(range(start, end + 1))
+
+
 def target_index(source: int, target: int) -> int:
     """Returns the index of the target channel, skipping the index of the self channel.
     Used in inter CKS/CKR communication"""
@@ -168,7 +197,7 @@ def target_index(source: int, target: int) -> int:
     return target - 1
 
 
-def map_ports(ports: List[PortType], key_fn, offset: int = 0) -> List[int]:
+def map_ports(ports: List[SmiOperation], key_fn, offset: int = 0) -> List[int]:
     hardware_ports = []
     for port in ports:
         allocated_ports = key_fn(port)
@@ -182,5 +211,5 @@ def map_ports(ports: List[PortType], key_fn, offset: int = 0) -> List[int]:
     return hardware_ports
 
 
-def count_allocations(ports: List[PortType], key_fn) -> int:
+def count_allocations(ports: List[SmiOperation], key_fn) -> int:
     return sum(key_fn(p) for p in ports)
