@@ -1,7 +1,7 @@
+#define BUFFER_SIZE 4096
+
 #include "smi/channel_helpers.h"
 
-
-#define BUFFER_SIZE 4096
 
 // the maximum number of consecutive reads that each CKs/CKr can do from the same channel
 #define READS_LIMIT = 8;

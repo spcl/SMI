@@ -1,8 +1,8 @@
+#define BUFFER_SIZE {{ program.buffer_size }}
+
 #include "smi/channel_helpers.h"
 
 {% import 'kernel.cl' as kernel %}
-
-#define BUFFER_SIZE {{ program.buffer_size }}
 
 // the maximum number of consecutive reads that each CKs/CKr can do from the same channel
 #define READS_LIMIT = 8;
