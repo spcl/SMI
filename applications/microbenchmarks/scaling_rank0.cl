@@ -7,7 +7,7 @@
 */
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
-#include "scaling_benchmark/smi_rank0.h"
+#include "codegen_scaling/smi-0.h"
 
 __kernel void app(const int N, const char dest_rank)
 {

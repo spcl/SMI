@@ -30,7 +30,7 @@ void SMI_Pop(SMI_Channel *chan, void *data)
     {
         const char chan_idx_data=internal_from_ckr_data_rt[chan->port];
         //const char chan_idx=internal_receiver_rt[chan->tag];
-        chan->net=read_channel_intel(channels_from_ck_r[chan_idx_data]);
+        chan->net=read_channel_intel(channels_ckr_data[chan_idx_data]);
     }
     char * ptr=chan->net.data+(chan->packet_element_id)*chan->size_of_type;
     chan->packet_element_id++;                       //first increment and then use it: otherwise compiler detects Fmax problems
@@ -61,8 +61,8 @@ void SMI_Pop(SMI_Channel *chan, void *data)
         SET_HEADER_DST(mess.header,chan->sender_rank);
         SET_HEADER_PORT(mess.header,chan->port);
         SET_HEADER_OP(mess.header,SMI_REQUEST);
-        write_channel_intel(channels_to_ck_s[chand_idx_control],mess);
-        //printf("Receiver, sent tokens: %d to tag %d\n",chan->tokens,chan->tag);
+        write_channel_intel(channels_cks_control[chand_idx_control],mess);
+     //   printf("Receiver, sent tokens: %d to tag %d\n",chan->tokens,chan->port);
 
     }
 

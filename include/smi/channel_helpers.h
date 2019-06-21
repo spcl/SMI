@@ -30,26 +30,26 @@ SMI_Channel SMI_Open_send_channel(uint count, SMI_Datatype data_type, uint desti
         case(SMI_CHAR):
             chan.size_of_type=1;
             chan.elements_per_packet=28;
-            chan.tokens=BUFF_SIZE*28; //init = buffer size * elememens_per_packet
-            chan.max_tokens=BUFF_SIZE*28;
+            chan.tokens=BUFFER_SIZE*28; //init = buffer size * elememens_per_packet
+            chan.max_tokens=BUFFER_SIZE*28;
             break;
         case(SMI_INT):
             chan.size_of_type=4;
             chan.elements_per_packet=7;
-            chan.tokens=BUFF_SIZE*7;
-            chan.max_tokens=BUFF_SIZE*7;
+            chan.tokens=BUFFER_SIZE*7;
+            chan.max_tokens=BUFFER_SIZE*7;
             break;
         case (SMI_FLOAT):
             chan.size_of_type=4;
             chan.elements_per_packet=7;
-            chan.tokens=BUFF_SIZE*7;
-            chan.max_tokens=BUFF_SIZE*7;
+            chan.tokens=BUFFER_SIZE*7;
+            chan.max_tokens=BUFFER_SIZE*7;
             break;
         case (SMI_DOUBLE):
             chan.size_of_type=8;
             chan.elements_per_packet=3;
-            chan.tokens=BUFF_SIZE*3;
-            chan.max_tokens=BUFF_SIZE*3;
+            chan.tokens=BUFFER_SIZE*3;
+            chan.max_tokens=BUFFER_SIZE*3;
             break;
          //TODO add more data types
     }
@@ -82,22 +82,22 @@ SMI_Channel SMI_Open_receive_channel(uint count, SMI_Datatype data_type, uint so
         case(SMI_CHAR):
             chan.size_of_type=1;
             chan.elements_per_packet=28;
-            chan.max_tokens=BUFF_SIZE*28;
+            chan.max_tokens=BUFFER_SIZE*28;
             break;
         case(SMI_INT):
             chan.size_of_type=4;
             chan.elements_per_packet=7;
-            chan.max_tokens=BUFF_SIZE*7;
+            chan.max_tokens=BUFFER_SIZE*7;
             break;
         case (SMI_FLOAT):
             chan.size_of_type=4;
             chan.elements_per_packet=7;
-            chan.max_tokens=BUFF_SIZE*7;
+            chan.max_tokens=BUFFER_SIZE*7;
             break;
         case (SMI_DOUBLE):
             chan.size_of_type=8;
             chan.elements_per_packet=3;
-            chan.max_tokens=BUFF_SIZE*3;
+            chan.max_tokens=BUFFER_SIZE*3;
             break;
          //TODO add more data types
     }

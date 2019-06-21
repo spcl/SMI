@@ -15,7 +15,7 @@
 #include <limits.h>
 #include <cmath>
 #include "../../include/utils/smi_utils.hpp"
-#define ROUTING_DIR "routing_torus"
+#define ROUTING_DIR "applications/microbenchmarks/codegen_scaling/"
 
 //#define CHECK
 using namespace std;
@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
                 cerr << "Usage: "<< argv[0]<<"-b <binary file> -n <length>"<<endl;
                 exit(-1);
         }
-
+    //n=40;
     cout << "Performing scaling test with "<<n<<" elements per app"<<endl;
     int rank_count;
     CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &rank_count));
@@ -72,11 +72,11 @@ int main(int argc, char *argv[])
     fpga = rank % 2; // in this case is ok, pay attention
     //fpga=0; //executed on 15 and 16
     std::cout << "Rank: " << rank << " out of " << rank_count << " ranks, executing on fpga " <<fpga<< std::endl;
-    if(rank==0)
+    /*if(rank==0)
         program_path = replace(program_path, "<rank>", std::string("0"));
     else
         program_path = replace(program_path, "<rank>", std::string("1"));
-
+*/
     //for emulation
     program_path = replace(program_path, "<rank>", std::to_string(rank));
     std::cout << "Program: " << program_path << std::endl;
@@ -123,9 +123,9 @@ int main(int argc, char *argv[])
 
     //load routing tables
     char routing_tables_ckr[4][tags*2]; //only one tag
-    char routing_tables_cks[4][rank_count]; //4 ranks
+    char routing_tables_cks[4][rank_count];
     for (int i = 0; i < kChannelsPerRank; ++i) {
-        LoadRoutingTable<char>(rank, i, tags, ROUTING_DIR, "ckr", &routing_tables_ckr[i][0]);
+        LoadRoutingTable<char>(rank, i, tags*2, ROUTING_DIR, "ckr", &routing_tables_ckr[i][0]);
         LoadRoutingTable<char>(rank, i, rank_count, ROUTING_DIR, "cks", &routing_tables_cks[i][0]);
     }
 
@@ -134,16 +134,27 @@ int main(int argc, char *argv[])
     queues[0].enqueueWriteBuffer(routing_table_ck_s_2, CL_TRUE,0,rank_count,&routing_tables_cks[2][0]);
     queues[0].enqueueWriteBuffer(routing_table_ck_s_3, CL_TRUE,0,rank_count,&routing_tables_cks[3][0]);
 
+    sleep(rank);
+    std::cout << "CK R Routing tables for rank "<<rank<<std::endl;
+    for(int i = 0; i < kChannelsPerRank; ++i) {
+        std::cout << "CK_R_" <<i<<std::endl;
+        for (int ii = 0; ii < 2; ii++)
+        {
+            std::cout << "\tPort: "<<ii<<": ";
+            std::cout << (int)routing_tables_ckr[i][ii*2] <<", " <<(int)routing_tables_ckr[i][ii*2+1]<<endl;
+        }
+    }
+
     //NEW TEMP:
     //duplicate the content of the CKR, will be sufficient for now
-    for (int i = 0; i < kChannelsPerRank; ++i) {
+    /*  for (int i = 0; i < kChannelsPerRank; ++i) {
          for(int j=tags-1;j>=0;j--)
          {
              routing_tables_ckr[i][j*2]=routing_tables_ckr[i][j];
              routing_tables_ckr[i][j*2+1]=routing_tables_ckr[i][j];
          }
 
-    }
+    }*/
     /*
     printf("Copied\n");
     for(int i=0;i<4;i++)

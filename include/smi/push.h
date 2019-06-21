@@ -42,7 +42,7 @@ void SMI_Push_flush(SMI_Channel *chan, void* data, bool immediate)
     {
         SET_HEADER_NUM_ELEMS(chan->net.header,chan->packet_element_id);
         chan->packet_element_id=0;
-        write_channel_intel(channels_to_ck_s[chan_idx_data],chan->net);
+        write_channel_intel(channels_cks_data[chan_idx_data],chan->net);
     }
     //This is used to prevent this funny compiler to re-oder the two *_channel_intel operations
     mem_fence(CLK_CHANNEL_MEM_FENCE);
@@ -53,7 +53,7 @@ void SMI_Push_flush(SMI_Channel *chan, void* data, bool immediate)
         //receives also with tokens=0
         //wait until the message arrives
         const char chan_idx_control=internal_from_ckr_control_rt[chan->port];
-        SMI_Network_message mess=read_channel_intel(channels_from_ck_r[chan_idx_control]);
+        SMI_Network_message mess=read_channel_intel(channels_ckr_control[chan_idx_control]);
         uint tokens=*(uint *)mess.data;
         chan->tokens+=tokens; //tokens
 

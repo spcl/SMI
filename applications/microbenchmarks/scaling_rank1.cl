@@ -7,7 +7,7 @@
 */
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
-#include "scaling_benchmark/smi_rank1.h"
+#include "codegen_scaling/smi-1.h"
 
 __kernel void app(__global char *mem, const int N)
 {
@@ -25,6 +25,7 @@ __kernel void app(__global char *mem, const int N)
         check &= (rcvd==(start+i));
     }
     *mem=check;
+  //  printf("App 0 finished\n");
 
 }
 
@@ -46,5 +47,6 @@ __kernel void app_1(__global char *mem, const int N)
         check &= (rcvd==(start+i));
     }
     *mem=check;
+  //  printf("App 1 finished\n");
 
 }
