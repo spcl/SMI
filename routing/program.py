@@ -135,7 +135,12 @@ class Program:
             "ckr": []
         }
 
-        for key in self.hardware_ports:
+        for key in (
+                ("cks", "data"),
+                ("cks", "control"),
+                ("ckr", "data"),
+                ("ckr", "control")
+        ):
             group = self.create_group(key)
             hw_ports = [m for m in group.hw_mapping() if m != INVALID_HARDWARE_PORT]
             kernel = key[0]
