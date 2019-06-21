@@ -156,11 +156,11 @@ int main(int argc, char **argv) {
 
   // Read routing tables
   std::vector<std::vector<char>> routing_tables_ckr(kChannelsPerRank,
-                                                    std::vector<char>(4));
+                                                    std::vector<char>(8));
   std::vector<std::vector<char>> routing_tables_cks(
       kChannelsPerRank, std::vector<char>(mpi_size));
   for (int i = 0; i < kChannelsPerRank; ++i) {
-    LoadRoutingTable<char>(mpi_rank, i, 4, "stencil_smi_interleaved_routing",
+    LoadRoutingTable<char>(mpi_rank, i, 8, "stencil_smi_interleaved_routing",
                            "ckr", &routing_tables_ckr[i][0]);
     LoadRoutingTable<char>(mpi_rank, i, mpi_size,
                            "stencil_smi_interleaved_routing", "cks",
@@ -246,7 +246,7 @@ int main(int argc, char **argv) {
     MPIStatus(mpi_rank, "Starting communication kernels...\n");
     for (int i = 0; i < kChannelsPerRank; ++i) {
       comm_kernels.emplace_back(program.MakeKernel(
-          "CK_S_" + std::to_string(i), routing_tables_cks_device[i]));
+          "CK_S_" + std::to_string(i), routing_tables_cks_device[i],mpi_size));
       comm_kernels.emplace_back(program.MakeKernel("CK_R_" + std::to_string(i),
                                                    routing_tables_ckr_device[i],
                                                    char(mpi_rank)));
@@ -287,7 +287,7 @@ int main(int argc, char **argv) {
     std::vector<hlslib::ocl::Kernel> compute_kernels;
     compute_kernels.emplace_back(program.MakeKernel(
         "Read", device_buffers[0], device_buffers[1], device_buffers[2],
-        device_buffers[3], i_px, i_py, timesteps, (char)mpi_rank));
+        device_buffers[3], i_px, i_py, timesteps));
     compute_kernels.emplace_back(
         program.MakeKernel("Stencil", i_px, i_py, timesteps));
     compute_kernels.emplace_back(program.MakeKernel(

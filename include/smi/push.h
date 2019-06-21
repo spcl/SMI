@@ -45,7 +45,7 @@ void SMI_Push_flush(SMI_Channel *chan, void* data, bool immediate)
         write_channel_intel(channels_cks_data[chan_idx_data],chan->net);
     }
     //This is used to prevent this funny compiler to re-oder the two *_channel_intel operations
-    mem_fence(CLK_CHANNEL_MEM_FENCE);
+   // mem_fence(CLK_CHANNEL_MEM_FENCE);
 
     //TODO, handle immediate
     if(chan->tokens==0)
