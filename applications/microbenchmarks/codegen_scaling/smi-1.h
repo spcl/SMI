@@ -1,4 +1,4 @@
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 512
 
 #include "smi/channel_helpers.h"
 
@@ -168,7 +168,7 @@ __kernel void CK_S_0(__global volatile char *restrict rt, const int num_ranks)
                 message = read_channel_nb_intel(channels_interconnect_ck_r_to_ck_s[0], &valid);
                 break;
             case 4:
-                // receive from app channel on hardware port 0/control
+                // receive from app channel with logical port 0, hardware port 0, method control
                 message = read_channel_nb_intel(channels_cks_control[0], &valid);
                 break;
         }
@@ -286,7 +286,7 @@ __kernel void CK_R_0(__global volatile char *restrict rt, const char rank)
                     write_channel_intel(channels_interconnect_ck_r[9], message);
                     break;
                 case 4:
-                    // send to app channel with hardware port 0/data
+                    // send to app channel with logical port 0, hardware port 0, method data
                     write_channel_intel(channels_ckr_data[0], message);
                     break;
             }
@@ -343,7 +343,7 @@ __kernel void CK_S_1(__global volatile char *restrict rt, const int num_ranks)
                 message = read_channel_nb_intel(channels_interconnect_ck_r_to_ck_s[1], &valid);
                 break;
             case 4:
-                // receive from app channel on hardware port 1/control
+                // receive from app channel with logical port 1, hardware port 1, method control
                 message = read_channel_nb_intel(channels_cks_control[1], &valid);
                 break;
         }
@@ -461,7 +461,7 @@ __kernel void CK_R_1(__global volatile char *restrict rt, const char rank)
                     write_channel_intel(channels_interconnect_ck_r[10], message);
                     break;
                 case 4:
-                    // send to app channel with hardware port 1/data
+                    // send to app channel with logical port 1, hardware port 1, method data
                     write_channel_intel(channels_ckr_data[1], message);
                     break;
             }
