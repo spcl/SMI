@@ -4,9 +4,9 @@
 
 
 // the maximum number of consecutive reads that each CKs/CKr can do from the same channel
-#define READS_LIMIT = 8;
+#define READS_LIMIT 8
 // maximum number of ranks in the cluster
-#define MAX_RANKS = 8;
+#define MAX_RANKS 8
 
 
 // QSFP channels
