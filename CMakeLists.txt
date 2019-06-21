@@ -43,8 +43,8 @@ function(add_smi_kernel KERNEL_PATH USE_CODEGEN NUM_RANKS NUM_TAGS CUSTOM_ROUTIN
   if(NUM_RANKS GREATER 1 AND NOT CUSTOM_ROUTING)
     add_custom_target(generate_${KERNEL_NAME}_routing
         COMMAND ${PYTHON_EXECUTABLE}
-        ${CMAKE_SOURCE_DIR}/routing/main.py build ${SMI_ROUTING_FILE}
-        ${KERNEL_NAME}_routing ${NUM_TAGS})
+        ${CMAKE_SOURCE_DIR}/routing/main.py build ${KERNEL_PATH}/program_${KERNEL_NAME}.json  ${SMI_ROUTING_FILE}
+        ${KERNEL_NAME}_routing)
     if(USE_CODEGEN)
       add_dependencies(generate_${KERNEL_NAME} generate_${KERNEL_NAME}_routing)
     endif()
