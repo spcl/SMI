@@ -1,11 +1,58 @@
-Routing
-There are 3 routing tables on each rank.
-Send routing table
-- maps <port_id> to
+# Nomenclature
+Logical port = number that the user enters into the SMI API (e.g. SMI_Open_send_channel(..., 5))
+Hardware port = index into an array of Intel channels
 
-push/pop
-- cannot be codegenerated in the header
-- must have only one access to channel, cannot dynamically select
-if (chan->port == 0) access channel X
-if (chan->port == 1) access channel Y
-- doesn't inline
+# Data structures
+Internal routing tables
+- internal_to_cks_data_rt, internal_to_cks_control_rt, ..
+- they map Logical ports to a hardware port in the corresponding channel array
+- internal_to_cks_data_rt contains indices to channels_cks_data, etc.
+- size of each internal rt is equal to the number of logical ports (these have to be consecutive)
+- if an entry is invalid (for example there's only Push(0), so cks_control is not used), the array entry contains -1
+
+# Routing tables
+There are 2 routing tables for each rank.
+
+## CKS routing table
+- size is the number of Logical ports
+- maps Logical port to a number:
+0 => send to connected QSFP
+1 => send to connected CKR
+2 => send to first neighbour CKS
+<number of QSFP> => send to ... neighbour CKS
+
+- neighbours are always counted from the first kernel
+Kernel 0
+Kernel 1
+Kernel 2
+
+K0 - first neighbour is K1, second neighbour is K2
+K1 - first neighbour is K0, second neighbour is K2
+K2 - first neighbour is K0, second neighbour is K1
+
+## CKR routing table
+- size is the number of Logical ports * 2
+- contains entries for both data and control ports
+Logical port X: data is at rt[x * 2], control is at rt[x * 2 + 1]
+
+- maps Logical port and data/control to a number:
+0 => invalid (the program does not expect to receive this combination)
+- in the current implementation, this will result in sending the packet to CK_S
+1 => send to first neighbour CK_R
+<number of QSFP - 1> => send to ... neighbour CK_R
+<number of QSFP> => first hardware port assigned to the given CKR
+<number of QSFP + 1> => ... hardware port assigned to the given CKR
+
+- neighbours are counted in the same way as for the CKS routing table
+
+# HW port distribution amongst kernels
+Hardware ports are assigned to CKS/CKR in a round-robin fashion.
+Data and control hardware ports are combined (in this order) and then distributed.
+Example:
+cks_data_hw_ports = [0, 1, 2]
+cks_control_hw_ports = [0, 1]
+cks_hw_ports = [("data", 0), ("data", 1), ("data", 2), ("control", 0), ("control", 1)]
+number of CKS = 3
+CKS_0 => [("data", 0), ("control", 0)]
+CKS_1 => [("data", 1), ("control", 1)]
+CKS_2 => [("data", 2)]

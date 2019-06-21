@@ -98,16 +98,12 @@ class Program:
         return self.channel_allocations[channel]
 
     def get_channel_for_logical_port(self, logical_port: int, key):
-        hw_port = self.create_group(key).hw_mapping()[logical_port]
-        if hw_port == INVALID_HARDWARE_PORT:
-            return None
-
         (kernel, method) = key
 
         for (channel, kernels) in self.channel_allocations.items():
             allocations = kernels[kernel]
-            for (allocated_method, allocated_hw_port) in allocations:
-                if allocated_method == method and allocated_hw_port == hw_port:
+            for (allocated_method, allocated_logical_port, _) in allocations:
+                if allocated_method == method and allocated_logical_port == logical_port:
                     return channel
         return None
 
@@ -135,11 +131,16 @@ class Program:
             "ckr": []
         }
 
-        for key in self.hardware_ports:
+        for key in (
+                ("cks", "data"),
+                ("cks", "control"),
+                ("ckr", "data"),
+                ("ckr", "control")
+        ):
             group = self.create_group(key)
-            hw_ports = [m for m in group.hw_mapping() if m != INVALID_HARDWARE_PORT]
+            ports = [(logical, hw) for (logical, hw) in enumerate(group.hw_mapping()) if hw != INVALID_HARDWARE_PORT]
             kernel = key[0]
-            required_ports[kernel] += [(key[1], hw_port) for hw_port in hw_ports]
+            required_ports[kernel] += [(key[1], logical, hw) for (logical, hw) in ports]
 
         for kernel in required_ports:
             ports = required_ports[kernel]

@@ -74,7 +74,7 @@ def get_input_target(channel: Channel, logical_port: int, program: Program,
 
     kernel = key[0]
     method = key[1]
-    return channels_per_fpga + program.get_channel_allocations(channel.index)[kernel].index((method, hw_port))
+    return channels_per_fpga + program.get_channel_allocations(channel.index)[kernel].index((method, logical_port, hw_port))
 
 
 def ckr_routing_table(channel: Channel, channels_per_fpga: int, program: Program) -> List[int]:

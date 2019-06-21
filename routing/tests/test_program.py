@@ -37,20 +37,20 @@ def test_allocation_channel_to_ports():
     ])
 
     assert program.get_channel_allocations(0) == {
-        "cks": [("data", 0), ("control", 1)],
-        "ckr": [("data", 0), ("control", 2)]
+        "cks": [("data", 0, 0), ("control", 2, 1)],
+        "ckr": [("data", 0, 0), ("control", 2, 2)]
     }
     assert program.get_channel_allocations(1) == {
-        "cks": [("data", 1)],
-        "ckr": [("data", 1)]
+        "cks": [("data", 1, 1)],
+        "ckr": [("data", 2, 1)]
     }
     assert program.get_channel_allocations(2) == {
-        "cks": [("data", 2)],
-        "ckr": [("control", 0)]
+        "cks": [("data", 2, 2)],
+        "ckr": [("control", 0, 0)]
     }
     assert program.get_channel_allocations(3) == {
-        "cks": [("control", 0)],
-        "ckr": [("control", 1)]
+        "cks": [("control", 0, 0)],
+        "ckr": [("control", 1, 1)]
     }
 
 
