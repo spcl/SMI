@@ -159,17 +159,13 @@ int main(int argc, char **argv) {
   int fpga = mpi_rank % 2;
 
   // Read routing tables
-  std::vector<std::vector<char>> routing_tables_ckr(kChannelsPerRank,
-                                                    std::vector<char>(8));
-  std::vector<std::vector<char>> routing_tables_cks(
-      kChannelsPerRank, std::vector<char>(mpi_size));
-  for (int i = 0; i < kChannelsPerRank; ++i) {
-    LoadRoutingTable<char>(mpi_rank, i, 8, "stencil_smi_interleaved_routing",
-                           "ckr", &routing_tables_ckr[i][0]);
-    LoadRoutingTable<char>(mpi_rank, i, mpi_size,
-                           "stencil_smi_interleaved_routing", "cks",
-                           &routing_tables_cks[i][0]);
-  }
+  char routing_tables_ckr[4][8]; //only one tag
+    char routing_tables_cks[4][mpi_size];
+    for (int i = 0; i < kChannelsPerRank; ++i) {
+        LoadRoutingTable<char>(mpi_rank, i, 8, ROUTING_DIR, "ckr", &routing_tables_ckr[i][0]);
+        LoadRoutingTable<char>(mpi_rank, i, mpi_size, ROUTING_DIR, "cks", &routing_tables_cks[i][0]);
+    }
+
 
   std::vector<AlignedVec_t> host_buffers;
   AlignedVec_t host_buffer, reference;
@@ -280,14 +276,15 @@ int main(int argc, char **argv) {
     kernels[3].setArg(1,sizeof(int),&mpi_size);
 
     //args for the CK_Rs
+    char my_rank=mpi_rank;
     kernels[4].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
-    kernels[4].setArg(1,sizeof(char),&mpi_rank);
+    kernels[4].setArg(1,sizeof(char),&my_rank);
     kernels[5].setArg(0,sizeof(cl_mem),&routing_table_ck_r_1);
-    kernels[5].setArg(1,sizeof(char),&mpi_rank);
+    kernels[5].setArg(1,sizeof(char),&my_rank);
     kernels[6].setArg(0,sizeof(cl_mem),&routing_table_ck_r_2);
-    kernels[6].setArg(1,sizeof(char),&mpi_rank);
+    kernels[6].setArg(1,sizeof(char),&my_rank);
     kernels[7].setArg(0,sizeof(cl_mem),&routing_table_ck_r_3);
-    kernels[7].setArg(1,sizeof(char),&mpi_rank);
+    kernels[7].setArg(1,sizeof(char),&my_rank);
 
     //start the CKs
     for(int i=0;i<8;i++) //start also the bcast kernel
@@ -339,15 +336,18 @@ int main(int argc, char **argv) {
     MPIStatus(mpi_rank, "Launching kernels...\n");
 
 
-    std::vector<std::future<std::pair<double, double>>> futures;
     const auto start = std::chrono::high_resolution_clock::now();
-    for(int i=16;i<19;i++) //start also the bcast kernel
+    for(int i=16;i<19;i++) 
         queues[i].enqueueTask(kernels[i]);
 
 
     MPIStatus(mpi_rank, "Waiting for kernels to finish...\n");
-    for(int i=16;i<19;i++) //start also the bcast kernel
+    for(int i=16;i<19;i++)
+    {
+
         queues[i].finish();
+      printf("Kernel %d finished\n");
+    }
 
 
     const auto end = std::chrono::high_resolution_clock::now();
