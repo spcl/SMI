@@ -162,8 +162,8 @@ int main(int argc, char **argv) {
   char routing_tables_ckr[4][8]; //only one tag
     char routing_tables_cks[4][mpi_size];
     for (int i = 0; i < kChannelsPerRank; ++i) {
-        LoadRoutingTable<char>(mpi_rank, i, 8, ROUTING_DIR, "ckr", &routing_tables_ckr[i][0]);
-        LoadRoutingTable<char>(mpi_rank, i, mpi_size, ROUTING_DIR, "cks", &routing_tables_cks[i][0]);
+        LoadRoutingTable<char>(mpi_rank, i, 8, "stencil_smi_interleaved_routing", "ckr", &routing_tables_ckr[i][0]);
+        LoadRoutingTable<char>(mpi_rank, i, mpi_size, "stencil_smi_interleaved_routing", "cks", &routing_tables_cks[i][0]);
     }
 
 
