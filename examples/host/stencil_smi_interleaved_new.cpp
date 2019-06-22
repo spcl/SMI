@@ -346,7 +346,7 @@ int main(int argc, char **argv) {
     {
 
         queues[i].finish();
-      printf("Kernel %d finished\n");
+      printf("Kernel %d finished\n",i);
     }
 
 
