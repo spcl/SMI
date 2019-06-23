@@ -125,6 +125,7 @@ void MPIStatus(int rank, T &&arg, Ts... args) {
 }
 
 int main(int argc, char **argv) {
+  cout << "Executing stencil "<<kX<<"x"<<kY<<", with a grid of "<<kPX<<"x"<<kPY<<" ranks"<<endl;
   MPI_Init(&argc, &argv);
 
   int mpi_size, mpi_rank;
@@ -290,7 +291,6 @@ int main(int argc, char **argv) {
     for(int i=0;i<8;i++) //start also the bcast kernel
     {
         queues[i].enqueueTask(kernels[i]);
-        queues[i].flush();
     }
 
     // Wait for communication kernels to start
@@ -303,7 +303,6 @@ int main(int argc, char **argv) {
       kernels[i].setArg(0,sizeof(int),&i_px);
       kernels[i].setArg(1,sizeof(int),&i_py);
       queues[i].enqueueTask(kernels[i]);
-      queues[i].flush();
     }
 
     // Wait for conversion kernels to start
