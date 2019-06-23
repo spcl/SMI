@@ -125,7 +125,7 @@ void MPIStatus(int rank, T &&arg, Ts... args) {
 }
 
 int main(int argc, char **argv) {
-  cout << "Executing stencil "<<kX<<"x"<<kY<<", with a grid of "<<kPX<<"x"<<kPY<<" ranks"<<endl;
+  std::cout << "Executing stencil "<<kX<<"x"<<kY<<", with a grid of "<<kPX<<"x"<<kPY<<" ranks"<<std::endl;
   MPI_Init(&argc, &argv);
 
   int mpi_size, mpi_rank;
