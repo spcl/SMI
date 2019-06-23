@@ -47,6 +47,7 @@ void SMI_Pop(SMI_Channel *chan, void *data)
         *(double *)data= *(double*)(ptr);
     chan->tokens--;
     //This is used to prevent this funny compiler to re-oder the two *_channel_intel operations
+   // mem_fence(CLK_CHANNEL_MEM_FENCE);
 
     if(chan->tokens==0)
     {

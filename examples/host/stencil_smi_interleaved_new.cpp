@@ -288,7 +288,10 @@ int main(int argc, char **argv) {
 
     //start the CKs
     for(int i=0;i<8;i++) //start also the bcast kernel
+    {
         queues[i].enqueueTask(kernels[i]);
+        queues[i].flush();
+    }
 
     // Wait for communication kernels to start
     MPI_Barrier(MPI_COMM_WORLD);
@@ -300,6 +303,7 @@ int main(int argc, char **argv) {
       kernels[i].setArg(0,sizeof(int),&i_px);
       kernels[i].setArg(1,sizeof(int),&i_py);
       queues[i].enqueueTask(kernels[i]);
+      queues[i].flush();
     }
 
     // Wait for conversion kernels to start
@@ -313,12 +317,12 @@ int main(int argc, char **argv) {
     kernels[16].setArg(2,sizeof(cl_mem),&device_buffer3);
     kernels[16].setArg(3,sizeof(cl_mem),&device_buffer4);
     kernels[16].setArg(4,sizeof(int),&i_px);
-    kernels[16].setArg(5,sizeof(int),&i_px);
+    kernels[16].setArg(5,sizeof(int),&i_py);
     kernels[16].setArg(6,sizeof(int),&timesteps);
 
     //Stencil
     kernels[17].setArg(0,sizeof(int),&i_px);
-    kernels[17].setArg(1,sizeof(int),&i_px);
+    kernels[17].setArg(1,sizeof(int),&i_py);
     kernels[17].setArg(2,sizeof(int),&timesteps);
 
     //Write
@@ -327,7 +331,7 @@ int main(int argc, char **argv) {
     kernels[18].setArg(2,sizeof(cl_mem),&device_buffer3);
     kernels[18].setArg(3,sizeof(cl_mem),&device_buffer4);
     kernels[18].setArg(4,sizeof(int),&i_px);
-    kernels[18].setArg(5,sizeof(int),&i_px);
+    kernels[18].setArg(5,sizeof(int),&i_py);
     kernels[18].setArg(6,sizeof(int),&timesteps);
 
     // Wait for all ranks to be ready for launch
