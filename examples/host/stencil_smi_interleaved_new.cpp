@@ -225,10 +225,10 @@ int main(int argc, char **argv) {
     std::vector<hlslib::ocl::Buffer<Data_t, hlslib::ocl::Access::readWrite>>
         device_buffers;
     
-    cl::Buffer device_buffer1(context,CL_MEM_READ_WRITE,sizeof(float)*(2 * kXLocal * kYLocal / kMemoryBanks));
-    cl::Buffer device_buffer2(context,CL_MEM_READ_WRITE,sizeof(float)*(2 * kXLocal * kYLocal / kMemoryBanks));
-    cl::Buffer device_buffer3(context,CL_MEM_READ_WRITE,sizeof(float)*(2 * kXLocal * kYLocal / kMemoryBanks));
-    cl::Buffer device_buffer4(context,CL_MEM_READ_WRITE,sizeof(float)*(2 * kXLocal * kYLocal / kMemoryBanks));
+    cl::Buffer device_buffer1(context,CL_MEM_READ_WRITE|CL_CHANNEL_1_INTELFPGA,sizeof(float)*(2 * kXLocal * kYLocal / kMemoryBanks));
+    cl::Buffer device_buffer2(context,CL_MEM_READ_WRITE|CL_CHANNEL_2_INTELFPGA,sizeof(float)*(2 * kXLocal * kYLocal / kMemoryBanks));
+    cl::Buffer device_buffer3(context,CL_MEM_READ_WRITE|CL_CHANNEL_3_INTELFPGA,sizeof(float)*(2 * kXLocal * kYLocal / kMemoryBanks));
+    cl::Buffer device_buffer4(context,CL_MEM_READ_WRITE|CL_CHANNEL_4_INTELFPGA,sizeof(float)*(2 * kXLocal * kYLocal / kMemoryBanks));
 
 
 
