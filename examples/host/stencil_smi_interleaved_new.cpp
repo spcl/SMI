@@ -157,7 +157,6 @@ int main(int argc, char **argv) {
   }
 
    int timesteps = std::stoi(argv[2]);
-   std::cout << "Timesteps "<<timesteps<<std::endl;
   int fpga = mpi_rank % 2;
 
   // Read routing tables
