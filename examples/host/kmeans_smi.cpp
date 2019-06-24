@@ -202,7 +202,11 @@ int main(int argc, char **argv) {
         program.MakeKernel("kernel_bcast_int", mpi_size_comm));
     for (auto &k : comm_kernels) {
       // Will never terminate, so we don't care about the return value of fork
-      k.ExecuteTaskFork();
+    //  k.ExecuteTaskFork(); //HLSLIB
+        cl::CommandQueue queue=k.commandQueue();
+        queue.enqueueTask(k.kernel());
+        queue.flush();
+
     }
 
     // Wait for communication kernels to start
@@ -228,12 +232,21 @@ int main(int argc, char **argv) {
     std::vector<std::future<std::pair<double, double>>> futures;
     const auto start = std::chrono::high_resolution_clock::now();
     for (auto &k : kernels) {
-      futures.emplace_back(k.ExecuteTaskAsync());
+      //futures.emplace_back(k.ExecuteTaskAsync()); HLSLIB
+        cl::CommandQueue queue=k.commandQueue();
+        queue.enqueueTask(k.kernel());
+        queue.flush();
     }
 
     MPIStatus(mpi_rank, "Waiting for kernels to finish...\n");
-    for (auto &f : futures) {
+    //hlslib
+    /*for (auto &f : futures) {
       f.wait();
+    }*/
+    for (auto &k : kernels) {
+      //futures.emplace_back(k.ExecuteTaskAsync()); HLSLIB
+        cl::CommandQueue queue=k.commandQueue();
+        queue.finish();
     }
     std::cout << mpi_rank <<" finished"<<std::endl;
     const auto end = std::chrono::high_resolution_clock::now();
