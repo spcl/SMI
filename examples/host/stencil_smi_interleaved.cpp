@@ -253,7 +253,10 @@ int main(int argc, char **argv) {
     }
     for (auto &k : comm_kernels) {
       // Will never terminate, so we don't care about the return value of fork
-      k.ExecuteTaskFork();
+      //k.ExecuteTaskFork(); //HLSLIB
+        cl::CommandQueue queue=k.commandQueue();
+        queue.enqueueTask(k.kernel());
+        queue.flush();
     }
 
     // Wait for communication kernels to start
@@ -277,7 +280,12 @@ int main(int argc, char **argv) {
     conv_kernels.emplace_back(
         program.MakeKernel("ConvertSendBottom", i_px, i_py));
     for (auto &k : conv_kernels) {
-      k.ExecuteTaskFork();
+      //k.ExecuteTaskFork(); //HLSLIB
+        cl::CommandQueue queue=k.commandQueue();
+        queue.enqueueTask(k.kernel());
+        queue.flush();
+
+
     }
 
     // Wait for conversion kernels to start
