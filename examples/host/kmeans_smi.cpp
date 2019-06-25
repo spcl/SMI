@@ -232,7 +232,7 @@ int main(int argc, char **argv) {
     std::vector<std::future<std::pair<double, double>>> futures;
     const auto start = std::chrono::high_resolution_clock::now();
     for (auto &k : kernels) {
-      f//utures.emplace_back(k.ExecuteTaskAsync()); //HLSLIB
+      //futures.emplace_back(k.ExecuteTaskAsync()); //HLSLIB
         cl::CommandQueue queue=k.commandQueue();
         queue.enqueueTask(k.kernel());
         queue.flush();
