@@ -235,7 +235,7 @@ int main(int argc, char **argv) {
       //futures.emplace_back(k.ExecuteTaskAsync()); //HLSLIB
         cl::CommandQueue queue=k.commandQueue();
         queue.enqueueTask(k.kernel());
-        queue.flush();
+        //queue.flush();
     }
 
     MPIStatus(mpi_rank, "Waiting for kernels to finish...\n");
