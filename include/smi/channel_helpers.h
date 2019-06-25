@@ -57,7 +57,7 @@ SMI_Channel SMI_Open_send_channel(uint count, SMI_Datatype data_type, uint desti
     SET_HEADER_DST(chan.net.header,chan.receiver_rank);
     SET_HEADER_PORT(chan.net.header,chan.port);
     SET_HEADER_OP(chan.net.header,SMI_SEND);
-
+    chan.tokens=MIN(chan.tokens,count); //needed to prevent the compiler to optimize-away channel connections
     chan.receiver_rank=destination;
     chan.processed_elements=0;
     chan.packet_element_id=0;
@@ -103,7 +103,7 @@ SMI_Channel SMI_Open_receive_channel(uint count, SMI_Datatype data_type, uint so
     }
     //NEW
     //The receiver sends tokens to the sender once every chan.max_tokens/8 received data elements
-    chan.tokens=chan.max_tokens/8;
+    chan.tokens=MIN(chan.max_tokens/8,count); //needed to prevent the compiler to optimize-away channel connections
 
     SET_HEADER_NUM_ELEMS(chan.net.header,0);    //at the beginning no data
     chan.packet_element_id=0; //data per packet

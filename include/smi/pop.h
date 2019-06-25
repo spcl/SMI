@@ -56,13 +56,13 @@ void SMI_Pop(SMI_Channel *chan, void *data)
         //the new tokens to it
         chan->tokens=MIN(chan->max_tokens/8, MAX(chan->message_size-chan->processed_elements-chan->max_tokens*7/8,0)); //b/2
 
-        const char chand_idx_control=internal_to_cks_control_rt[chan->port];
+        const char chan_idx_control=internal_to_cks_control_rt[chan->port];
         SMI_Network_message mess;
         *(uint*)mess.data=chan->tokens;
         SET_HEADER_DST(mess.header,chan->sender_rank);
         SET_HEADER_PORT(mess.header,chan->port);
-        SET_HEADER_OP(mess.header,SMI_REQUEST);
-        write_channel_intel(channels_cks_control[chand_idx_control],mess);
+        SET_HEADER_OP(mess.header,SMI_SYNCH);
+        write_channel_intel(channels_cks_control[chan_idx_control],mess);
      //   printf("Receiver, sent tokens: %d to tag %d\n",chan->tokens,chan->port);
 
     }

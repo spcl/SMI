@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
     queues[0].enqueueWriteBuffer(routing_table_ck_s_2, CL_TRUE,0,rank_count,&routing_tables_cks[2][0]);
     queues[0].enqueueWriteBuffer(routing_table_ck_s_3, CL_TRUE,0,rank_count,&routing_tables_cks[3][0]);
 
-    sleep(rank);
+    /*sleep(rank);
     std::cout << "CK R Routing tables for rank "<<rank<<std::endl;
     for(int i = 0; i < kChannelsPerRank; ++i) {
         std::cout << "CK_R_" <<i<<std::endl;
@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
             std::cout << "\tPort: "<<ii<<": ";
             std::cout << (int)routing_tables_ckr[i][ii*2] <<", " <<(int)routing_tables_ckr[i][ii*2+1]<<endl;
         }
-    }
+    }*/
 
     //NEW TEMP:
     //duplicate the content of the CKR, will be sufficient for now

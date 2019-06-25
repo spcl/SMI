@@ -270,7 +270,7 @@ __kernel void kernel_reduce_root(const char num_rank)
 
             if(send_to!=GET_HEADER_DST(mess_root.header))
             {
-                SET_HEADER_OP(mess_credit.header,SMI_REQUEST);
+                SET_HEADER_OP(mess_credit.header,SMI_SYNCH);
                 SET_HEADER_TAG(mess_credit.header,1); //TODO: Fix this tag. Must be known in some way
                 SET_HEADER_DST(mess_credit.header,send_to);
                 // printf("[REDUCE] send credit to %d\n",send_to);

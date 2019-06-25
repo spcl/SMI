@@ -129,7 +129,7 @@ __kernel void CK_R_{{ channel.index }}(__global volatile char *restrict rt, cons
             {
                 dest = 0;
             }
-            else dest = external_routing_table[GET_HEADER_PORT(message.header)][GET_HEADER_OP(message.header) == SMI_REQUEST];
+            else dest = external_routing_table[GET_HEADER_PORT(message.header)][GET_HEADER_OP(message.header) == SMI_SYNCH];
 
             switch (dest)
             {
