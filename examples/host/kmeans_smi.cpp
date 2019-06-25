@@ -237,7 +237,7 @@ int main(int argc, char **argv) {
     for(int i=0;i<3;i++){
       //futures.emplace_back(k.ExecuteTaskAsync()); //HLSLIB
         cl::CommandQueue queue=kernels[i].commandQueue();
-        queue.enqueueTask(k.kernel(),nullptr, &events[i]);
+        queue.enqueueTask(kernels[i].kernel(),nullptr, &events[i]);
         //queue.flush();
     }
 
