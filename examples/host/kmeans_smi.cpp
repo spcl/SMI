@@ -231,10 +231,13 @@ int main(int argc, char **argv) {
     MPIStatus(mpi_rank, "Launching compute kernels...\n");
     std::vector<std::future<std::pair<double, double>>> futures;
     const auto start = std::chrono::high_resolution_clock::now();
-    for (auto &k : kernels) {
+    cl::Event events[3];
+
+    //for (auto &k : kernels) {
+    for(int i=0;i<3;i++){
       //futures.emplace_back(k.ExecuteTaskAsync()); //HLSLIB
-        cl::CommandQueue queue=k.commandQueue();
-        queue.enqueueTask(k.kernel());
+        cl::CommandQueue queue=kernels[i].commandQueue();
+        queue.enqueueTask(k.kernel(),nullptr, &events[i]);
         //queue.flush();
     }
 
@@ -243,10 +246,12 @@ int main(int argc, char **argv) {
     /*for (auto &f : futures) {
       f.wait();
     }*/
-    for (auto &k : kernels) {
+    //for (auto &k : kernels) {
+    for(int i=0;i<3;i++){
       //futures.emplace_back(k.ExecuteTaskAsync()); HLSLIB
-        cl::CommandQueue queue=k.commandQueue();
-        queue.finish();
+        //cl::CommandQueue queue=k.commandQueue();
+        //queue.finish();
+        events[i].wait();
     }
     std::cout << mpi_rank <<" finished"<<std::endl;
     const auto end = std::chrono::high_resolution_clock::now();
