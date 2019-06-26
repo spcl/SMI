@@ -145,7 +145,9 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data)
             SET_HEADER_NUM_ELEMS(chan->net.header,chan->packet_element_id);
             SET_HEADER_PORT(chan->net.header,chan->port); //TODO fix this
             chan->packet_element_id=0;
-            write_channel_intel(channel_bcast_send,chan->net);
+            const char chan_bcast_idx=internal_bcast_rt[chan->port];
+            write_channel_intel(channels_bcast_send[chan_bcast_idx],chan->net);
+           // printf("Root sending data\n");
             SET_HEADER_OP(chan->net.header,SMI_BROADCAST);
         }
 
@@ -165,6 +167,7 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data)
         {
             const char chan_idx_data=internal_from_ckr_data_rt[chan->port];
             chan->net_2=read_channel_intel(channels_ckr_data[chan_idx_data]);
+          //  printf("Non-root received data\n");
         }
         char *data_rcv=chan->net_2.data;
         if(chan->data_type==SMI_CHAR)
@@ -203,7 +206,7 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data)
 }
 
 
-
+#if 0
 //CODEGEN: This must be code generated for each BCAST and must know the channels id (or the port) from which send data
 //and receive control
 //Also, the name of this should be unique, and must be known by the host program
@@ -250,7 +253,7 @@ __kernel void kernel_bcast(char num_rank)
         }
     }
 }
-
+#endif
 #endif // BCAST_H
 
 

@@ -1,16 +1,18 @@
-{% macro smi_init(program) -%}
+ {% macro smi_init(program) -%}
 #include <utils/smi_utils.hpp>
 
 void SmiInit(
-        const char rank,
-        const char rank_count,
+        char rank,
+        char rank_count,
         const char* program_path,
-        const char* routing_dir)
+        const char* routing_dir,
+        cl::Platform &platform, 
+        cl::Device &device, 
+        cl::Context &context, 
+        cl::Program &program, 
+        int fpga)
 {
-    cl::Platform platform;
-    cl::Device device;
-    cl::Context context;
-    cl::Program program;
+    
     std::vector<cl::Kernel> kernels;
     std::vector<cl::CommandQueue> queues;
     std::vector<std::string> kernel_names;
@@ -35,7 +37,7 @@ void SmiInit(
     const int ports = {{ program.logical_port_count }};
     {% for channel in range(program.channel_count) %}
     cl::Buffer routing_table_ck_s_{{ channel }}(context, CL_MEM_READ_ONLY, rank_count);
-    cl::Buffer routing_table_ck_r_{{ channel }}(context, CL_MEM_READ_ONLY, ports);
+    cl::Buffer routing_table_ck_r_{{ channel }}(context, CL_MEM_READ_ONLY, ports*2);
     {% endfor %}
 
     // load routing tables
@@ -44,19 +46,22 @@ void SmiInit(
     char routing_tables_cks[{{ program.channel_count}}][rank_count];
     for (int i = 0; i < {{ program.channel_count }}; i++)
     {
-        LoadRoutingTable<char>(rank, i, ports, routing_dir, "ckr", &routing_tables_ckr[i][0]);
+        LoadRoutingTable<char>(rank, i, ports*2, routing_dir, "ckr", &routing_tables_ckr[i][0]);
         LoadRoutingTable<char>(rank, i, rank_count, routing_dir, "cks", &routing_tables_cks[i][0]);
     }
 
     {% for channel in range(program.channel_count) %}
     queues[0].enqueueWriteBuffer(routing_table_ck_s_{{ channel }}, CL_TRUE, 0, rank_count, &routing_tables_cks[{{ channel }}][0]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_r_{{ channel }}, CL_TRUE, 0, ports, &routing_tables_ckr[{{ channel }}][0]);
+    queues[0].enqueueWriteBuffer(routing_table_ck_r_{{ channel }}, CL_TRUE, 0, ports*2, &routing_tables_ckr[{{ channel }}][0]);
     {% endfor %}
 
+    int num_ranks=rank_count;
     {% set ctx = namespace(kernel=0) %}
     {% for channel in range(program.channel_count) %}
     // cks_{{ channel }}
     kernels[{{ ctx.kernel }}].setArg(0, sizeof(cl_mem), &routing_table_ck_s_{{ channel }});
+    kernels[{{ ctx.kernel }}].setArg(1, sizeof(int), &num_ranks);
+
     // ckr_{{ channel }}
     {% set ctx.kernel = ctx.kernel + 1 %}
     kernels[{{ ctx.kernel }}].setArg(0, sizeof(cl_mem), &routing_table_ck_r_{{ channel }});
