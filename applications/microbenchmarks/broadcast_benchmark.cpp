@@ -15,7 +15,7 @@
 #include "../../include/utils/ocl_utils.hpp"
 #include "../../include/utils/utils.hpp"
 #include "../../include/utils/smi_utils.hpp"
-#define ROUTING_DIR "applications/microbenchmarks/broadcast_routing_2tags/"
+#define ROUTING_DIR "broadcast/"
 //#define CHECK
 using namespace std;
 int main(int argc, char *argv[])
@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
     IntelFPGAOCLUtils::initEnvironment(platform,device,fpga,context,program,program_path,kernel_names, kernels,queues);
 
     //create memory buffers
-    char tags=2;
+    char tags=1;
     cl::Buffer routing_table_ck_s_0(context,CL_MEM_READ_ONLY,rank_count);
     cl::Buffer routing_table_ck_s_1(context,CL_MEM_READ_ONLY,rank_count);
     cl::Buffer routing_table_ck_s_2(context,CL_MEM_READ_ONLY,rank_count);
@@ -103,6 +103,8 @@ int main(int argc, char *argv[])
     cl::Buffer routing_table_ck_r_1(context,CL_MEM_READ_ONLY,tags);
     cl::Buffer routing_table_ck_r_2(context,CL_MEM_READ_ONLY,tags);
     cl::Buffer routing_table_ck_r_3(context,CL_MEM_READ_ONLY,tags);
+    cl::Buffer check(context,CL_MEM_READ_ONLY,1);
+
 
     //load ck_r
     std::cout << "Using "<<tags<<" tags"<<std::endl;
@@ -127,10 +129,12 @@ int main(int argc, char *argv[])
     queues[0].enqueueWriteBuffer(routing_table_ck_r_2, CL_TRUE,0,tags,&routing_tables_ckr[2][0]);
     queues[0].enqueueWriteBuffer(routing_table_ck_r_3, CL_TRUE,0,tags,&routing_tables_ckr[3][0]);
 
-    kernels[0].setArg(0,sizeof(int),&n);
-    kernels[0].setArg(1,sizeof(char),&root);
-    kernels[0].setArg(2,sizeof(char),&rank);
-    kernels[0].setArg(3,sizeof(char),&rank_count);
+
+    kernels[0].setArg(0,sizeof(cl_mem),&check);
+    kernels[0].setArg(1,sizeof(int),&n);
+    kernels[0].setArg(2,sizeof(char),&root);
+    kernels[0].setArg(3,sizeof(char),&rank);
+    kernels[0].setArg(4,sizeof(char),&rank_count);
 
     kernels[1].setArg(0,sizeof(char),&rank_count);
 
@@ -180,6 +184,16 @@ int main(int argc, char *argv[])
             events[0].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
             double time= (double)((end-start)/1000.0f);
             times.push_back(time);
+        }
+        if(rank==1)
+        {
+            char res;
+            queues[0].enqueueReadBuffer(check,CL_TRUE,0,1,&res);
+            if(res==1)
+                cout << "Result is Ok!"<<endl;
+            else
+                cout << "Error!!!!"<<endl;
+
         }
     }
     if(rank==0)
