@@ -17,6 +17,9 @@ class SmiOperation:
     def uses_ckr_control(self) -> bool:
         return False
 
+    def uses_bcast_channel(self) -> bool:
+        return False
+
     def hw_port_usage(self) -> Set[Tuple[str, str]]:
         usage = set()
         if self.uses_cks_data():
@@ -27,6 +30,8 @@ class SmiOperation:
             usage.add(("ckr", "data"))
         if self.uses_ckr_control():
             usage.add(("ckr", "control"))
+        if self.uses_bcast_channel():
+            usage.add("broadcast")
         return usage
 
 
@@ -63,6 +68,9 @@ class Broadcast(SmiOperation):
         return True
 
     def uses_ckr_control(self) -> bool:
+        return True
+
+    def uses_bcast_channel(self) -> bool:
         return True
 
     def __repr__(self):

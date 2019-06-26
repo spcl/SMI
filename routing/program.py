@@ -1,6 +1,6 @@
 from typing import List, Dict, Tuple
 
-from ops import SmiOperation
+from ops import SmiOperation, Broadcast
 from utils import round_robin
 
 COST_INTER_FPGA = 100
@@ -11,14 +11,11 @@ INVALID_HARDWARE_PORT = -1
 
 
 class ChannelGroup:
-    def __init__(self, logical_port_count: int, hw_ports, op_allocations, key):
+    def __init__(self, logical_port_count: int, hw_port_count: int, op_allocations, key):
         self.logical_port_count = logical_port_count
-        self.hw_ports = dict(hw_ports)
+        self.hw_port_count = hw_port_count
         self.op_allocations = dict(op_allocations)
         self.key = key
-
-    def hw_port_count(self) -> int:
-        return self.hw_ports[self.key]
 
     def hw_mapping(self) -> List[int]:
         mapping = []
@@ -29,6 +26,9 @@ class ChannelGroup:
             else:
                 mapping.append(INVALID_HARDWARE_PORT)
         return mapping
+
+    def get_hw_port(self, logical_port: int):
+        return self.hw_mapping()[logical_port]
 
 
 class FailedAllocation(Exception):
@@ -82,7 +82,8 @@ class Program:
             ("cks", "data"):    0,
             ("cks", "control"): 0,
             ("ckr", "data"):    0,
-            ("ckr", "control"): 0
+            ("ckr", "control"): 0,
+            "broadcast": 0
         }
         self.op_allocations = {}
         self.channel_allocations = {}
@@ -91,8 +92,8 @@ class Program:
             self._allocate_op(op)
         self._allocate_channels(CHANNELS_PER_FPGA)
 
-    def create_group(self, key: Tuple[str, str]) -> ChannelGroup:
-        return ChannelGroup(self.logical_port_count, self.hardware_ports, self.op_allocations, key)
+    def create_group(self, key) -> ChannelGroup:
+        return ChannelGroup(self.logical_port_count, self.hardware_ports[key], self.op_allocations, key)
 
     def get_channel_allocations(self, channel: int):
         return self.channel_allocations[channel]
@@ -106,6 +107,9 @@ class Program:
                 if allocated_method == method and allocated_logical_port == logical_port:
                     return channel
         return None
+
+    def get_broadcasts(self) -> List[Broadcast]:
+        return [op for op in self.operations if isinstance(op, Broadcast)]
 
     def _allocate_op(self, op: SmiOperation):
         logical_port = op.logical_port

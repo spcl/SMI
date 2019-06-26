@@ -19,12 +19,31 @@ def test_allocation_overlap():
     ])
 
     group = program.create_group(("cks", "data"))
-    assert group.hw_port_count() == 2
+    assert group.hw_port_count == 2
     assert group.hw_mapping() == [0, 1]
 
     group = program.create_group(("cks", "control"))
-    assert group.hw_port_count() == 1
+    assert group.hw_port_count == 1
     assert group.hw_mapping() == [-1, 0]
+
+    group = program.create_group("broadcast")
+    assert group.hw_port_count == 1
+    assert group.hw_mapping() == [-1, 0]
+
+
+def test_allocation_hw_port():
+    program = Program(4096, [
+        Push(0),
+        Push(1),
+        Pop(2),
+        Broadcast(3)
+    ])
+
+    assert program.create_group(("cks", "data")).get_hw_port(0) == 0
+    assert program.create_group(("cks", "data")).get_hw_port(1) == 1
+    assert program.create_group(("ckr", "data")).get_hw_port(2) == 0
+    assert program.create_group("broadcast").get_hw_port(0) == -1
+    assert program.create_group("broadcast").get_hw_port(3) == 0
 
 
 def test_allocation_channel_to_ports():

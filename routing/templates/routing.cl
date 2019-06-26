@@ -1,14 +1,14 @@
 #define BUFFER_SIZE {{ program.buffer_size }}
 
 #include "smi/channel_helpers.h"
-
-{% import 'kernel.cl' as kernel %}
+{% import 'ckr.cl' as ckr %}
+{% import 'cks.cl' as cks %}
+{% import 'bcast.cl' as bcast %}
 
 // the maximum number of consecutive reads that each CKs/CKr can do from the same channel
 #define READS_LIMIT 8
 // maximum number of ranks in the cluster
 #define MAX_RANKS 8
-
 
 // QSFP channels
 #ifndef SMI_EMULATION_RANK
@@ -37,18 +37,21 @@ channel SMI_Network_message io_in_{{ channel }} __attribute__((depth(16))) __att
 {% set cks_control = program.create_group(("cks", "control")) %}
 {% set ckr_data = program.create_group(("ckr", "data")) %}
 {% set ckr_control = program.create_group(("ckr", "control")) %}
-// logical port -> index in channels_to_ck_s -> ck_s channel
+// logical port -> index in internal_cks/ckr -> index in channels_cks/ckr
 __constant char internal_to_cks_data_rt[{{ program.logical_port_count }}] = { {{ cks_data.hw_mapping()|join(", ") }} };
 __constant char internal_to_cks_control_rt[{{ program.logical_port_count }}] = { {{ cks_control.hw_mapping()|join(", ") }} };
-
-// logical port -> index in channels_to_ck_r -> ck_r channel
 __constant char internal_from_ckr_data_rt[{{ program.logical_port_count }}] = { {{ ckr_data.hw_mapping()|join(", ") }} };
 __constant char internal_from_ckr_control_rt[{{ program.logical_port_count }}] = { {{ ckr_control.hw_mapping()|join(", ") }} };
 
-channel SMI_Network_message channels_cks_data[{{ cks_data.hw_port_count() }}] __attribute__((depth(16)));
-channel SMI_Network_message channels_cks_control[{{ cks_control.hw_port_count() }}] __attribute__((depth(16)));
-channel SMI_Network_message channels_ckr_data[{{ ckr_data.hw_port_count() }}] __attribute__((depth(BUFFER_SIZE)));
-channel SMI_Network_message channels_ckr_control[{{ ckr_control.hw_port_count() }}] __attribute__((depth(BUFFER_SIZE)));
+channel SMI_Network_message channels_cks_data[{{ cks_data.hw_port_count }}] __attribute__((depth(16)));
+channel SMI_Network_message channels_cks_control[{{ cks_control.hw_port_count }}] __attribute__((depth(16)));
+channel SMI_Network_message channels_ckr_data[{{ ckr_data.hw_port_count }}] __attribute__((depth(BUFFER_SIZE)));
+channel SMI_Network_message channels_ckr_control[{{ ckr_control.hw_port_count }}] __attribute__((depth(BUFFER_SIZE)));
+
+// broadcast channels
+{% set bcast_group = program.create_group("broadcast") %}
+__constant char internal_bcast_rt[{{ program.logical_port_count }}] = { {{ bcast_group.hw_mapping()|join(", ")}} };
+channel SMI_Network_message channels_bcast_send[{{ bcast_group.hw_port_count }}] __attribute__((depth(2)));
 
 __constant char QSFP_COUNT = {{ channels_per_fpga }};
 
@@ -66,8 +69,13 @@ channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __att
 
 #include "smi/pop.h"
 #include "smi/push.h"
+#include "smi/bcast.h"
 
 {% for channel in channels %}
-{{ kernel.cks(program, channel, channels|length, target_index) }}
-{{ kernel.ckr(program, channel, channels|length, target_index) }}
+{{ cks.cks(program, channel, channels|length, target_index) }}
+{{ ckr.ckr(program, channel, channels|length, target_index) }}
+{% endfor %}
+
+{% for broadcast_op in program.get_broadcasts() %}
+{{ bcast.bcast(program, broadcast_op) }}
 {% endfor %}
