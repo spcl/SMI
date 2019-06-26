@@ -48,7 +48,7 @@ class Channel:
         return target_index(self.index, target)
 
     def neighbours(self):
-        for i in range(CHANNELS_PER_FPGA):
+        for i in range(len(self.fpga.channels)):
             if i != self.index:
                 yield i
 
@@ -71,11 +71,13 @@ class Program:
     For a logical port and data/control:
     - allocated channel
     """
-    def __init__(self, buffer_size: int, operations: List[SmiOperation]):
+    def __init__(self, buffer_size: int, operations: List[SmiOperation], channel_count=CHANNELS_PER_FPGA):
         assert are_ops_consecutive(operations)
 
         self.buffer_size = buffer_size
         self.operations = sorted(operations, key=lambda op: op.logical_port)
+        self.channel_count = channel_count
+
         self.logical_port_count = max((op.logical_port for op in operations), default=0) + 1
 
         self.hardware_ports = {
@@ -90,7 +92,7 @@ class Program:
 
         for op in operations:
             self._allocate_op(op)
-        self._allocate_channels(CHANNELS_PER_FPGA)
+        self._allocate_channels(self.channel_count)
 
     def create_group(self, key) -> ChannelGroup:
         return ChannelGroup(self.logical_port_count, self.hardware_ports[key], self.op_allocations, key)

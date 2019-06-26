@@ -1,4 +1,4 @@
-{% macro bcast(program, op) -%}
+{% macro smi_bcast(program, op) -%}
 __kernel void smi_kernel_bcast_{{ op.logical_port }}(char num_rank)
 {
     bool external = true;

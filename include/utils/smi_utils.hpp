@@ -38,7 +38,6 @@ void LoadRoutingTable(int rank, int channel, int num_entries,
   file.read(table, byte_size);
 }
 
-
 std::string replace(std::string source, const std::string& pattern, const std::string& replacement)
 {
     auto pos = source.find(pattern);

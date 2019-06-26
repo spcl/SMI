@@ -1,9 +1,10 @@
 #define BUFFER_SIZE {{ program.buffer_size }}
 
 #include "smi/channel_helpers.h"
-{% import 'ckr.cl' as ckr %}
-{% import 'cks.cl' as cks %}
-{% import 'bcast.cl' as bcast %}
+{% import 'ckr.cl' as smi_ckr %}
+{% import 'cks.cl' as smi_cks %}
+{% import 'bcast.cl' as smi_bcast %}
+{% import 'init.cl' as smi_init %}
 
 // the maximum number of consecutive reads that each CKs/CKr can do from the same channel
 #define READS_LIMIT 8
@@ -49,9 +50,9 @@ channel SMI_Network_message channels_ckr_data[{{ ckr_data.hw_port_count }}] __at
 channel SMI_Network_message channels_ckr_control[{{ ckr_control.hw_port_count }}] __attribute__((depth(BUFFER_SIZE)));
 
 // broadcast channels
-{% set bcast_group = program.create_group("broadcast") %}
-__constant char internal_bcast_rt[{{ program.logical_port_count }}] = { {{ bcast_group.hw_mapping()|join(", ")}} };
-channel SMI_Network_message channels_bcast_send[{{ bcast_group.hw_port_count }}] __attribute__((depth(2)));
+{% set bcast = program.create_group("broadcast") %}
+__constant char internal_bcast_rt[{{ program.logical_port_count }}] = { {{ bcast.hw_mapping()|join(", ")}} };
+channel SMI_Network_message channels_bcast_send[{{ bcast.hw_port_count }}] __attribute__((depth(2)));
 
 __constant char QSFP_COUNT = {{ channels_per_fpga }};
 
@@ -72,10 +73,12 @@ channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __att
 #include "smi/bcast.h"
 
 {% for channel in channels %}
-{{ cks.cks(program, channel, channels|length, target_index) }}
-{{ ckr.ckr(program, channel, channels|length, target_index) }}
+{{ smi_cks.smi_cks(program, channel, channels|length, target_index) }}
+{{ smi_ckr.smi_ckr(program, channel, channels|length, target_index) }}
 {% endfor %}
 
 {% for broadcast_op in program.get_broadcasts() %}
-{{ bcast.bcast(program, broadcast_op) }}
+{{ smi_bcast.smi_bcast(program, broadcast_op) }}
 {% endfor %}
+
+{{ smi_init.smi_init(program) }}

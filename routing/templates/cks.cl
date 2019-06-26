@@ -1,4 +1,4 @@
-{% macro cks(program, channel, channel_count, target_index) -%}
+{% macro smi_cks(program, channel, channel_count, target_index) -%}
 __kernel void smi_kernel_cks_{{ channel.index }}(__global volatile char *restrict rt, const int num_ranks)
 {
     char external_routing_table[MAX_RANKS];
