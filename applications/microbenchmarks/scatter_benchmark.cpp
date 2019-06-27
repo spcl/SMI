@@ -15,7 +15,7 @@
 #include "../../include/utils/ocl_utils.hpp"
 #include "../../include/utils/utils.hpp"
 #include "../../include/utils/smi_utils.hpp"
-#define ROUTING_DIR "applications/microbenchmarks/scatter/"
+#define ROUTING_DIR "applications/microbenchmarks/scatter_codegen/"
 //#define CHECK
 using namespace std;
 int main(int argc, char *argv[])
@@ -80,66 +80,73 @@ int main(int argc, char *argv[])
     kernel_names.push_back("app");
     kernel_names.push_back("kernel_scatter");
 
-    kernel_names.push_back("CK_S_0");
-    kernel_names.push_back("CK_S_1");
-    kernel_names.push_back("CK_S_2");
-    kernel_names.push_back("CK_S_3");
-    kernel_names.push_back("CK_R_0");
-    kernel_names.push_back("CK_R_1");
-    kernel_names.push_back("CK_R_2");
-    kernel_names.push_back("CK_R_3");
+    kernel_names.push_back("smi_kernel_cks_0");
+    kernel_names.push_back("smi_kernel_cks_1");
+    kernel_names.push_back("smi_kernel_cks_2");
+    kernel_names.push_back("smi_kernel_cks_3");
+    kernel_names.push_back("smi_kernel_ckr_0");
+    kernel_names.push_back("smi_kernel_ckr_1");
+    kernel_names.push_back("smi_kernel_ckr_2");
+    kernel_names.push_back("smi_kernel_ckr_3");
 
 
     //this is for the case with classi channels
     IntelFPGAOCLUtils::initEnvironment(platform,device,fpga,context,program,program_path,kernel_names, kernels,queues);
 
     //create memory buffers
-    char tags=2;
+    char tags=1;
+    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
     cl::Buffer routing_table_ck_s_0(context,CL_MEM_READ_ONLY,rank_count);
     cl::Buffer routing_table_ck_s_1(context,CL_MEM_READ_ONLY,rank_count);
     cl::Buffer routing_table_ck_s_2(context,CL_MEM_READ_ONLY,rank_count);
     cl::Buffer routing_table_ck_s_3(context,CL_MEM_READ_ONLY,rank_count);
-    cl::Buffer routing_table_ck_r_0(context,CL_MEM_READ_ONLY,tags);
-    cl::Buffer routing_table_ck_r_1(context,CL_MEM_READ_ONLY,tags);
-    cl::Buffer routing_table_ck_r_2(context,CL_MEM_READ_ONLY,tags);
-    cl::Buffer routing_table_ck_r_3(context,CL_MEM_READ_ONLY,tags);
+    cl::Buffer routing_table_ck_r_0(context,CL_MEM_READ_ONLY,tags*2);
+    cl::Buffer routing_table_ck_r_1(context,CL_MEM_READ_ONLY,tags*2);
+    cl::Buffer routing_table_ck_r_2(context,CL_MEM_READ_ONLY,tags*2);
+    cl::Buffer routing_table_ck_r_3(context,CL_MEM_READ_ONLY,tags*2);
 
     //load ck_r
-    std::cout << "Using "<<tags<<" tags"<<std::endl;
-    char routing_tables_ckr[4][tags]; //only one tag
+    char routing_tables_ckr[4][2]; //two tags
     char routing_tables_cks[4][rank_count]; //4 ranks
     for (int i = 0; i < kChannelsPerRank; ++i) {
-        LoadRoutingTable<char>(rank, i, tags, ROUTING_DIR, "ckr", &routing_tables_ckr[i][0]);
+        LoadRoutingTable<char>(rank, i, 2, ROUTING_DIR, "ckr", &routing_tables_ckr[i][0]);
         LoadRoutingTable<char>(rank, i, rank_count, ROUTING_DIR, "cks", &routing_tables_cks[i][0]);
     }
-    //std::cout << "Rank: "<< rank<<endl;
-   // for(int i=0;i<kChannelsPerRank;i++)
-    //    for(int j=0;j<rank_count;j++)
-    //        std::cout << i<< "," << j<<": "<< (int)routing_tables_cks[i][j]<<endl;
+//    std::cout << "Rank: "<< rank<<endl;
+//    for(int i=0;i<kChannelsPerRank;i++)
+//        for(int j=0;j<rank_count;j++)
+//            std::cout << i<< "," << j<<": "<< (int)routing_tables_cks[i][j]<<endl;
+//    sleep(rank);
 
     queues[0].enqueueWriteBuffer(routing_table_ck_s_0, CL_TRUE,0,rank_count,&routing_tables_cks[0][0]);
     queues[0].enqueueWriteBuffer(routing_table_ck_s_1, CL_TRUE,0,rank_count,&routing_tables_cks[1][0]);
     queues[0].enqueueWriteBuffer(routing_table_ck_s_2, CL_TRUE,0,rank_count,&routing_tables_cks[2][0]);
     queues[0].enqueueWriteBuffer(routing_table_ck_s_3, CL_TRUE,0,rank_count,&routing_tables_cks[3][0]);
 
-    queues[0].enqueueWriteBuffer(routing_table_ck_r_0, CL_TRUE,0,tags,&routing_tables_ckr[0][0]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_r_1, CL_TRUE,0,tags,&routing_tables_ckr[1][0]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_r_2, CL_TRUE,0,tags,&routing_tables_ckr[2][0]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_r_3, CL_TRUE,0,tags,&routing_tables_ckr[3][0]);
+    queues[0].enqueueWriteBuffer(routing_table_ck_r_0, CL_TRUE,0,tags*2,&routing_tables_ckr[0][0]);
+    queues[0].enqueueWriteBuffer(routing_table_ck_r_1, CL_TRUE,0,tags*2,&routing_tables_ckr[1][0]);
+    queues[0].enqueueWriteBuffer(routing_table_ck_r_2, CL_TRUE,0,tags*2,&routing_tables_ckr[2][0]);
+    queues[0].enqueueWriteBuffer(routing_table_ck_r_3, CL_TRUE,0,tags*2,&routing_tables_ckr[3][0]);
 
     kernels[0].setArg(0,sizeof(int),&n);
     kernels[0].setArg(1,sizeof(char),&root);
     kernels[0].setArg(2,sizeof(char),&rank);
     kernels[0].setArg(3,sizeof(char),&rank_count);
+    kernels[0].setArg(4,sizeof(cl_mem),&check);
 
     kernels[1].setArg(0,sizeof(char),&rank_count);
 
 
     //args for the CK_Ss
+    int num_ranks=rank_count;
     kernels[2].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
+    kernels[2].setArg(1,sizeof(int),&num_ranks);
     kernels[3].setArg(0,sizeof(cl_mem),&routing_table_ck_s_1);
+    kernels[3].setArg(1,sizeof(int),&num_ranks);
     kernels[4].setArg(0,sizeof(cl_mem),&routing_table_ck_s_2);
+    kernels[4].setArg(1,sizeof(int),&num_ranks);
     kernels[5].setArg(0,sizeof(cl_mem),&routing_table_ck_s_3);
+    kernels[5].setArg(1,sizeof(int),&num_ranks);
 
     //args for the CK_Rs
     kernels[6].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
@@ -181,6 +188,13 @@ int main(int argc, char *argv[])
             double time= (double)((end-start)/1000.0f);
             times.push_back(time);
         }
+        //check
+        char res;
+        queues[0].enqueueReadBuffer(check,CL_TRUE,0,1,&res);
+        if(res==1)
+            cout << "Rank: " << rank << " Result is Ok!"<<endl;
+        else
+            cout << "Rank: " << rank  <<" Error!!!!"<<endl;
     }
     if(rank==0)
     {

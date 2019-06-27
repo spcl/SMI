@@ -7,8 +7,6 @@
 #include "operation_type.h"
 #include "network_message.h"
 
-//TO BE CODEGEN: internal tables also for this one?
-channel SMI_Network_message channel_bcast_send __attribute__((depth(2)));
 
 //align to 64 to remove aliasing
 typedef struct __attribute__((packed)) __attribute__((aligned(64))){
@@ -126,11 +124,11 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data)
                 for(int jj=0;jj<4;jj++) //copy the data
                     data_snd[chan->packet_element_id*4+jj]=conv[jj];
                 break;
-                case SMI_DOUBLE:
+              /*  case SMI_DOUBLE:
                 #pragma unroll
                 for(int jj=0;jj<8;jj++) //copy the data
                     data_snd[chan->packet_element_id*8+jj]=conv[jj];
-                break;
+                break;*/
         }
 #if 0
 #pragma unroll 1

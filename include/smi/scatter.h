@@ -8,16 +8,12 @@
 #include "operation_type.h"
 #include "network_message.h"
 
-//temp here, then need to move
 
-channel SMI_Network_message channel_scatter_send __attribute__((depth(2)));
-//channel SMI_Network_message channel_bcast_recv __attribute__((depth(2))); //not used here, to be decided
-//align to 64 to remove aliasing
+channel SMI_Network_message channels_scatter_send __attribute__((depth(2))); //CODEGEN
+
 typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     SMI_Network_message net;         //buffered network message
-    SMI_Network_message net_2;        //buffered network message
-    char tag_out;                    //Output channel for the bcast, used by the root
-    char tag_in;                     //Input channel for the bcast. These two must be properly code generated. Good luck
+    char port;                    //Output channel for the bcast, used by the root
     char root_rank;
     char my_rank;                   //These two are essentially the Communicator
     char num_rank;
@@ -26,6 +22,7 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     uint processed_elements;        //how many data elements we have sent/received
     char packet_element_id;         //given a packet, the id of the element that we are currently processing (from 0 to the data elements per packet)
     char data_type;               //type of message
+    SMI_Network_message net_2;        //buffered network message
     char size_of_type;              //size of data type
     char elements_per_packet;       //number of data elements per packet
     bool beginning;
@@ -34,18 +31,17 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
 }SMI_ScatterChannel;
 
 
-SMI_ScatterChannel SMI_Open_scatter_channel(uint send_count,  uint recv_count, SMI_Datatype data_type, char root, char my_rank, char num_ranks)
+SMI_ScatterChannel SMI_Open_scatter_channel(uint send_count,  uint recv_count, SMI_Datatype data_type, uint port, uint root, uint my_rank, uint num_ranks)
 {
     SMI_ScatterChannel chan;
     //setup channel descriptor
     chan.send_count=send_count;
     chan.recv_count=recv_count;
     chan.data_type=data_type;
-    chan.tag_in=0;
-    chan.tag_out=0;
-    chan.my_rank=my_rank;
-    chan.root_rank=root;
-    chan.num_rank=num_ranks;
+    chan.port=(char)port;
+    chan.my_rank=(char)my_rank;
+    chan.root_rank=(char)root;
+    chan.num_rank=(char)num_ranks;
     chan.next_rcv=0;
     chan.beginning=true;
     switch(data_type)
@@ -66,13 +62,26 @@ SMI_ScatterChannel SMI_Open_scatter_channel(uint send_count,  uint recv_count, S
             chan.size_of_type=1;
             chan.elements_per_packet=28;
             break;
-         //TODO add more data types
     }
 
     //setup header for the message
-    SET_HEADER_SRC(chan.net.header,root);
-    SET_HEADER_TAG(chan.net.header,0);        //used by destination
-    SET_HEADER_NUM_ELEMS(chan.net.header,0);    //at the beginning no data
+    if(my_rank!=root)
+    {
+        //this is set up to send a "ready to receive" to the root
+        SET_HEADER_OP(chan.net.header,SMI_SYNCH);
+        SET_HEADER_DST(chan.net.header,root);
+        SET_HEADER_PORT(chan.net.header,chan.port);
+        const char chan_idx_control=internal_to_cks_control_rt[chan.port];
+        write_channel_intel(channels_cks_control[chan_idx_control],chan.net); 
+        // printf("non-root rank %d, I've sent the request\n",chan->my_rank);
+    }
+    else
+    {
+        SET_HEADER_SRC(chan.net.header,root);
+        SET_HEADER_PORT(chan.net.header,chan.port);         //used by destination
+        SET_HEADER_NUM_ELEMS(chan.net.header,0);            //at the beginning no data
+    }
+
     chan.processed_elements=0;
     chan.packet_element_id=0;
     chan.packet_element_id_rcv=0;
@@ -80,11 +89,7 @@ SMI_ScatterChannel SMI_Open_scatter_channel(uint send_count,  uint recv_count, S
 }
 
 
-/*
- * This Bcast is the fusion between a pop and a push
- * NOTE: this is a naive implementation
- */
-void SMI_Scatter(SMI_ScatterChannel *chan, volatile void* send_data, volatile void* rcv_data)
+void SMI_Scatter(SMI_ScatterChannel *chan, void* send_data, void* rcv_data)
 {
     //take here the pointers to send/recv data to avoid fake dependencies
     const char elem_per_packet=chan->elements_per_packet;
@@ -93,15 +98,10 @@ void SMI_Scatter(SMI_ScatterChannel *chan, volatile void* send_data, volatile vo
         //the root is responsible for splitting the data in packets
         //and set the right receviver.
         //If the receiver is itself it has to set the rcv_data accordingly
-
-        //char pack_elem_id_snd=chan->packet_element_id;
         char *conv=(char*)send_data;
         char *data_snd=chan->net.data;
-       // if(chan->next_rcv==chan->my_rank)//copy it into rcv_data
-        //    data_snd=(char *)rcv_data;
         const uint message_size=chan->send_count;
         chan->processed_elements++;
-      // const char chan_idx_out=internal_sender_rt[chan->tag_out];  //This should be properly code generated, good luck
         switch(chan->data_type)
         {
             case SMI_CHAR:
@@ -117,13 +117,16 @@ void SMI_Scatter(SMI_ScatterChannel *chan, volatile void* send_data, volatile vo
                     if(chan->next_rcv==chan->my_rank)
                         ((char *)(rcv_data))[jj]=conv[jj]; //in this case is the root
                     else
-                    data_snd[chan->packet_element_id*4+jj]=conv[jj];
+                        data_snd[chan->packet_element_id*4+jj]=conv[jj];
             break;
-            /*case SMI_DOUBLE:
+            case SMI_DOUBLE:
                 #pragma unroll
                 for(int jj=0;jj<8;jj++) //copy the data
-                    data_snd[chan->packet_element_id*8+jj]=conv[jj];
-            break;*/
+                    if(chan->next_rcv==chan->my_rank)
+                         ((char *)(rcv_data))[jj]=conv[jj];
+                    else
+                        data_snd[chan->packet_element_id*8+jj]=conv[jj];
+            break;
         }
 
         chan->packet_element_id++;
@@ -132,10 +135,10 @@ void SMI_Scatter(SMI_ScatterChannel *chan, volatile void* send_data, volatile vo
         {
 
             SET_HEADER_NUM_ELEMS(chan->net.header,chan->packet_element_id);
-            SET_HEADER_TAG(chan->net.header,1); //TODO fix this
+            SET_HEADER_PORT(chan->net.header,chan->port); 
             SET_HEADER_DST(chan->net.header,chan->next_rcv);
-            //offload to bcast kernel
-            if(chan->beginning) //at the beginning we have to indicate
+            //offload to scatter kernel
+            if(chan->beginning) 
             {
                 SET_HEADER_OP(chan->net.header,SMI_SYNCH);
                 chan->beginning=false;
@@ -143,9 +146,8 @@ void SMI_Scatter(SMI_ScatterChannel *chan, volatile void* send_data, volatile vo
             else
                  SET_HEADER_OP(chan->net.header,SMI_SCATTER);
             if(chan->next_rcv!=chan->my_rank)
-                write_channel_intel(channel_scatter_send,chan->net);
+                write_channel_intel(channels_scatter_send,chan->net);
             chan->packet_element_id=0;
-            //chan->packet_element_id=0;
             if(chan->processed_elements==message_size)
             {   //we finished the data that need to be sent to this rcvr
                 chan->processed_elements=0;
@@ -155,24 +157,12 @@ void SMI_Scatter(SMI_ScatterChannel *chan, volatile void* send_data, volatile vo
     }
     else //I have to receive
     {
-        if(chan->beginning)//at the beginning we have to send the request
-        {
-            SET_HEADER_OP(chan->net.header,SMI_SYNCH);
-            SET_HEADER_DST(chan->net.header,chan->root_rank);
-            SET_HEADER_TAG(chan->net.header,0);
-            write_channel_intel(channels_to_ck_s[1],chan->net); //TODO to fix
-            chan->beginning=false;
-        }
-        mem_fence(CLK_CHANNEL_MEM_FENCE);
-
-
         if(chan->packet_element_id_rcv==0)
         {
           //  const char chan_idx=internal_receiver_rt[chan->tag_in];
-            chan->net_2=read_channel_intel(channels_from_ck_r[1]);
-            //printf("Non root, received data\n");
+            const char chan_idx_data=internal_from_ckr_data_rt[chan->port];
+            chan->net_2=read_channel_intel(channels_ckr_data[chan_idx_data]);
         }
-        //char * ptr=chan->net_2.data+(chan->packet_element_id_rcv);
         char *data_rcv=chan->net_2.data;
         switch(chan->data_type)
         {
@@ -194,14 +184,14 @@ void SMI_Scatter(SMI_ScatterChannel *chan, volatile void* send_data, volatile vo
                  *(float *)rcv_data= *(float*)(ptr);
                 break;
             }
-            /*case SMI_DOUBLE:
+            case SMI_DOUBLE:
             {
                 char * ptr=data_rcv+(chan->packet_element_id_rcv)*8;
-                *(double *)data= *(double*)(ptr);
+                *(double *)rcv_data= *(double*)(ptr);
                 break;
-            }*/
+            }
         }
-        chan->packet_element_id_rcv++;                       //first increment and then use it: otherwise compiler detects Fmax problems
+        chan->packet_element_id_rcv++;                 
         if( chan->packet_element_id_rcv==elem_per_packet)
              chan->packet_element_id_rcv=0;
     }
@@ -229,24 +219,22 @@ __kernel void kernel_scatter(char num_rank)
     {
         if(external) //read from the application
         {
-            mess=read_channel_intel(channel_scatter_send);
+            mess=read_channel_intel(channels_scatter_send);
             if(GET_HEADER_OP(mess.header)==SMI_SYNCH)
-            {
                 received_request=num_requests;
-            }
             external=false;
         }
         else //handle the request
         {
             if(received_request!=0)
             {
-                SMI_Network_message req=read_channel_intel(channels_from_ck_r[0]);
+                SMI_Network_message req=read_channel_intel(channels_ckr_control[0]); //CODEGEN
                 received_request--;
             }
             else
             {
                 //just push it to the network
-                    write_channel_intel(channels_to_ck_s[0],mess);
+                write_channel_intel(channels_cks_data[0],mess); //CODEGEN
                 external=true;
             }
         }
