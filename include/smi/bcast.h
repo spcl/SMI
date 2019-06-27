@@ -193,7 +193,7 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data)
         if(chan->data_type==SMI_DOUBLE)
         {
             char * ptr=data_rcv+(chan->packet_element_id_rcv)*8;
-            *(float *)data= *(float*)(ptr);
+            *(double *)data= *(double*)(ptr);
         }
 
         chan->packet_element_id_rcv++;                       //first increment and then use it: otherwise compiler detects Fmax problems

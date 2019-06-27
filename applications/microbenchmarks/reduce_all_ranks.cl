@@ -1,7 +1,29 @@
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 
-#include "smi_reduce.h"
+#include "reduce_codegen/smi-0.h"
 
+__kernel void app(const int N, char root,char my_rank, char num_ranks, __global volatile char *mem)
+{
+    int exp=(num_ranks*(num_ranks+1))/2;
+    char check=1;
+    SMI_RChannel  __attribute__((register)) rchan_float= SMI_Open_reduce_channel(N, SMI_INT, 0,root,my_rank,num_ranks);
+    for(int i=0;i<N;i++)
+    {
+        int to_comm, to_rcv=0;
+        to_comm=my_rank+1;
+       // printf("Rank %d sending %.0f\n",my_rank,to_comm);
+        SMI_Reduce(&rchan_float,&to_comm, &to_rcv);
+        if(my_rank==root)
+            check &= (to_rcv==exp);
+
+    }
+    *mem=check;
+}
+
+
+
+#if 0
+OLD VERSION
 __kernel void app(const int N, char root,char my_rank, char num_ranks, __global volatile char *mem)
 {
     float exp=(num_ranks*(num_ranks+1))/2;
@@ -19,23 +41,5 @@ __kernel void app(const int N, char root,char my_rank, char num_ranks, __global 
     }
     *mem=check;
 }
-#if 0
-__kernel void app(const int N, char root,char my_rank, char num_ranks, __global volatile char *mem)
-{
-    char exp=(num_ranks*(num_ranks+1))/2;
-    char check=1;
-    for(int i=0;i<N;i++)
-    {
-        SMI_RChannel  __attribute__((register)) chan= SMI_Open_reduce_channel(1, SMI_INT, root,my_rank,num_ranks);
-        int to_comm, to_rcv=0;
-        to_comm=my_rank+1;
-        SMI_Reduce(&chan,&to_comm, &to_rcv);
-        // printf("Rank %d reduced perfomed (%d out of %d)\n",my_rank,i,N);
-        if(my_rank==root)
-            check &= (to_rcv==exp);
-        //if(my_rank==root && to_rcv!= exp)
-        //    printf("!!!!!!!!!!!!!! Rank %d received %d while I was expecting %d\n",my_rank,to_rcv,exp);
-    }
-    *mem=check;
-}
+
 #endif

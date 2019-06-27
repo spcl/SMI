@@ -15,7 +15,7 @@
 #include "../../include/utils/ocl_utils.hpp"
 #include "../../include/utils/utils.hpp"
 #include "../../include/utils/smi_utils.hpp"
-#define ROUTING_DIR "applications/microbenchmarks/reduce_routing/"
+#define ROUTING_DIR "applications/microbenchmarks/reduce_codegen/"
 //#define CHECK
 using namespace std;
 int main(int argc, char *argv[])
@@ -86,30 +86,30 @@ int main(int argc, char *argv[])
    // kernel_names.push_back("kernel_reduce_noroot");
    // kernel_names.push_back("kernel_reduce_root");
 
-    kernel_names.push_back("CK_S_0");
-    kernel_names.push_back("CK_S_1");
-    kernel_names.push_back("CK_S_2");
-    kernel_names.push_back("CK_S_3");
-    kernel_names.push_back("CK_R_0");
-    kernel_names.push_back("CK_R_1");
-    kernel_names.push_back("CK_R_2");
-    kernel_names.push_back("CK_R_3");
+    kernel_names.push_back("smi_kernel_cks_0");
+    kernel_names.push_back("smi_kernel_cks_1");
+    kernel_names.push_back("smi_kernel_cks_2");
+    kernel_names.push_back("smi_kernel_cks_3");
+    kernel_names.push_back("smi_kernel_ckr_0");
+    kernel_names.push_back("smi_kernel_ckr_1");
+    kernel_names.push_back("smi_kernel_ckr_2");
+    kernel_names.push_back("smi_kernel_ckr_3");
 
 
     //this is for the case with classi channels
     IntelFPGAOCLUtils::initEnvironment(platform,device,fpga,context,program,program_path,kernel_names, kernels,queues);
 
     //create memory buffers
-    char tags=2;
+    char tags=1;
     cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
     cl::Buffer routing_table_ck_s_0(context,CL_MEM_READ_ONLY,rank_count);
     cl::Buffer routing_table_ck_s_1(context,CL_MEM_READ_ONLY,rank_count);
     cl::Buffer routing_table_ck_s_2(context,CL_MEM_READ_ONLY,rank_count);
     cl::Buffer routing_table_ck_s_3(context,CL_MEM_READ_ONLY,rank_count);
-    cl::Buffer routing_table_ck_r_0(context,CL_MEM_READ_ONLY,tags);
-    cl::Buffer routing_table_ck_r_1(context,CL_MEM_READ_ONLY,tags);
-    cl::Buffer routing_table_ck_r_2(context,CL_MEM_READ_ONLY,tags);
-    cl::Buffer routing_table_ck_r_3(context,CL_MEM_READ_ONLY,tags);
+    cl::Buffer routing_table_ck_r_0(context,CL_MEM_READ_ONLY,tags*2);
+    cl::Buffer routing_table_ck_r_1(context,CL_MEM_READ_ONLY,tags*2);
+    cl::Buffer routing_table_ck_r_2(context,CL_MEM_READ_ONLY,tags*2);
+    cl::Buffer routing_table_ck_r_3(context,CL_MEM_READ_ONLY,tags*2);
 
     //load ck_r
     char routing_tables_ckr[4][2]; //two tags
@@ -129,10 +129,10 @@ int main(int argc, char *argv[])
     queues[0].enqueueWriteBuffer(routing_table_ck_s_2, CL_TRUE,0,rank_count,&routing_tables_cks[2][0]);
     queues[0].enqueueWriteBuffer(routing_table_ck_s_3, CL_TRUE,0,rank_count,&routing_tables_cks[3][0]);
 
-    queues[0].enqueueWriteBuffer(routing_table_ck_r_0, CL_TRUE,0,tags,&routing_tables_ckr[0][0]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_r_1, CL_TRUE,0,tags,&routing_tables_ckr[1][0]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_r_2, CL_TRUE,0,tags,&routing_tables_ckr[2][0]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_r_3, CL_TRUE,0,tags,&routing_tables_ckr[3][0]);
+    queues[0].enqueueWriteBuffer(routing_table_ck_r_0, CL_TRUE,0,tags*2,&routing_tables_ckr[0][0]);
+    queues[0].enqueueWriteBuffer(routing_table_ck_r_1, CL_TRUE,0,tags*2,&routing_tables_ckr[1][0]);
+    queues[0].enqueueWriteBuffer(routing_table_ck_r_2, CL_TRUE,0,tags*2,&routing_tables_ckr[2][0]);
+    queues[0].enqueueWriteBuffer(routing_table_ck_r_3, CL_TRUE,0,tags*2,&routing_tables_ckr[3][0]);
 
     kernels[0].setArg(0,sizeof(int),&n);
     kernels[0].setArg(1,sizeof(char),&root);
@@ -146,10 +146,15 @@ int main(int argc, char *argv[])
 
 
     //args for the CK_Ss
+    int num_ranks=rank_count;
     kernels[2].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
+    kernels[2].setArg(1,sizeof(int),&num_ranks);
     kernels[3].setArg(0,sizeof(cl_mem),&routing_table_ck_s_1);
+    kernels[3].setArg(1,sizeof(int),&num_ranks);
     kernels[4].setArg(0,sizeof(cl_mem),&routing_table_ck_s_2);
+    kernels[4].setArg(1,sizeof(int),&num_ranks);
     kernels[5].setArg(0,sizeof(cl_mem),&routing_table_ck_s_3);
+    kernels[5].setArg(1,sizeof(int),&num_ranks);
 
     //args for the CK_Rs
     kernels[6].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
