@@ -1,6 +1,7 @@
-from typing import List, Dict, Tuple
+from typing import List, Dict
 
-from ops import SmiOperation, Broadcast
+from ops import SmiOperation, Broadcast, KEY_CKS_DATA, KEY_CKS_CONTROL, KEY_CKR_DATA, KEY_BROADCAST, KEY_REDUCE, \
+    KEY_CKR_CONTROL, Reduce
 from utils import round_robin
 
 COST_INTER_FPGA = 100
@@ -81,11 +82,12 @@ class Program:
         self.logical_port_count = max((op.logical_port for op in operations), default=0) + 1
 
         self.hardware_ports = {
-            ("cks", "data"):    0,
-            ("cks", "control"): 0,
-            ("ckr", "data"):    0,
-            ("ckr", "control"): 0,
-            "broadcast": 0
+            KEY_CKS_DATA:       0,
+            KEY_CKS_CONTROL:    0,
+            KEY_CKR_DATA:       0,
+            KEY_CKR_CONTROL:    0,
+            KEY_BROADCAST:      0,
+            KEY_REDUCE:         0
         }
         self.op_allocations = {}
         self.channel_allocations = {}
@@ -110,8 +112,14 @@ class Program:
                     return channel
         return None
 
-    def get_broadcasts(self) -> List[Broadcast]:
-        return [op for op in self.operations if isinstance(op, Broadcast)]
+    def get_collective_ops(self, type: str) -> List[SmiOperation]:
+        mapping = {
+            "broadcast": Broadcast,
+            "reduce": Reduce
+        }
+        cls = mapping[type]
+
+        return [op for op in self.operations if isinstance(op, cls)]
 
     def _allocate_op(self, op: SmiOperation):
         logical_port = op.logical_port
@@ -138,10 +146,10 @@ class Program:
         }
 
         for key in (
-                ("cks", "data"),
-                ("cks", "control"),
-                ("ckr", "data"),
-                ("ckr", "control")
+                KEY_CKS_DATA,
+                KEY_CKS_CONTROL,
+                KEY_CKR_DATA,
+                KEY_CKR_CONTROL
         ):
             group = self.create_group(key)
             ports = [(logical, hw) for (logical, hw) in enumerate(group.hw_mapping()) if hw != INVALID_HARDWARE_PORT]

@@ -4,7 +4,6 @@
 {% import 'ckr.cl' as smi_ckr %}
 {% import 'cks.cl' as smi_cks %}
 {% import 'bcast.cl' as smi_bcast %}
-{% import 'init.cl' as smi_init %}
 
 // the maximum number of consecutive reads that each CKs/CKr can do from the same channel
 #define READS_LIMIT 8
@@ -77,8 +76,6 @@ channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __att
 {{ smi_ckr.smi_ckr(program, channel, channels|length, target_index) }}
 {% endfor %}
 
-{% for broadcast_op in program.get_broadcasts() %}
+{% for broadcast_op in program.get_collective_ops("broadcast") %}
 {{ smi_bcast.smi_bcast(program, broadcast_op) }}
 {% endfor %}
-
-{{ smi_init.smi_init(program) }}

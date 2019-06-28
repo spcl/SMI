@@ -42,7 +42,12 @@ def channel_name(src: Channel, out: bool, graph: Graph) -> str:
     return "{}_{}".format(local_channel, remote_channel)
 
 
-def generate_program(fpga: FPGA, fpgas: List[FPGA], graph: Graph, channels_per_fpga: int) -> str:
+def generate_program_host(fpga: FPGA) -> str:
+    template = read_template_file("init.cl")
+    return template.render(program=fpga.program)
+
+
+def generate_program_device(fpga: FPGA, fpgas: List[FPGA], graph: Graph, channels_per_fpga: int) -> str:
     template = read_template_file("routing.cl")
     return template.render(channels=fpga.channels,
                            channels_per_fpga=channels_per_fpga,

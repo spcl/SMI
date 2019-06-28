@@ -3,7 +3,7 @@ from typing import List
 
 import click
 
-from codegen import generate_program
+from codegen import generate_program_device, generate_program_host
 from common import write_nodefile
 from parser import parse_programs, parse_fpga_connections
 from program import Channel, CHANNELS_PER_FPGA
@@ -47,8 +47,10 @@ def build(program_description, connection_list, output_folder):
     for (index, program) in enumerate(program_mapping.programs):
         fpgas = [fpga for fpga in ctx.fpgas if fpga.program is program]
         if fpgas:
-            with open(os.path.join(output_folder, "smi-{}.h".format(index)), "w") as f:
-                f.write(generate_program(fpgas[0], fpgas, ctx.graph, CHANNELS_PER_FPGA))
+            with open(os.path.join(output_folder, "smi-device-{}.h".format(index)), "w") as f:
+                f.write(generate_program_device(fpgas[0], fpgas, ctx.graph, CHANNELS_PER_FPGA))
+            with open(os.path.join(output_folder, "smi-host-{}.h".format(index)), "w") as f:
+                f.write(generate_program_host(fpgas[0]))
 
     with open(os.path.join(output_folder, "hostfile"), "w") as f:
         write_nodefile(ctx.fpgas, f)

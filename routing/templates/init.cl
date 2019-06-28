@@ -1,4 +1,3 @@
- {% macro smi_init(program) -%}
 #include <utils/smi_utils.hpp>
 
 void SmiInit(
@@ -23,8 +22,10 @@ void SmiInit(
     kernel_names.push_back("smi_kernel_ckr_{{ channel }}");
     {% endfor %}
 
+    {% set broadcasts = program.get_collective_ops("broadcast") %}
+
     // broadcast kernels
-    {% for broadcast in program.get_broadcasts() %}
+    {% for broadcast in broadcasts %}
     kernel_names.push_back("smi_kernel_bcast_{{ broadcast.logical_port }}");
     {% endfor %}
 
@@ -69,7 +70,7 @@ void SmiInit(
     {% set ctx.kernel = ctx.kernel + 1 %}
     {% endfor %}
 
-    {% for broadcast in program.get_broadcasts() %}
+    {% for broadcast in broadcasts %}
     // broadcast {{ broadcast.logical_port }}
     kernels[{{ ctx.kernel }}].setArg(0, sizeof(char), &rank_count);
     {% set ctx.kernel = ctx.kernel + 1 %}
@@ -82,4 +83,3 @@ void SmiInit(
         queues[i].enqueueTask(kernels[i]);
     }
 }
-{%- endmacro %}
