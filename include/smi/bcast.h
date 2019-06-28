@@ -19,9 +19,9 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     uint processed_elements;            //how many data elements we have sent/received
     char packet_element_id;             //given a packet, the id of the element that we are currently processing (from 0 to the data elements per packet)
     SMI_Datatype data_type;             //type of message
+    SMI_Network_message net_2;          //buffered network message: used for the receiving side
     char size_of_type;                  //size of data type
     char elements_per_packet;           //number of data elements per packet
-    SMI_Network_message net_2;          //buffered network message: used for the receiving side
     char packet_element_id_rcv;         //used by the receivers
 }SMI_BChannel;
 
@@ -93,7 +93,7 @@ SMI_BChannel SMI_Open_bcast_channel(uint count, SMI_Datatype data_type, uint por
 
 
 
-void SMI_Bcast(SMI_BChannel *chan, volatile void* data)
+void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void*recv_data*/)
 {
     const char elem_per_packet=chan->elements_per_packet;
     char *conv=(char*)data;
@@ -108,6 +108,11 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data)
         const uint message_size=chan->message_size;
         chan->processed_elements++;
 
+        /*  #pragma unroll
+                for(int jj=0;jj<4;jj++) //copy the data
+                    data_snd[chan->packet_element_id*4+jj]=conv[jj];
+          */   
+   
         switch(chan->data_type) //this must be code generated
         {
               case SMI_CHAR:
@@ -124,20 +129,15 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data)
                 for(int jj=0;jj<4;jj++) //copy the data
                     data_snd[chan->packet_element_id*4+jj]=conv[jj];
                 break;
-              /*  case SMI_DOUBLE:
+            /*    case SMI_DOUBLE:
                 #pragma unroll
                 for(int jj=0;jj<8;jj++) //copy the data
                     data_snd[chan->packet_element_id*8+jj]=conv[jj];
-                break;*/
+                break;
+                */
         }
-#if 0
-#pragma unroll 1
-        for(int jj=0;jj<chan->size_of_type;jj++) //copy the data
-            data_snd[chan->packet_element_id*chan->size_of_type+jj]=conv[jj];
-
-#endif
         chan->packet_element_id++;
-        if(chan->packet_element_id==elem_per_packet || chan->processed_elements==message_size) //send it if packet is filled or we reached the message size
+        if(chan->packet_element_id==chan->elements_per_packet || chan->processed_elements==message_size) //send it if packet is filled or we reached the message size
         {
 
             SET_HEADER_NUM_ELEMS(chan->net.header,chan->packet_element_id);
@@ -188,14 +188,14 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data)
             char * ptr=data_rcv+(chan->packet_element_id_rcv)*2;
             *(short *)data= *(short*)(ptr);
         }
-        if(chan->data_type==SMI_DOUBLE)
+        /*if(chan->data_type==SMI_DOUBLE)
         {
             char * ptr=data_rcv+(chan->packet_element_id_rcv)*8;
             *(double *)data= *(double*)(ptr);
-        }
+        }*/
 
         chan->packet_element_id_rcv++;                       //first increment and then use it: otherwise compiler detects Fmax problems
-        if( chan->packet_element_id_rcv==elem_per_packet)
+        if( chan->packet_element_id_rcv==chan->elements_per_packet)
             chan->packet_element_id_rcv=0;
     }
 
