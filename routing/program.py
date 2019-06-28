@@ -1,6 +1,7 @@
-from typing import List, Dict, Tuple
+from typing import List, Dict
 
-from ops import SmiOperation, Broadcast
+from ops import SmiOperation, Broadcast, KEY_CKS_DATA, KEY_CKS_CONTROL, KEY_CKR_DATA, KEY_BROADCAST, KEY_CKR_CONTROL, \
+    Reduce, KEY_REDUCE_SEND, KEY_REDUCE_RECV
 from utils import round_robin
 
 COST_INTER_FPGA = 100
@@ -81,11 +82,13 @@ class Program:
         self.logical_port_count = max((op.logical_port for op in operations), default=0) + 1
 
         self.hardware_ports = {
-            ("cks", "data"):    0,
-            ("cks", "control"): 0,
-            ("ckr", "data"):    0,
-            ("ckr", "control"): 0,
-            "broadcast": 0
+            KEY_CKS_DATA:       0,
+            KEY_CKS_CONTROL:    0,
+            KEY_CKR_DATA:       0,
+            KEY_CKR_CONTROL:    0,
+            KEY_BROADCAST:      0,
+            KEY_REDUCE_SEND:    0,
+            KEY_REDUCE_RECV:    0
         }
         self.op_allocations = {}
         self.channel_allocations = {}
@@ -100,8 +103,8 @@ class Program:
     def get_channel_allocations(self, channel: int):
         return self.channel_allocations[channel]
 
-    def get_channel_for_logical_port(self, logical_port: int, key):
-        (kernel, method) = key
+    def get_channel_for_logical_port(self, logical_port: int, key: str):
+        (kernel, method) = split_kernel_method(key)
 
         for (channel, kernels) in self.channel_allocations.items():
             allocations = kernels[kernel]
@@ -110,8 +113,14 @@ class Program:
                     return channel
         return None
 
-    def get_broadcasts(self) -> List[Broadcast]:
-        return [op for op in self.operations if isinstance(op, Broadcast)]
+    def get_collective_ops(self, type: str) -> List[SmiOperation]:
+        mapping = {
+            "broadcast": Broadcast,
+            "reduce": Reduce
+        }
+        cls = mapping[type]
+
+        return [op for op in self.operations if isinstance(op, cls)]
 
     def _allocate_op(self, op: SmiOperation):
         logical_port = op.logical_port
@@ -138,15 +147,15 @@ class Program:
         }
 
         for key in (
-                ("cks", "data"),
-                ("cks", "control"),
-                ("ckr", "data"),
-                ("ckr", "control")
+                KEY_CKS_DATA,
+                KEY_CKS_CONTROL,
+                KEY_CKR_DATA,
+                KEY_CKR_CONTROL
         ):
             group = self.create_group(key)
             ports = [(logical, hw) for (logical, hw) in enumerate(group.hw_mapping()) if hw != INVALID_HARDWARE_PORT]
-            kernel = key[0]
-            required_ports[kernel] += [(key[1], logical, hw) for (logical, hw) in ports]
+            kernel, method = split_kernel_method(key)
+            required_ports[kernel] += [(method, logical, hw) for (logical, hw) in ports]
 
         for kernel in required_ports:
             ports = required_ports[kernel]
@@ -220,3 +229,7 @@ def map_ports(ports: List[SmiOperation], key_fn, offset: int = 0) -> List[int]:
 
 def count_allocations(ports: List[SmiOperation], key_fn) -> int:
     return sum(key_fn(p) for p in ports)
+
+
+def split_kernel_method(key: str):
+    return key.split("_")

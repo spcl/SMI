@@ -1,4 +1,3 @@
- {% macro smi_init(program) -%}
 #include <utils/smi_utils.hpp>
 
 void SmiInit(
@@ -12,7 +11,6 @@ void SmiInit(
         cl::Program &program, 
         int fpga)
 {
-    
     std::vector<cl::Kernel> kernels;
     std::vector<cl::CommandQueue> queues;
     std::vector<std::string> kernel_names;
@@ -22,12 +20,16 @@ void SmiInit(
     kernel_names.push_back("smi_kernel_cks_{{ channel }}");
     kernel_names.push_back("smi_kernel_ckr_{{ channel }}");
     {% endfor %}
-
-    // broadcast kernels
-    {% for broadcast in program.get_broadcasts() %}
-    kernel_names.push_back("smi_kernel_bcast_{{ broadcast.logical_port }}");
+    {% macro generate_collective_kernels(key, kernel_name) %}
+    {% set ops = program.get_collective_ops(key) %}
+    // {{ key }} kernels
+    {% for op in ops %}
+    kernel_names.push_back("{{ kernel_name }}_{{ op.logical_port }}");
     {% endfor %}
+    {% endmacro %}
 
+{{ generate_collective_kernels("broadcast", "smi_kernel_bcast") }}
+{{ generate_collective_kernels("reduce", "smi_kernel_reduce") }}
     IntelFPGAOCLUtils::initEnvironment(
             platform, device, fpga, context,
             program, program_path, kernel_names, kernels, queues
@@ -35,27 +37,29 @@ void SmiInit(
 
     // create buffers for CKS/CKR
     const int ports = {{ program.logical_port_count }};
+    const int cks_table_size = rank_count;
+    const int ckr_table_size = ports * 2;
     {% for channel in range(program.channel_count) %}
-    cl::Buffer routing_table_ck_s_{{ channel }}(context, CL_MEM_READ_ONLY, rank_count);
-    cl::Buffer routing_table_ck_r_{{ channel }}(context, CL_MEM_READ_ONLY, ports*2);
+    cl::Buffer routing_table_ck_s_{{ channel }}(context, CL_MEM_READ_ONLY, cks_table_size);
+    cl::Buffer routing_table_ck_r_{{ channel }}(context, CL_MEM_READ_ONLY, ckr_table_size);
     {% endfor %}
 
     // load routing tables
     std::cout << "Using " << ports << " ports" << std::endl;
-    char routing_tables_ckr[{{ program.channel_count}}][{{ program.logical_port_count * 2 }} /* port count * 2 */];
-    char routing_tables_cks[{{ program.channel_count}}][rank_count];
+    char routing_tables_cks[{{ program.channel_count}}][cks_table_size];
+    char routing_tables_ckr[{{ program.channel_count}}][ckr_table_size];
     for (int i = 0; i < {{ program.channel_count }}; i++)
     {
-        LoadRoutingTable<char>(rank, i, ports*2, routing_dir, "ckr", &routing_tables_ckr[i][0]);
-        LoadRoutingTable<char>(rank, i, rank_count, routing_dir, "cks", &routing_tables_cks[i][0]);
+        LoadRoutingTable<char>(rank, i, cks_table_size, routing_dir, "cks", &routing_tables_cks[i][0]);
+        LoadRoutingTable<char>(rank, i, ckr_table_size, routing_dir, "ckr", &routing_tables_ckr[i][0]);
     }
 
     {% for channel in range(program.channel_count) %}
-    queues[0].enqueueWriteBuffer(routing_table_ck_s_{{ channel }}, CL_TRUE, 0, rank_count, &routing_tables_cks[{{ channel }}][0]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_r_{{ channel }}, CL_TRUE, 0, ports*2, &routing_tables_ckr[{{ channel }}][0]);
+    queues[0].enqueueWriteBuffer(routing_table_ck_s_{{ channel }}, CL_TRUE, 0, cks_table_size, &routing_tables_cks[{{ channel }}][0]);
+    queues[0].enqueueWriteBuffer(routing_table_ck_r_{{ channel }}, CL_TRUE, 0, ckr_table_size, &routing_tables_ckr[{{ channel }}][0]);
     {% endfor %}
 
-    int num_ranks=rank_count;
+    int num_ranks = rank_count;
     {% set ctx = namespace(kernel=0) %}
     {% for channel in range(program.channel_count) %}
     // cks_{{ channel }}
@@ -69,17 +73,20 @@ void SmiInit(
     {% set ctx.kernel = ctx.kernel + 1 %}
     {% endfor %}
 
-    {% for broadcast in program.get_broadcasts() %}
-    // broadcast {{ broadcast.logical_port }}
+    {% macro setup_collective_kernels(key) %}
+{% set ops = program.get_collective_ops(key) %}
+{% for op in ops %}
+    // {{ key }} {{ op.logical_port }}
     kernels[{{ ctx.kernel }}].setArg(0, sizeof(char), &rank_count);
-    {% set ctx.kernel = ctx.kernel + 1 %}
-    {% endfor %}
-
-    //start the kernels
+{% set ctx.kernel = ctx.kernel + 1 %}
+{% endfor %}
+    {% endmacro %}
+{{ setup_collective_kernels("broadcast") }}
+{{ setup_collective_kernels("reduce") }}
+    // start the kernels
     const int num_kernels = kernel_names.size();
     for(int i = num_kernels - 1; i >= 0; i--)
     {
         queues[i].enqueueTask(kernels[i]);
     }
 }
-{%- endmacro %}

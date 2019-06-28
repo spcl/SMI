@@ -70,11 +70,11 @@ SMI_BChannel SMI_Open_bcast_channel(uint count, SMI_Datatype data_type, uint por
         SET_HEADER_OP(chan.net.header,SMI_SYNCH);
         SET_HEADER_DST(chan.net.header,root);
         SET_HEADER_PORT(chan.net.header,chan.port);
-        const char chan_idx_control=internal_to_cks_control_rt[chan.port];
+        const char chan_idx_control=cks_control_table[chan.port];
         //SET_HEADER_OP(chan->net.header,SMI_SYNCH);
         //SET_HEADER_DST(chan->net.header,chan->root_rank);
         //SET_HEADER_PORT(chan->net.header,chan->port);
-        write_channel_intel(channels_cks_control[chan_idx_control],chan.net); //TODO to fix
+        write_channel_intel(cks_control_channels[chan_idx_control],chan.net); //TODO to fix
         // printf("non-root rank %d, I've sent the request\n",chan->my_rank);
         //chan->beginning=false;
     }
@@ -92,8 +92,7 @@ SMI_BChannel SMI_Open_bcast_channel(uint count, SMI_Datatype data_type, uint por
 }
 
 
-
-void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void*recv_data*/)
+void SMI_Bcast(SMI_BChannel *chan, volatile void* data)
 {
     const char elem_per_packet=chan->elements_per_packet;
     char *conv=(char*)data;
@@ -139,12 +138,11 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void*recv_dat
         chan->packet_element_id++;
         if(chan->packet_element_id==chan->elements_per_packet || chan->processed_elements==message_size) //send it if packet is filled or we reached the message size
         {
-
             SET_HEADER_NUM_ELEMS(chan->net.header,chan->packet_element_id);
             SET_HEADER_PORT(chan->net.header,chan->port); //TODO fix this
             chan->packet_element_id=0;
-            const char chan_bcast_idx=internal_bcast_rt[chan->port];
-            write_channel_intel(channels_bcast_send[chan_bcast_idx],chan->net);
+            const char chan_bcast_idx=broadcast_table[chan->port];
+            write_channel_intel(broadcast_channels[chan_bcast_idx],chan->net);
            // printf("Root sending data\n");
             SET_HEADER_OP(chan->net.header,SMI_BROADCAST);
         }
@@ -163,8 +161,8 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void*recv_dat
       //  mem_fence(CLK_CHANNEL_MEM_FENCE);
         if(chan->packet_element_id_rcv==0 )
         {
-            const char chan_idx_data=internal_from_ckr_data_rt[chan->port];
-            chan->net_2=read_channel_intel(channels_ckr_data[chan_idx_data]);
+            const char chan_idx_data=ckr_data_table[chan->port];
+            chan->net_2=read_channel_intel(ckr_data_channels[chan_idx_data]);
           //  printf("Non-root received data\n");
         }
         char *data_rcv=chan->net_2.data;
@@ -198,11 +196,7 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data/*, volatile void*recv_dat
         if( chan->packet_element_id_rcv==chan->elements_per_packet)
             chan->packet_element_id_rcv=0;
     }
-
-
-
 }
-
 
 #if 0
 //CODEGEN: This must be code generated for each BCAST and must know the channels id (or the port) from which send data
@@ -253,7 +247,6 @@ __kernel void kernel_bcast(char num_rank)
 }
 #endif
 #endif // BCAST_H
-
 
 #if 0
 

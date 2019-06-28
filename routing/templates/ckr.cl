@@ -1,3 +1,5 @@
+{% import 'utils.cl' as utils %}
+
 {% macro smi_ckr(program, channel, channel_count, target_index) -%}
 __kernel void smi_kernel_ckr_{{ channel.index }}(__global volatile char *restrict rt, const char rank)
 {
@@ -66,9 +68,9 @@ __kernel void smi_kernel_ckr_{{ channel.index }}(__global volatile char *restric
                 case {{ channel_count + loop.index0 }}:
                     // send to app channel with logical port {{ logical_port }}, hardware port {{ hw_port }}, method {{ method }}
                 {% if method == "data" %}
-                    write_channel_intel(channels_ckr_data[{{ hw_port }}], message);
+                    write_channel_intel({{ utils.channel_array("ckr_data") }}[{{ hw_port }}], message);
                 {% else %}
-                    write_channel_intel(channels_ckr_control[{{ hw_port }}], message);
+                    write_channel_intel({{ utils.channel_array("ckr_control") }}[{{ hw_port }}], message);
                 {% endif %}
                     break;
                 {% endfor %}

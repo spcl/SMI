@@ -1,6 +1,6 @@
 import pytest
 
-from ops import Push, Pop, Broadcast
+from ops import Push, Pop, Broadcast, KEY_CKS_DATA, KEY_CKS_CONTROL, KEY_BROADCAST, KEY_CKR_DATA
 from program import Program, FailedAllocation
 
 
@@ -8,7 +8,7 @@ def test_allocation_fail():
     with pytest.raises(FailedAllocation):
         Program(4096, [
             Push(0),
-            Push(0)
+            Broadcast(0)
         ])
 
 
@@ -18,15 +18,15 @@ def test_allocation_overlap():
         Broadcast(1)
     ])
 
-    group = program.create_group(("cks", "data"))
+    group = program.create_group(KEY_CKS_DATA)
     assert group.hw_port_count == 2
     assert group.hw_mapping() == [0, 1]
 
-    group = program.create_group(("cks", "control"))
+    group = program.create_group(KEY_CKS_CONTROL)
     assert group.hw_port_count == 1
     assert group.hw_mapping() == [-1, 0]
 
-    group = program.create_group("broadcast")
+    group = program.create_group(KEY_BROADCAST)
     assert group.hw_port_count == 1
     assert group.hw_mapping() == [-1, 0]
 
@@ -39,11 +39,11 @@ def test_allocation_hw_port():
         Broadcast(3)
     ])
 
-    assert program.create_group(("cks", "data")).get_hw_port(0) == 0
-    assert program.create_group(("cks", "data")).get_hw_port(1) == 1
-    assert program.create_group(("ckr", "data")).get_hw_port(2) == 0
-    assert program.create_group("broadcast").get_hw_port(0) == -1
-    assert program.create_group("broadcast").get_hw_port(3) == 0
+    assert program.create_group(KEY_CKS_DATA).get_hw_port(0) == 0
+    assert program.create_group(KEY_CKS_DATA).get_hw_port(1) == 1
+    assert program.create_group(KEY_CKR_DATA).get_hw_port(2) == 0
+    assert program.create_group(KEY_BROADCAST).get_hw_port(0) == -1
+    assert program.create_group(KEY_BROADCAST).get_hw_port(3) == 0
 
 
 def test_allocation_channel_to_ports():
@@ -82,7 +82,7 @@ def test_allocation_get_channel():
         Pop(2)
     ])
 
-    assert program.get_channel_for_logical_port(0, ("cks", "data")) == 0
-    assert program.get_channel_for_logical_port(0, ("cks", "control")) == 3
-    assert program.get_channel_for_logical_port(1, ("ckr", "data")) is None
-    assert program.get_channel_for_logical_port(2, ("cks", "data")) == 2
+    assert program.get_channel_for_logical_port(0, KEY_CKS_DATA) == 0
+    assert program.get_channel_for_logical_port(0, KEY_CKS_CONTROL) == 3
+    assert program.get_channel_for_logical_port(1, KEY_CKR_DATA) is None
+    assert program.get_channel_for_logical_port(2, KEY_CKS_DATA) == 2

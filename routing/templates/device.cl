@@ -1,10 +1,11 @@
 #define BUFFER_SIZE {{ program.buffer_size }}
 
 #include "smi/channel_helpers.h"
+{% import 'utils.cl' as utils %}
 {% import 'ckr.cl' as smi_ckr %}
 {% import 'cks.cl' as smi_cks %}
 {% import 'bcast.cl' as smi_bcast %}
-{% import 'init.cl' as smi_init %}
+{% import 'reduce.cl' as smi_reduce %}
 
 // the maximum number of consecutive reads that each CKs/CKr can do from the same channel
 #define READS_LIMIT 8
@@ -29,30 +30,27 @@ channel SMI_Network_message io_in_{{ channel }} __attribute__((depth(16))) __att
 #endif
 
 /**
-  These four tables, defined at compile time, maps application endpoints (Port) to CKs/CKr and are
+  These tables, defined at compile time, maps application endpoints (Port) to channels and are
   used by the compiler to lay down the circuitry. The data routing table is used by push (and collectives)
   to send the actual communication data, while the control is used by push (and collective) to receive
-  control information (e.g. rendezvous data) from the pairs
+  control information (e.g. rendezvous data) from the pairs. There are also otehr channels for collective operations.
 */
-{% set cks_data = program.create_group(("cks", "data")) %}
-{% set cks_control = program.create_group(("cks", "control")) %}
-{% set ckr_data = program.create_group(("ckr", "data")) %}
-{% set ckr_control = program.create_group(("ckr", "control")) %}
-// logical port -> index in internal_cks/ckr -> index in channels_cks/ckr
-__constant char internal_to_cks_data_rt[{{ program.logical_port_count }}] = { {{ cks_data.hw_mapping()|join(", ") }} };
-__constant char internal_to_cks_control_rt[{{ program.logical_port_count }}] = { {{ cks_control.hw_mapping()|join(", ") }} };
-__constant char internal_from_ckr_data_rt[{{ program.logical_port_count }}] = { {{ ckr_data.hw_mapping()|join(", ") }} };
-__constant char internal_from_ckr_control_rt[{{ program.logical_port_count }}] = { {{ ckr_control.hw_mapping()|join(", ") }} };
+{% macro create_channels(group_key, depth) %}
+{% set group = program.create_group(group_key) %}
+// {{ group_key }}: logical port -> index in {{ utils.table_array(group_key) }} -> index in {{ utils.channel_array(group_key) }}
+__constant char {{ utils.table_array(group_key) }}[{{ program.logical_port_count }}] = { {{ group.hw_mapping()|join(", ") }} };
+channel SMI_Network_message {{ utils.channel_array(group_key) }}[{{ group.hw_port_count }}] __attribute__((depth({{ depth }})));
+{% endmacro %}
 
-channel SMI_Network_message channels_cks_data[{{ cks_data.hw_port_count }}] __attribute__((depth(16)));
-channel SMI_Network_message channels_cks_control[{{ cks_control.hw_port_count }}] __attribute__((depth(16)));
-channel SMI_Network_message channels_ckr_data[{{ ckr_data.hw_port_count }}] __attribute__((depth(BUFFER_SIZE)));
-channel SMI_Network_message channels_ckr_control[{{ ckr_control.hw_port_count }}] __attribute__((depth(BUFFER_SIZE)));
+{{ create_channels("cks_data", "16")}}
+{{ create_channels("cks_control", "16")}}
+{{ create_channels("ckr_data", "BUFFER_SIZE")}}
+{{ create_channels("ckr_control", "BUFFER_SIZE")}}
 
-// broadcast channels
-{% set bcast = program.create_group("broadcast") %}
-__constant char internal_bcast_rt[{{ program.logical_port_count }}] = { {{ bcast.hw_mapping()|join(", ")}} };
-channel SMI_Network_message channels_bcast_send[{{ bcast.hw_port_count }}] __attribute__((depth(2)));
+{{ create_channels("broadcast", "2")}}
+
+{{ create_channels("reduce_send", "1")}}
+{{ create_channels("reduce_recv", "1")}}
 
 __constant char QSFP_COUNT = {{ channels_per_fpga }};
 
@@ -71,14 +69,18 @@ channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __att
 #include "smi/pop.h"
 #include "smi/push.h"
 #include "smi/bcast.h"
+#include "smi/reduce.h"
 
 {% for channel in channels %}
 {{ smi_cks.smi_cks(program, channel, channels|length, target_index) }}
 {{ smi_ckr.smi_ckr(program, channel, channels|length, target_index) }}
 {% endfor %}
 
-{% for broadcast_op in program.get_broadcasts() %}
-{{ smi_bcast.smi_bcast(program, broadcast_op) }}
+{% macro generate_collective_op(key, fn) %}
+{% for op in program.get_collective_ops(key) %}
+{{ fn(program, op) }}
 {% endfor %}
+{% endmacro %}
 
-{{ smi_init.smi_init(program) }}
+{{ generate_collective_op("broadcast", smi_bcast.smi_bcast) }}
+{{ generate_collective_op("reduce", smi_reduce.smi_reduce) }}

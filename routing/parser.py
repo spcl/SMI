@@ -2,22 +2,27 @@ import json
 import re
 from typing import List, Tuple, Dict
 
-from ops import Broadcast, Push, Pop
+from ops import Broadcast, Push, Pop, Reduce
 from program import ProgramMapping, Program, SmiOperation
 
 
-def parse_port_type(id: int, type: str) -> SmiOperation:
+def parse_smi_operation(obj) -> SmiOperation:
+    id = obj["id"]
+    type = obj["type"]
+    args = obj.get("args", {})
+
     types = {
         "push": Push,
         "pop": Pop,
-        "broadcast": Broadcast
+        "broadcast": Broadcast,
+        "reduce": Reduce
     }
     assert type in types
-    return types[type](id)
+    return types[type](id, **args)
 
 
 def parse_ports(ports) -> List[SmiOperation]:
-    return [parse_port_type(int(p["id"]), p["type"]) for p in ports]
+    return [parse_smi_operation(p) for p in ports]
 
 
 def parse_programs(input: str) -> ProgramMapping:
