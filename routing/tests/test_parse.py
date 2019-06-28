@@ -1,4 +1,4 @@
-from ops import Push, Pop
+from ops import Push, Pop, Broadcast, Reduce
 from parser import parse_programs, parse_fpga_connections
 
 
@@ -15,6 +15,15 @@ def test_parse_programs():
     }, {
       "id": 2,
       "type": "pop"
+    }, {
+      "id": 3,
+      "type": "broadcast"
+    }, {
+      "id": 4,
+      "type": "reduce",
+      "args": {
+        "data_type": "float"
+      }
     }],
     "fpgas": ["fpga-0015", "fpga-0016"]
 }, {
@@ -29,11 +38,15 @@ def test_parse_programs():
     assert len(mapping.programs) == 2
     program = mapping.programs[0]
     assert program.buffer_size == 4096
-    assert len(program.operations) == 3
+    assert len(program.operations) == 5
     assert isinstance(program.operations[0], Push)
     assert program.operations[0].logical_port == 0
     assert isinstance(program.operations[2], Pop)
     assert program.operations[2].logical_port == 2
+
+    assert isinstance(program.operations[3], Broadcast)
+    assert isinstance(program.operations[4], Reduce)
+    assert program.operations[4].data_type == "float"
 
     assert mapping.fpga_map["fpga-0015"] is program
     assert mapping.fpga_map["fpga-0016"] is program
