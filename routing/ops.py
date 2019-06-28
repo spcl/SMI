@@ -48,6 +48,24 @@ class Broadcast(SmiOperation):
 
 
 class Reduce(SmiOperation):
+    """
+    Maps data type to SHIFT_REG.
+    """
+    SHIFT_REG = {
+        "float": 4,
+        "int": 1
+    }
+    DATA_SIZE = {
+        "float": 4,
+        "int": 4
+    }
+
+    def __init__(self, logical_port, data_type):
+        super().__init__(logical_port)
+
+        assert data_type in Reduce.SHIFT_REG
+        self.data_type = data_type
+
     def hw_port_usage(self) -> Set[str]:
         return {
             KEY_CKS_DATA,
@@ -57,6 +75,12 @@ class Reduce(SmiOperation):
             KEY_REDUCE_SEND,
             KEY_REDUCE_RECV
         }
+
+    def shift_reg(self) -> int:
+        return Reduce.SHIFT_REG[self.data_type]
+
+    def data_size(self) -> int:
+        return Reduce.DATA_SIZE[self.data_type]
 
     def __repr__(self):
         return "Broadcast({})".format(self.logical_port)

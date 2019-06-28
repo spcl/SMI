@@ -14,7 +14,7 @@ def test_codegen_device(file_tester):
         Broadcast(3),
         Broadcast(4),
         Push(5),
-        Reduce(6)
+        Reduce(6, "float")
     ])
 
     mapping = ProgramMapping([program], {
@@ -44,7 +44,8 @@ def test_codegen_host(file_tester):
         Pop(2),
         Broadcast(3),
         Broadcast(4),
-        Push(5)
+        Push(5),
+        Reduce(6, "float")
     ])
 
     mapping = ProgramMapping([program], {
