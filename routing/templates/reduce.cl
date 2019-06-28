@@ -1,7 +1,7 @@
 {% import 'utils.cl' as utils %}
 
-{% macro smi_bcast(program, op) -%}
-__kernel void smi_kernel_bcast_{{ op.logical_port }}(char num_rank)
+{% macro smi_reduce(program, op) -%}
+__kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)
 {
     bool external = true;
     char rcv;

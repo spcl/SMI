@@ -43,12 +43,12 @@ def channel_name(src: Channel, out: bool, graph: Graph) -> str:
 
 
 def generate_program_host(fpga: FPGA) -> str:
-    template = read_template_file("init.cl")
+    template = read_template_file("host.cl")
     return template.render(program=fpga.program)
 
 
 def generate_program_device(fpga: FPGA, fpgas: List[FPGA], graph: Graph, channels_per_fpga: int) -> str:
-    template = read_template_file("routing.cl")
+    template = read_template_file("device.cl")
     return template.render(channels=fpga.channels,
                            channels_per_fpga=channels_per_fpga,
                            target_index=target_index,

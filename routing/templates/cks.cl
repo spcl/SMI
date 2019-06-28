@@ -1,3 +1,5 @@
+{% import 'utils.cl' as utils %}
+
 {% macro smi_cks(program, channel, channel_count, target_index) -%}
 __kernel void smi_kernel_cks_{{ channel.index }}(__global volatile char *restrict rt, const int num_ranks)
 {
@@ -37,9 +39,9 @@ __kernel void smi_kernel_cks_{{ channel.index }}(__global volatile char *restric
             case {{ channel_count + loop.index0 }}:
                 // receive from app channel with logical port {{ logical_port }}, hardware port {{ hw_port }}, method {{ method }}
             {% if method == "data" %}
-                message = read_channel_nb_intel(channels_cks_data[{{ hw_port }}], &valid);
+                message = read_channel_nb_intel({{ utils.channel_array("cks_data") }}[{{ hw_port }}], &valid);
             {% else %}
-                message = read_channel_nb_intel(channels_cks_control[{{ hw_port }}], &valid);
+                message = read_channel_nb_intel({{ utils.channel_array("cks_control") }}[{{ hw_port }}], &valid);
             {% endif %}
                 break;
             {% endfor %}

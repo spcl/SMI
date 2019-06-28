@@ -1,23 +1,24 @@
-from typing import Tuple, Set
+from typing import Set
 
-KEY_CKS_DATA = ("cks", "data")
-KEY_CKS_CONTROL = ("cks", "control")
-KEY_CKR_DATA = ("ckr", "data")
-KEY_CKR_CONTROL = ("ckr", "control")
+KEY_CKS_DATA = "cks_data"
+KEY_CKS_CONTROL = "cks_control"
+KEY_CKR_DATA = "ckr_data"
+KEY_CKR_CONTROL = "ckr_control"
 KEY_BROADCAST = "broadcast"
-KEY_REDUCE = "reduce"
+KEY_REDUCE_SEND = "reduce_send"
+KEY_REDUCE_RECV = "reduce_recv"
 
 
 class SmiOperation:
     def __init__(self, logical_port):
         self.logical_port = logical_port
 
-    def hw_port_usage(self) -> Set[Tuple[str, str]]:
+    def hw_port_usage(self) -> Set[str]:
         return set()
 
 
 class Push(SmiOperation):
-    def hw_port_usage(self) -> Set[Tuple[str, str]]:
+    def hw_port_usage(self) -> Set[str]:
         return {KEY_CKS_DATA, KEY_CKR_CONTROL}
 
     def __repr__(self):
@@ -25,7 +26,7 @@ class Push(SmiOperation):
 
 
 class Pop(SmiOperation):
-    def hw_port_usage(self) -> Set[Tuple[str, str]]:
+    def hw_port_usage(self) -> Set[str]:
         return {KEY_CKR_DATA, KEY_CKS_CONTROL}
 
     def __repr__(self):
@@ -33,7 +34,7 @@ class Pop(SmiOperation):
 
 
 class Broadcast(SmiOperation):
-    def hw_port_usage(self) -> Set[Tuple[str, str]]:
+    def hw_port_usage(self) -> Set[str]:
         return {
             KEY_CKS_DATA,
             KEY_CKS_CONTROL,
@@ -47,13 +48,14 @@ class Broadcast(SmiOperation):
 
 
 class Reduce(SmiOperation):
-    def hw_port_usage(self) -> Set[Tuple[str, str]]:
+    def hw_port_usage(self) -> Set[str]:
         return {
             KEY_CKS_DATA,
             KEY_CKS_CONTROL,
             KEY_CKR_DATA,
             KEY_CKR_CONTROL,
-            KEY_REDUCE
+            KEY_REDUCE_SEND,
+            KEY_REDUCE_RECV
         }
 
     def __repr__(self):

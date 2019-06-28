@@ -1,5 +1,5 @@
 from codegen import generate_program_device, generate_program_host
-from ops import Push, Pop, Broadcast
+from ops import Push, Pop, Broadcast, Reduce
 from parser import parse_fpga_connections
 from program import Program, ProgramMapping
 from routing import create_routing_context
@@ -13,7 +13,8 @@ def test_codegen_device(file_tester):
         Pop(2),
         Broadcast(3),
         Broadcast(4),
-        Push(5)
+        Push(5),
+        Reduce(6)
     ])
 
     mapping = ProgramMapping([program], {

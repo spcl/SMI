@@ -31,7 +31,7 @@ void SMI_Push_flush(SMI_Channel *chan, void* data, bool immediate)
 
     char *conv=(char*)data;
     //we have to send the actual data and to receive the rendezvous message
-    const char chan_idx_data=internal_to_cks_data_rt[chan->port];
+    const char chan_idx_data=cks_data_table[chan->port];
     #pragma unroll
     for(int jj=0;jj<chan->size_of_type;jj++) //copy the data
         chan->net.data[chan->packet_element_id*chan->size_of_type+jj]=conv[jj];
@@ -42,7 +42,7 @@ void SMI_Push_flush(SMI_Channel *chan, void* data, bool immediate)
     {
         SET_HEADER_NUM_ELEMS(chan->net.header,chan->packet_element_id);
         chan->packet_element_id=0;
-        write_channel_intel(channels_cks_data[chan_idx_data],chan->net);
+        write_channel_intel(cks_data_channels[chan_idx_data],chan->net);
     }
     //This is used to prevent this funny compiler to re-oder the two *_channel_intel operations
    // mem_fence(CLK_CHANNEL_MEM_FENCE);
@@ -52,21 +52,16 @@ void SMI_Push_flush(SMI_Channel *chan, void* data, bool immediate)
     {
         //receives also with tokens=0
         //wait until the message arrives
-        const char chan_idx_control=internal_from_ckr_control_rt[chan->port];
-        SMI_Network_message mess=read_channel_intel(channels_ckr_control[chan_idx_control]);
+        const char chan_idx_control=ckr_control_table[chan->port];
+        SMI_Network_message mess=read_channel_intel(ckr_control_channels[chan_idx_control]);
         uint tokens=*(uint *)mess.data;
         chan->tokens+=tokens; //tokens
-
     }
-
 }
-
 
 void SMI_Push(SMI_Channel *chan, void* data)
 {
     SMI_Push_flush(chan,data,false);
 }
-
-
 
 #endif //ifndef PUSH_H
