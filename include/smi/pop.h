@@ -33,7 +33,7 @@ void SMI_Pop(SMI_Channel *chan, void *data)
         chan->net=read_channel_intel(ckr_data_channels[chan_idx_data]);
     }
     char * ptr=chan->net.data+(chan->packet_element_id)*chan->size_of_type;
-    chan->packet_element_id++;                       //first increment and then use it: otherwise compiler detects Fmax problems
+    chan->packet_element_id++;                      
     if(chan->packet_element_id==GET_HEADER_NUM_ELEMS(chan->net.header))
         chan->packet_element_id=0;
     //if we reached the number of elements in this packet get the next one from CK_R

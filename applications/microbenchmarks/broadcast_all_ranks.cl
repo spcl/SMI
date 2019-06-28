@@ -1,7 +1,7 @@
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 
 //#include "smi_broadcast.h"
-#include "broadcast/smi-0.h"
+#include "broadcast/smi-device-0.h"
 
 
 

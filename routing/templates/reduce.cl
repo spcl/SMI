@@ -86,7 +86,7 @@ __kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)
                     contiguos_reads++;
                     char* ptr = mess.data;
                     char rank = GET_HEADER_SRC(mess.header);
-                    {{ op.dat_type }} data = *({{ op.data_type }}*)(ptr);
+                    {{ op.data_type }} data = *({{ op.data_type }}*)(ptr);
                     char addto = add_to[rank];
                     data_recvd[addto]++;
                     a = addto;

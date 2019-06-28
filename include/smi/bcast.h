@@ -15,8 +15,8 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     char root_rank;
     char my_rank;                       //These two are essentially the Communicator
     char num_rank;
-    uint message_size;                  //given in number of data elements
-    uint processed_elements;            //how many data elements we have sent/received
+    unsigned int message_size;                  //given in number of data elements
+    unsigned int processed_elements;            //how many data elements we have sent/received
     char packet_element_id;             //given a packet, the id of the element that we are currently processing (from 0 to the data elements per packet)
     SMI_Datatype data_type;             //type of message
     SMI_Network_message net_2;          //buffered network message: used for the receiving side
@@ -28,7 +28,7 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
 //TODO: communicator
 
 
-SMI_BChannel SMI_Open_bcast_channel(uint count, SMI_Datatype data_type, uint port, uint root,  uint my_rank, uint num_ranks)
+SMI_BChannel SMI_Open_bcast_channel(unsigned int count, SMI_Datatype data_type, unsigned int port, unsigned int root,  unsigned int my_rank, unsigned int num_ranks)
 {
     SMI_BChannel chan;
     //setup channel descriptor
@@ -104,7 +104,7 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data)
         char *conv=(char*)data;
 
         char *data_snd=chan->net.data;
-        const uint message_size=chan->message_size;
+        const unsigned int message_size=chan->message_size;
         chan->processed_elements++;
 
         /*  #pragma unroll

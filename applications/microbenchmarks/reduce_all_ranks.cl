@@ -1,6 +1,6 @@
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 
-#include "reduce_codegen/smi-0.h"
+#include "reduce_codegen/smi-device-0.h"
 
 __kernel void app(const int N, char root,char my_rank, char num_ranks, __global volatile char *mem)
 {

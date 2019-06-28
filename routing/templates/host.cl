@@ -1,8 +1,8 @@
 #include <utils/smi_utils.hpp>
 
 void SmiInit(
-        char rank,
-        char rank_count,
+        unsigned int rank,
+        unsigned int ranks_count,
         const char* program_path,
         const char* routing_dir,
         cl::Platform &platform, 
@@ -37,7 +37,7 @@ void SmiInit(
 
     // create buffers for CKS/CKR
     const int ports = {{ program.logical_port_count }};
-    const int cks_table_size = rank_count;
+    const int cks_table_size = ranks_count;
     const int ckr_table_size = ports * 2;
     {% for channel in range(program.channel_count) %}
     cl::Buffer routing_table_ck_s_{{ channel }}(context, CL_MEM_READ_ONLY, cks_table_size);
@@ -59,17 +59,18 @@ void SmiInit(
     queues[0].enqueueWriteBuffer(routing_table_ck_r_{{ channel }}, CL_TRUE, 0, ckr_table_size, &routing_tables_ckr[{{ channel }}][0]);
     {% endfor %}
 
-    int num_ranks = rank_count;
+    char char_ranks_count=ranks_count;
+    char char_rank=rank;
     {% set ctx = namespace(kernel=0) %}
     {% for channel in range(program.channel_count) %}
     // cks_{{ channel }}
     kernels[{{ ctx.kernel }}].setArg(0, sizeof(cl_mem), &routing_table_ck_s_{{ channel }});
-    kernels[{{ ctx.kernel }}].setArg(1, sizeof(int), &num_ranks);
+    kernels[{{ ctx.kernel }}].setArg(1, sizeof(char), &char_ranks_count);
 
     // ckr_{{ channel }}
     {% set ctx.kernel = ctx.kernel + 1 %}
     kernels[{{ ctx.kernel }}].setArg(0, sizeof(cl_mem), &routing_table_ck_r_{{ channel }});
-    kernels[{{ ctx.kernel }}].setArg(1, sizeof(char), &rank);
+    kernels[{{ ctx.kernel }}].setArg(1, sizeof(char), &char_rank);
     {% set ctx.kernel = ctx.kernel + 1 %}
     {% endfor %}
 
@@ -77,7 +78,7 @@ void SmiInit(
 {% set ops = program.get_collective_ops(key) %}
 {% for op in ops %}
     // {{ key }} {{ op.logical_port }}
-    kernels[{{ ctx.kernel }}].setArg(0, sizeof(char), &rank_count);
+    kernels[{{ ctx.kernel }}].setArg(0, sizeof(char), &char_ranks_count);
 {% set ctx.kernel = ctx.kernel + 1 %}
 {% endfor %}
     {% endmacro %}

@@ -14,8 +14,9 @@
 #include <cmath>
 #include "../../include/utils/ocl_utils.hpp"
 #include "../../include/utils/utils.hpp"
-#include "../../include/utils/smi_utils.hpp"
+#include "reduce_codegen/smi-host-0.h"
 #define ROUTING_DIR "applications/microbenchmarks/reduce_codegen/"
+
 //#define CHECK
 using namespace std;
 int main(int argc, char *argv[])
@@ -77,127 +78,46 @@ int main(int argc, char *argv[])
     cl::Device device;
     cl::Context context;
     cl::Program program;
-    std::vector<cl::Kernel> kernels;
-    std::vector<cl::CommandQueue> queues;
-    std::vector<std::string> kernel_names;
-    kernel_names.push_back("app");
-     kernel_names.push_back("kernel_reduce");
 
-   // kernel_names.push_back("kernel_reduce_noroot");
-   // kernel_names.push_back("kernel_reduce_root");
+    SmiInit(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga);
 
-    kernel_names.push_back("smi_kernel_cks_0");
-    kernel_names.push_back("smi_kernel_cks_1");
-    kernel_names.push_back("smi_kernel_cks_2");
-    kernel_names.push_back("smi_kernel_cks_3");
-    kernel_names.push_back("smi_kernel_ckr_0");
-    kernel_names.push_back("smi_kernel_ckr_1");
-    kernel_names.push_back("smi_kernel_ckr_2");
-    kernel_names.push_back("smi_kernel_ckr_3");
+    cl::Kernel kernel;
+    cl::CommandQueue queue;
+    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
+    IntelFPGAOCLUtils::createKernel(program,"app",kernel);
 
-
-    //this is for the case with classi channels
-    IntelFPGAOCLUtils::initEnvironment(platform,device,fpga,context,program,program_path,kernel_names, kernels,queues);
-
-    //create memory buffers
-    char tags=1;
     cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
-    cl::Buffer routing_table_ck_s_0(context,CL_MEM_READ_ONLY,rank_count);
-    cl::Buffer routing_table_ck_s_1(context,CL_MEM_READ_ONLY,rank_count);
-    cl::Buffer routing_table_ck_s_2(context,CL_MEM_READ_ONLY,rank_count);
-    cl::Buffer routing_table_ck_s_3(context,CL_MEM_READ_ONLY,rank_count);
-    cl::Buffer routing_table_ck_r_0(context,CL_MEM_READ_ONLY,tags*2);
-    cl::Buffer routing_table_ck_r_1(context,CL_MEM_READ_ONLY,tags*2);
-    cl::Buffer routing_table_ck_r_2(context,CL_MEM_READ_ONLY,tags*2);
-    cl::Buffer routing_table_ck_r_3(context,CL_MEM_READ_ONLY,tags*2);
-
-    //load ck_r
-    char routing_tables_ckr[4][2]; //two tags
-    char routing_tables_cks[4][rank_count]; //4 ranks
-    for (int i = 0; i < kChannelsPerRank; ++i) {
-        LoadRoutingTable<char>(rank, i, 2, ROUTING_DIR, "ckr", &routing_tables_ckr[i][0]);
-        LoadRoutingTable<char>(rank, i, rank_count, ROUTING_DIR, "cks", &routing_tables_cks[i][0]);
-    }
-//    std::cout << "Rank: "<< rank<<endl;
-//    for(int i=0;i<kChannelsPerRank;i++)
-//        for(int j=0;j<rank_count;j++)
-//            std::cout << i<< "," << j<<": "<< (int)routing_tables_cks[i][j]<<endl;
-//    sleep(rank);
-
-    queues[0].enqueueWriteBuffer(routing_table_ck_s_0, CL_TRUE,0,rank_count,&routing_tables_cks[0][0]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_s_1, CL_TRUE,0,rank_count,&routing_tables_cks[1][0]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_s_2, CL_TRUE,0,rank_count,&routing_tables_cks[2][0]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_s_3, CL_TRUE,0,rank_count,&routing_tables_cks[3][0]);
-
-    queues[0].enqueueWriteBuffer(routing_table_ck_r_0, CL_TRUE,0,tags*2,&routing_tables_ckr[0][0]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_r_1, CL_TRUE,0,tags*2,&routing_tables_ckr[1][0]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_r_2, CL_TRUE,0,tags*2,&routing_tables_ckr[2][0]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_r_3, CL_TRUE,0,tags*2,&routing_tables_ckr[3][0]);
-
-    kernels[0].setArg(0,sizeof(int),&n);
-    kernels[0].setArg(1,sizeof(char),&root);
-    kernels[0].setArg(2,sizeof(char),&rank);
-    kernels[0].setArg(3,sizeof(char),&rank_count);
-    kernels[0].setArg(4,sizeof(cl_mem),&check);
 
 
-    kernels[1].setArg(0,sizeof(char),&rank_count);
-    //kernels[2].setArg(0,sizeof(char),&rank_count);
-
-
-    //args for the CK_Ss
-    int num_ranks=rank_count;
-    kernels[2].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
-    kernels[2].setArg(1,sizeof(int),&num_ranks);
-    kernels[3].setArg(0,sizeof(cl_mem),&routing_table_ck_s_1);
-    kernels[3].setArg(1,sizeof(int),&num_ranks);
-    kernels[4].setArg(0,sizeof(cl_mem),&routing_table_ck_s_2);
-    kernels[4].setArg(1,sizeof(int),&num_ranks);
-    kernels[5].setArg(0,sizeof(cl_mem),&routing_table_ck_s_3);
-    kernels[5].setArg(1,sizeof(int),&num_ranks);
-
-    //args for the CK_Rs
-    kernels[6].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
-    kernels[6].setArg(1,sizeof(char),&rank);
-    kernels[7].setArg(0,sizeof(cl_mem),&routing_table_ck_r_1);
-    kernels[7].setArg(1,sizeof(char),&rank);
-    kernels[8].setArg(0,sizeof(cl_mem),&routing_table_ck_r_2);
-    kernels[8].setArg(1,sizeof(char),&rank);
-    kernels[9].setArg(0,sizeof(cl_mem),&routing_table_ck_r_3);
-    kernels[9].setArg(1,sizeof(char),&rank);
-
-    //start the CKs
-    const int num_kernels=kernel_names.size();
-
-    for(int i=num_kernels-1;i>=1;i--) //start also the bcast kernel
-        queues[i].enqueueTask(kernels[i]);
-
+   
+    kernel.setArg(0,sizeof(int),&n);
+    kernel.setArg(1,sizeof(char),&root);
+    kernel.setArg(2,sizeof(char),&rank);
+    kernel.setArg(3,sizeof(char),&rank_count);
+    kernel.setArg(4,sizeof(cl_mem),&check);
     std::vector<double> times;
     for(int i=0;i<runs;i++)
     {
       //  kernels[0].setArg(5,sizeof(int),&i);
-        cl::Event events[1]; //this defination must stay here
+        cl::Event events; //this defination must stay here
         // wait for other nodes
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
 
+        queue.enqueueTask(kernel,nullptr,&events);
 
-        for(int i=0;i<1;i++)
-            queues[i].enqueueTask(kernels[i],nullptr,&events[i]);
-
-        for(int i=0;i<1;i++)
-            queues[i].finish();
+        queue.finish();
 
 
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
         if(rank==root)
         {
             ulong end, start;
-            events[0].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
-            events[0].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
+            events.getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
+            events.getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
             double time= (double)((end-start)/1000.0f);
             times.push_back(time);
             char res;
-            queues[0].enqueueReadBuffer(check,CL_TRUE,0,1,&res);
+            queue.enqueueReadBuffer(check,CL_TRUE,0,1,&res);
             if(res==1)
                 cout << "Result is Ok!"<<endl;
             else
