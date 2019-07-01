@@ -7,6 +7,7 @@
 {% import 'bcast.cl' as smi_bcast %}
 {% import 'reduce.cl' as smi_reduce %}
 {% import 'scatter.cl' as smi_scatter %}
+{% import 'gather.cl' as smi_gather %}
 
 // the maximum number of consecutive reads that each CKs/CKr can do from the same channel
 #define READS_LIMIT 8
@@ -54,6 +55,7 @@ channel SMI_Network_message {{ utils.channel_array(group_key) }}[{{ group.hw_por
 {{ create_channels("reduce_recv", "1")}}
 
 {{ create_channels("scatter", "2")}}
+{{ create_channels("gather", "2")}}
 
 __constant char QSFP_COUNT = {{ channels_per_fpga }};
 
@@ -74,6 +76,7 @@ channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __att
 #include "smi/bcast.h"
 #include "smi/reduce.h"
 #include "smi/scatter.h"
+#include "smi/gather.h"
 
 {% for channel in channels %}
 {{ smi_cks.smi_cks(program, channel, channels|length, target_index) }}
@@ -89,3 +92,4 @@ channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __att
 {{ generate_collective_op("broadcast", smi_bcast.smi_bcast) }}
 {{ generate_collective_op("reduce", smi_reduce.smi_reduce) }}
 {{ generate_collective_op("scatter", smi_scatter.smi_scatter) }}
+{{ generate_collective_op("gather", smi_gather.smi_gather) }}

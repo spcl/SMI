@@ -2,7 +2,7 @@ import json
 import re
 from typing import List, Tuple, Dict
 
-from ops import Broadcast, Push, Pop, Reduce, Scatter
+from ops import Broadcast, Push, Pop, Reduce, Scatter, Gather
 from program import ProgramMapping, Program, SmiOperation
 
 
@@ -16,7 +16,8 @@ def parse_smi_operation(obj) -> SmiOperation:
         "pop": Pop,
         "broadcast": Broadcast,
         "reduce": Reduce,
-        "scatter": Scatter
+        "scatter": Scatter,
+        "gather": Gather
     }
     assert type in types
     return types[type](id, **args)

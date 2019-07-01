@@ -8,6 +8,8 @@ KEY_BROADCAST = "broadcast"
 KEY_REDUCE_SEND = "reduce_send"
 KEY_REDUCE_RECV = "reduce_recv"
 KEY_SCATTER = "scatter"
+KEY_GATHER = "gather"
+
 
 
 class SmiOperation:
@@ -99,4 +101,19 @@ class Scatter(SmiOperation):
 
     def __repr__(self):
         return "Scatter({})".format(self.logical_port)
+
+
+class Gather(SmiOperation):
+    def hw_port_usage(self) -> Set[str]:
+        return {
+            KEY_CKS_DATA,
+            KEY_CKS_CONTROL,
+            KEY_CKR_DATA,
+            KEY_CKR_CONTROL,
+            KEY_GATHER
+        }
+
+    def __repr__(self):
+        return "Gather({})".format(self.logical_port)
+
 

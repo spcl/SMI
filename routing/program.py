@@ -1,7 +1,7 @@
 from typing import List, Dict
 
 from ops import SmiOperation, Broadcast, KEY_CKS_DATA, KEY_CKS_CONTROL, KEY_CKR_DATA, KEY_BROADCAST, KEY_CKR_CONTROL, \
-    Reduce, KEY_REDUCE_SEND, KEY_REDUCE_RECV, Scatter, KEY_SCATTER
+    Reduce, KEY_REDUCE_SEND, KEY_REDUCE_RECV, Scatter, KEY_SCATTER, Gather, KEY_GATHER
 from utils import round_robin
 
 COST_INTER_FPGA = 100
@@ -89,7 +89,8 @@ class Program:
             KEY_BROADCAST:      0,
             KEY_REDUCE_SEND:    0,
             KEY_REDUCE_RECV:    0,
-            KEY_SCATTER:        0
+            KEY_SCATTER:        0,
+            KEY_GATHER:        0
         }
         self.op_allocations = {}
         self.channel_allocations = {}
@@ -118,7 +119,8 @@ class Program:
         mapping = {
             "broadcast": Broadcast,
             "reduce": Reduce,
-            "scatter": Scatter
+            "scatter": Scatter,
+            "gather": Gather
         }
         cls = mapping[type]
 
