@@ -115,8 +115,8 @@ void SMI_Gather(SMI_GatherChannel *chan, volatile void* send_data, volatile void
         //   mem_fence(CLK_CHANNEL_MEM_FENCE);
         //receive the data
         if(chan->packet_element_id_rcv==0 && chan->next_rcv!=chan->my_rank) {
-            const char chan_idx_data=cks_data_table[chan->port];
-            chan->net=read_channel_intel(cks_data_channels[chan_idx_data]);
+            const char chan_idx_data=ckr_data_table[chan->port];
+            chan->net=read_channel_intel(ckr_data_channels[chan_idx_data]);
         }
 
         char *data_rcv=chan->net.data;
