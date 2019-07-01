@@ -83,6 +83,7 @@ int main(int argc, char *argv[])
     IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
     IntelFPGAOCLUtils::createKernel(program,"app",kernel);
 
+    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
 
     kernel.setArg(0,sizeof(int),&n);
     kernel.setArg(1,sizeof(char),&root);
