@@ -74,7 +74,6 @@ SMI_RChannel SMI_Open_reduce_channel(uint count, SMI_Datatype data_type, uint po
 }
 
 
-//FLOAT TAILORED
 void SMI_Reduce(SMI_RChannel *chan, volatile void* data_snd, volatile void* data_rcv)
 {
 
@@ -120,6 +119,7 @@ void SMI_Reduce(SMI_RChannel *chan, volatile void* data_snd, volatile void* data
         SMI_Network_message req=read_channel_intel(ckr_control_channels[chan_idx_control]);
         mem_fence(CLK_CHANNEL_MEM_FENCE);
         //then send the data
+        //printf("NOn-root, received credits, send data\n");
         SET_HEADER_OP(chan->net.header,SMI_REDUCE);
         const char chan_idx_data=cks_data_table[chan->port];
         write_channel_intel(cks_data_channels[chan_idx_data],chan->net);

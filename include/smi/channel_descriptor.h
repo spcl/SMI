@@ -21,16 +21,16 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     char sender_rank;
     char receiver_rank;
     char port;
-    uint message_size;              //given in number of data elements
-    uint processed_elements;        //how many data elements we have sent/received
-    uint packet_element_id;         //given a packet, the id of the element that we are currently processing (from 0 to the data elements per packet)
+    unsigned int message_size;              //given in number of data elements
+    unsigned int processed_elements;        //how many data elements we have sent/received
+    unsigned int packet_element_id;         //given a packet, the id of the element that we are currently processing (from 0 to the data elements per packet)
     SMI_Datatype data_type;               //type of message
     char op_type;            //type of operation
     char size_of_type;              //size of data type
     char elements_per_packet;       //number of data elements per packet
     bool rendezvous;                //true if rendezvous has been done, false otherwise
-    uint tokens;                    //current number of tokens (one tokens allow the sender to transmit one data element)
-    uint max_tokens;                //max tokens on the sender side
+    unsigned int tokens;                    //current number of tokens (one tokens allow the sender to transmit one data element)
+    unsigned int max_tokens;                //max tokens on the sender side
 }SMI_Channel;
 
 

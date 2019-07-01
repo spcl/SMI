@@ -54,7 +54,9 @@ void SMI_Push_flush(SMI_Channel *chan, void* data, bool immediate)
         //wait until the message arrives
         const char chan_idx_control=ckr_control_table[chan->port];
         SMI_Network_message mess=read_channel_intel(ckr_control_channels[chan_idx_control]);
-        uint tokens=*(uint *)mess.data;
+        unsigned int tokens=*(unsigned int *)mess.data;
+        //printf("PUSH: Remaining %u data elements, received %u tokens\n",chan->message_size-chan->processed_elements, tokens);
+
         chan->tokens+=tokens; //tokens
     }
 }

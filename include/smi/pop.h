@@ -39,6 +39,10 @@ void SMI_Pop(SMI_Channel *chan, void *data)
     //if we reached the number of elements in this packet get the next one from CK_R
     chan->processed_elements++;                      //TODO: probably useless
     //create data element
+    if(chan->data_type==SMI_CHAR)
+        *(char *)data= *(char*)(ptr);
+    if(chan->data_type==SMI_SHORT)
+        *(short *)data= *(short*)(ptr);
     if(chan->data_type==SMI_INT)
         *(int *)data= *(int*)(ptr);
     if(chan->data_type==SMI_FLOAT)
@@ -54,11 +58,11 @@ void SMI_Pop(SMI_Channel *chan, void *data)
 
         //At this point, the sender has still max_tokens*7/8 tokens: we have to consider this while we send
         //the new tokens to it
-        chan->tokens=MIN(chan->max_tokens/8, MAX(chan->message_size-chan->processed_elements-chan->max_tokens*7/8,0)); //b/2
-
+        chan->tokens=(unsigned int)(MIN(chan->max_tokens/8, MAX((int)chan->message_size-(int)chan->processed_elements-(int)chan->max_tokens*7/8,0))); //b/2
+        //printf("POP: Remaining %u data elements, sending %u tokens (MIN %d, %d)\n",(int)chan->message_size-(int)chan->processed_elements, chan->tokens,chan->max_tokens/8, MAX((int)chan->message_size-(int)chan->processed_elements-(int)chan->max_tokens*7/8,0));
         const char chan_idx_control=cks_control_table[chan->port];
         SMI_Network_message mess;
-        *(uint*)mess.data=chan->tokens;
+        *(unsigned int*)mess.data=chan->tokens;
         SET_HEADER_DST(mess.header,chan->sender_rank);
         SET_HEADER_PORT(mess.header,chan->port);
         SET_HEADER_OP(mess.header,SMI_SYNCH);

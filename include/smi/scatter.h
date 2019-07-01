@@ -105,7 +105,7 @@ void SMI_Scatter(SMI_ScatterChannel *chan, void* send_data, void* rcv_data)
         {
             case SMI_CHAR:
                 if(chan->next_rcv==chan->my_rank)
-                    data_snd[0]=*conv;
+                    ((char *)(rcv_data))[0]=*conv;
                 else
                     data_snd[chan->packet_element_id]=*conv;
             break;

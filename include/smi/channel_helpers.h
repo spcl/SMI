@@ -13,7 +13,7 @@
  * @param port
  * @return
  */
-SMI_Channel SMI_Open_send_channel(uint count, SMI_Datatype data_type, uint destination, uint port)
+SMI_Channel SMI_Open_send_channel(unsigned int count, SMI_Datatype data_type, unsigned int destination, unsigned int port)
 {
     SMI_Channel chan;
     //setup channel descriptor
@@ -66,7 +66,7 @@ SMI_Channel SMI_Open_send_channel(uint count, SMI_Datatype data_type, uint desti
     return chan;
 }
 
-SMI_Channel SMI_Open_receive_channel(uint count, SMI_Datatype data_type, uint source, uint port)
+SMI_Channel SMI_Open_receive_channel(unsigned int count, SMI_Datatype data_type, unsigned int source, unsigned int port)
 {
     SMI_Channel chan;
     //setup channel descriptor
