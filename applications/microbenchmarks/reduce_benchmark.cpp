@@ -13,9 +13,8 @@
 #include <limits.h>
 #include <cmath>
 #include "../../include/utils/ocl_utils.hpp"
-#include "../../include/utils/utils.hpp"
 #include "reduce_codegen/smi-host-0.h"
-#define ROUTING_DIR "applications/microbenchmarks/reduce_codegen/"
+#define ROUTING_DIR "applications/microbenchmarks/scatter_codegen/"
 
 //#define CHECK
 using namespace std;
@@ -98,7 +97,6 @@ int main(int argc, char *argv[])
     std::vector<double> times;
     for(int i=0;i<runs;i++)
     {
-      //  kernels[0].setArg(5,sizeof(int),&i);
         cl::Event events; //this defination must stay here
         // wait for other nodes
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));

@@ -9,7 +9,6 @@
 #include "network_message.h"
 
 
-channel SMI_Network_message channels_scatter_send __attribute__((depth(2))); //CODEGEN
 
 typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     SMI_Network_message net;         //buffered network message
@@ -146,7 +145,10 @@ void SMI_Scatter(SMI_ScatterChannel *chan, void* send_data, void* rcv_data)
             else
                  SET_HEADER_OP(chan->net.header,SMI_SCATTER);
             if(chan->next_rcv!=chan->my_rank)
-                write_channel_intel(channels_scatter_send,chan->net);
+            {
+                const char chan_scatter_idx=scatter_table[chan->port];
+                write_channel_intel(scatter_channels[chan_scatter_idx],chan->net);
+            }
             chan->packet_element_id=0;
             if(chan->processed_elements==message_size)
             {   //we finished the data that need to be sent to this rcvr
@@ -198,7 +200,7 @@ void SMI_Scatter(SMI_ScatterChannel *chan, void* send_data, void* rcv_data)
 
 }
 
-
+#if 0
 //temp here, then if it works we need to move it
 //TODO: This receives the data only from the root
 //But it doesn't know when this is a beginning of a new broadcast
@@ -241,6 +243,6 @@ __kernel void kernel_scatter(char num_rank)
     }
 
 }
+#endif
 
-
-#endif // BCAST_H
+#endif // SCATTER_H

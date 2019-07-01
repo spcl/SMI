@@ -1,6 +1,6 @@
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 
-#include "scatter_codegen/smi-0.h"
+#include "scatter_codegen/smi-device-0.h"
 
 
 

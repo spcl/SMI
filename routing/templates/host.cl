@@ -30,6 +30,8 @@ void SmiInit(
 
 {{ generate_collective_kernels("broadcast", "smi_kernel_bcast") }}
 {{ generate_collective_kernels("reduce", "smi_kernel_reduce") }}
+{{ generate_collective_kernels("scatter", "smi_kernel_scatter") }}
+
     IntelFPGAOCLUtils::initEnvironment(
             platform, device, fpga, context,
             program, program_path, kernel_names, kernels, queues
@@ -84,6 +86,7 @@ void SmiInit(
     {% endmacro %}
 {{ setup_collective_kernels("broadcast") }}
 {{ setup_collective_kernels("reduce") }}
+{{ setup_collective_kernels("scatter") }}
     // start the kernels
     const int num_kernels = kernel_names.size();
     for(int i = num_kernels - 1; i >= 0; i--)

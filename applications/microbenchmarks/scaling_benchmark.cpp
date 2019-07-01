@@ -94,14 +94,14 @@ int main(int argc, char *argv[])
 
     kernel_names.push_back("app");
     kernel_names.push_back("app_1");
-    kernel_names.push_back("CK_S_0");
-    kernel_names.push_back("CK_S_1");
-    kernel_names.push_back("CK_S_2");
-    kernel_names.push_back("CK_S_3");
-    kernel_names.push_back("CK_R_0");
-    kernel_names.push_back("CK_R_1");
-    kernel_names.push_back("CK_R_2");
-    kernel_names.push_back("CK_R_3");
+    kernel_names.push_back("smi_kernel_cks_0");
+    kernel_names.push_back("smi_kernel_cks_1");
+    kernel_names.push_back("smi_kernel_cks_2");
+    kernel_names.push_back("smi_kernel_cks_3");
+    kernel_names.push_back("smi_kernel_ckr_0");
+    kernel_names.push_back("smi_kernel_ckr_1");
+    kernel_names.push_back("smi_kernel_ckr_2");
+    kernel_names.push_back("smi_kernel_ckr_3");
 
 
     //this is for the case with classi channels
@@ -181,15 +181,14 @@ int main(int argc, char *argv[])
         kernels[1].setArg(1,sizeof(int),&n);
     }
     //args for the CK_Ss
-    int num_ranks=rank_count;
     kernels[2].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
-    kernels[2].setArg(1,sizeof(int),&num_ranks);
+    kernels[2].setArg(1,sizeof(char),&rank_count);
     kernels[3].setArg(0,sizeof(cl_mem),&routing_table_ck_s_1);
-    kernels[3].setArg(1,sizeof(int),&num_ranks);
+    kernels[3].setArg(1,sizeof(char),&rank_count);
     kernels[4].setArg(0,sizeof(cl_mem),&routing_table_ck_s_2);
-    kernels[4].setArg(1,sizeof(int),&num_ranks);
+    kernels[4].setArg(1,sizeof(char),&rank_count);
     kernels[5].setArg(0,sizeof(cl_mem),&routing_table_ck_s_3);
-    kernels[5].setArg(1,sizeof(int),&num_ranks);
+    kernels[5].setArg(1,sizeof(char),&rank_count);
 
     //args for the CK_Rs
     kernels[6].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
