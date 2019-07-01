@@ -70,8 +70,8 @@ SMI_ScatterChannel SMI_Open_scatter_channel(uint send_count,  uint recv_count, S
         SET_HEADER_OP(chan.net.header,SMI_SYNCH);
         SET_HEADER_DST(chan.net.header,root);
         SET_HEADER_PORT(chan.net.header,chan.port);
-        const char chan_idx_control=internal_to_cks_control_rt[chan.port];
-        write_channel_intel(channels_cks_control[chan_idx_control],chan.net); 
+        const char chan_idx_control=cks_control_table[chan.port];
+        write_channel_intel(cks_control_channels[chan_idx_control],chan.net); 
         // printf("non-root rank %d, I've sent the request\n",chan->my_rank);
     }
     else
@@ -162,8 +162,8 @@ void SMI_Scatter(SMI_ScatterChannel *chan, void* send_data, void* rcv_data)
         if(chan->packet_element_id_rcv==0)
         {
           //  const char chan_idx=internal_receiver_rt[chan->tag_in];
-            const char chan_idx_data=internal_from_ckr_data_rt[chan->port];
-            chan->net_2=read_channel_intel(channels_ckr_data[chan_idx_data]);
+            const char chan_idx_data=ckr_data_table[chan->port];
+            chan->net_2=read_channel_intel(ckr_data_channels[chan_idx_data]);
         }
         char *data_rcv=chan->net_2.data;
         switch(chan->data_type)

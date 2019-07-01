@@ -7,7 +7,6 @@ __kernel void smi_kernel_scatter_{{ op.logical_port }}(char num_rank)
     char to_be_received_requests=0; //how many ranks have still to communicate that they are ready to receive
     const char num_requests=num_rank-1;
     SMI_Network_message mess;
-    bool external = true;
     {% set ckr_control = program.create_group("ckr_control") %}
     {% set cks_data = program.create_group("cks_data") %}
     {% set scatter = program.create_group("scatter") %}
