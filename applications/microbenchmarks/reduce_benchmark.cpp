@@ -14,7 +14,7 @@
 #include <cmath>
 #include "../../include/utils/ocl_utils.hpp"
 #include "reduce_codegen/smi-host-0.h"
-#define ROUTING_DIR "applications/microbenchmarks/scatter_codegen/"
+#define ROUTING_DIR "applications/microbenchmarks/reduce_codegen/"
 
 //#define CHECK
 using namespace std;

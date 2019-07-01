@@ -14,7 +14,6 @@
 #include <cmath>
 #include "../../include/utils/ocl_utils.hpp"
 #include "../../include/utils/utils.hpp"
-#include "../../include/utils/smi_utils.hpp"
 #include "scatter_codegen/smi-host-0.h"
 #define ROUTING_DIR "applications/microbenchmarks/scatter_codegen/"
 //#define CHECK
