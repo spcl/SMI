@@ -6,7 +6,7 @@
 
 __kernel void app(const int N, char root,char my_rank, char num_ranks, __global char *mem)
 {
-    SMI_GatherChannel  __attribute__((register)) chan= SMI_Open_gather_channel(N,N, SMI_INT, root,my_rank,num_ranks);
+    SMI_GatherChannel  __attribute__((register)) chan= SMI_Open_gather_channel(N,N, SMI_INT,0, root,my_rank,num_ranks);
     const int loop_bound=(my_rank==root)?N*num_ranks:N;
     int to_send=my_rank*N;
     char check=1;

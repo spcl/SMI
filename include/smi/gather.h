@@ -108,7 +108,7 @@ void SMI_Gather(SMI_GatherChannel *chan, volatile void* send_data, volatile void
             SET_HEADER_DST(chan->net.header,chan->next_rcv);
             SET_HEADER_PORT(chan->net.header,chan->port);
             const char chan_idx_control=cks_control_table[chan->port];
-            write_channel_intel(channels_cks_control[chan_idx_data],chan->net);
+            write_channel_intel(cks_control_channels[chan_idx_control],chan->net);
             //  printf("**Root send request to the rank\n");
         }
 
@@ -116,7 +116,7 @@ void SMI_Gather(SMI_GatherChannel *chan, volatile void* send_data, volatile void
         //receive the data
         if(chan->packet_element_id_rcv==0 && chan->next_rcv!=chan->my_rank) {
             const char chan_idx_data=cks_data_table[chan->port];
-            chan->net=read_channel_intel(channels_cks_data[chan_idx_data]);
+            chan->net=read_channel_intel(cks_data_channels[chan_idx_data]);
         }
 
         char *data_rcv=chan->net.data;
