@@ -15,7 +15,7 @@ __kernel void app(const int N, char root,char my_rank, char num_ranks, __global 
         int to_rcv;
         SMI_Gather(&chan,&to_send, &to_rcv);
         to_send++;
-       // printf("Rank %d sent %d out of %d\n",my_rank,i,loop_bound);
+        printf("Rank %d sent %d out of %d\n",my_rank,i,loop_bound);
         if(my_rank==root)
             check&=(to_rcv==i);
        // if(my_rank==root && to_rcv!=i)
