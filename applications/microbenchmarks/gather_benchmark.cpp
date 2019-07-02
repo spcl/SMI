@@ -75,7 +75,8 @@ int main(int argc, char *argv[])
     cl::Device device;
     cl::Context context;
     cl::Program program;
-
+    //sleep(rank);
+    std::cout << "Rank: " <<rank<<std::endl;
     SmiInit(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga);
     cl::Kernel kernel;
     cl::CommandQueue queue;
@@ -97,9 +98,8 @@ int main(int argc, char *argv[])
         // wait for other nodes
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
         queue.enqueueTask(kernel,nullptr,&events);
-
         queue.finish();
-
+        printf("Rank %d finished\n",rank);
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
         if(rank==0)
         {

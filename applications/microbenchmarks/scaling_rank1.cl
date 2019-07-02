@@ -7,7 +7,7 @@
 */
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
-#include "codegen_scaling/smi-1.h"
+#include "codegen_scaling/smi-device-1.h"
 
 __kernel void app(__global char *mem, const int N)
 {

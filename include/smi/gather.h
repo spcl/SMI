@@ -73,10 +73,9 @@ SMI_GatherChannel SMI_Open_gather_channel(uint send_count,  uint recv_count, SMI
     }
 
     //setup header for the message
-
     SET_HEADER_SRC(chan.net.header,root);
-    SET_HEADER_PORT(chan.net.header,chan.port);        //used by destination
-    SET_HEADER_NUM_ELEMS(chan.net.header,0);    //at the beginning no data
+    SET_HEADER_PORT(chan.net.header,chan.port);
+    SET_HEADER_NUM_ELEMS(chan.net.header,0);
     SET_HEADER_OP(chan.net_2.header,SMI_SYNCH);
     SET_HEADER_PORT(chan.net_2.header,chan.port); 
     SET_HEADER_DST(chan.net_2.header,chan.root_rank);
@@ -114,15 +113,16 @@ void SMI_Gather(SMI_GatherChannel *chan, volatile void* send_data, volatile void
             SET_HEADER_PORT(chan->net.header,chan->port);
             const char chan_idx_control=cks_control_table[chan->port];
             write_channel_intel(cks_control_channels[chan_idx_control],chan->net);
-            // printf("**Root send request to the rank %d\n",chan->next_rcv);
+            //printf("**Root send request to the rank %d\n",chan->next_rcv);
         }
 
         //   mem_fence(CLK_CHANNEL_MEM_FENCE);
         //receive the data
         if(chan->packet_element_id_rcv==0 && chan->next_rcv!=chan->my_rank) {
             const char chan_idx_data=ckr_data_table[chan->port];
+          //  printf("Root, waiting data...\n");
             chan->net=read_channel_intel(ckr_data_channels[chan_idx_data]);
-            //printf("Root, received data\n");
+          //  printf("Root, received data\n");
         }
 
         char *data_rcv=chan->net.data;
@@ -147,7 +147,10 @@ void SMI_Gather(SMI_GatherChannel *chan, volatile void* send_data, volatile void
                         *(int *)rcv_data= *(int*)(ptr);
                     }
                     else
+                    {
+                      //  printf("copying data to root\n");
                         *(int *)rcv_data= *(int*)(send_data);
+                    }
                     break;
                 }
             case SMI_FLOAT:
@@ -214,7 +217,7 @@ void SMI_Gather(SMI_GatherChannel *chan, volatile void* send_data, volatile void
 
             SET_HEADER_NUM_ELEMS(chan->net_2.header,chan->packet_element_id);
             const char chan_gather_idx=gather_table[chan->port];
-            write_channel_intel(gather_channels[chan_gather_idx],chan->net_2);
+            write_channel_intel(gather_channels[chan_gather_idx],chan->net_2); //first one is a SMI_SYNCH
             SET_HEADER_OP(chan->net_2.header,SMI_GATHER);
             chan->packet_element_id=0;
         }

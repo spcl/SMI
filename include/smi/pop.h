@@ -58,7 +58,8 @@ void SMI_Pop(SMI_Channel *chan, void *data)
 
         //At this point, the sender has still max_tokens*7/8 tokens: we have to consider this while we send
         //the new tokens to it
-        chan->tokens=(unsigned int)(MIN(chan->max_tokens/8, MAX((int)chan->message_size-(int)chan->processed_elements-(int)chan->max_tokens*7/8,0))); //b/2
+        unsigned int sender=((int)((int)chan->message_size-(int)chan->processed_elements-(int)chan->max_tokens*7/8)) < 0 ? 0: chan->message_size-chan->processed_elements-chan->max_tokens*7/8;
+        chan->tokens=(unsigned int)(MIN(chan->max_tokens/8, sender)); //b/2
         //printf("POP: Remaining %u data elements, sending %u tokens (MIN %d, %d)\n",(int)chan->message_size-(int)chan->processed_elements, chan->tokens,chan->max_tokens/8, MAX((int)chan->message_size-(int)chan->processed_elements-(int)chan->max_tokens*7/8,0));
         const char chan_idx_control=cks_control_table[chan->port];
         SMI_Network_message mess;

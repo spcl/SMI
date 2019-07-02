@@ -58,6 +58,7 @@ SMI_Channel SMI_Open_send_channel(unsigned int count, SMI_Datatype data_type, un
     SET_HEADER_PORT(chan.net.header,chan.port);
     SET_HEADER_OP(chan.net.header,SMI_SEND);
     chan.tokens=MIN(chan.tokens,count); //needed to prevent the compiler to optimize-away channel connections
+    printf("Send channel, tokens: %d, max_tokens %d\n",chan.tokens,chan.max_tokens);
     chan.receiver_rank=destination;
     chan.processed_elements=0;
     chan.packet_element_id=0;
@@ -103,8 +104,8 @@ SMI_Channel SMI_Open_receive_channel(unsigned int count, SMI_Datatype data_type,
     }
     //NEW
     //The receiver sends tokens to the sender once every chan.max_tokens/8 received data elements
-    chan.tokens=MIN(chan.max_tokens/8,count); //needed to prevent the compiler to optimize-away channel connections
-
+    chan.tokens=MIN(chan.max_tokens/((unsigned int)8),count); //needed to prevent the compiler to optimize-away channel connections
+    //printf("Receive channel, tokens: %d, max_tokens %d\n",chan.tokens,chan.max_tokens);
     SET_HEADER_NUM_ELEMS(chan.net.header,0);    //at the beginning no data
     chan.packet_element_id=0; //data per packet
     chan.processed_elements=0;

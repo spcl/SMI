@@ -104,7 +104,7 @@ void SMI_Reduce(SMI_RChannel *chan, volatile void* data_snd, volatile void* data
                 *(float *)data_rcv= *(float*)(ptr);
                 break;
             case (SMI_DOUBLE):
-                *(double *)data_rcv= *(float*)(ptr);
+                *(double *)data_rcv= *(double*)(ptr);
                 break;
             case (SMI_CHAR):
                 *(char *)data_rcv= *(char*)(ptr);

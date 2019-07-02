@@ -1,4 +1,4 @@
-#define BUFFER_SIZE 512
+#define BUFFER_SIZE 128
 
 #include "smi/channel_helpers.h"
 
@@ -7,7 +7,7 @@
 // maximum number of ranks in the cluster
 #define MAX_RANKS 8
 
-// QSFP channels
+// QSFP channelsf
 #ifndef SMI_EMULATION_RANK
 channel SMI_Network_message io_out_0 __attribute__((depth(16))) __attribute__((io("kernel_output_ch0")));
 channel SMI_Network_message io_in_0 __attribute__((depth(16))) __attribute__((io("kernel_input_ch0")));
@@ -101,25 +101,51 @@ channel SMI_Network_message io_in_3 __attribute__((depth(16))) __attribute__((io
 #endif
 
 /**
-  These four tables, defined at compile time, maps application endpoints (Port) to CKs/CKr and are
+  These tables, defined at compile time, maps application endpoints (Port) to channels and are
   used by the compiler to lay down the circuitry. The data routing table is used by push (and collectives)
   to send the actual communication data, while the control is used by push (and collective) to receive
-  control information (e.g. rendezvous data) from the pairs
+  control information (e.g. rendezvous data) from the pairs. There are also otehr channels for collective operations.
 */
-// logical port -> index in internal_cks/ckr -> index in channels_cks/ckr
-__constant char internal_to_cks_data_rt[1] = { 0 };
-__constant char internal_to_cks_control_rt[1] = { 0 };
-__constant char internal_from_ckr_data_rt[1] = { 0 };
-__constant char internal_from_ckr_control_rt[1] = { 0 };
 
-channel SMI_Network_message channels_cks_data[1] __attribute__((depth(16)));
-channel SMI_Network_message channels_cks_control[1] __attribute__((depth(16)));
-channel SMI_Network_message channels_ckr_data[1] __attribute__((depth(BUFFER_SIZE)));
-channel SMI_Network_message channels_ckr_control[1] __attribute__((depth(BUFFER_SIZE)));
+// cks_data: logical port -> index in cks_data_table -> index in cks_data_channels
+__constant char cks_data_table[1] = { 0 };
+channel SMI_Network_message cks_data_channels[1] __attribute__((depth(16)));
 
-// broadcast channels
-__constant char internal_bcast_rt[1] = { -1 };
-channel SMI_Network_message channels_bcast_send[0] __attribute__((depth(2)));
+// cks_control: logical port -> index in cks_control_table -> index in cks_control_channels
+__constant char cks_control_table[1] = { 0 };
+channel SMI_Network_message cks_control_channels[1] __attribute__((depth(16)));
+
+// ckr_data: logical port -> index in ckr_data_table -> index in ckr_data_channels
+__constant char ckr_data_table[1] = { 0 };
+channel SMI_Network_message ckr_data_channels[1] __attribute__((depth(BUFFER_SIZE)));
+
+// ckr_control: logical port -> index in ckr_control_table -> index in ckr_control_channels
+__constant char ckr_control_table[1] = { 0 };
+channel SMI_Network_message ckr_control_channels[1] __attribute__((depth(BUFFER_SIZE)));
+
+
+// broadcast: logical port -> index in broadcast_table -> index in broadcast_channels
+__constant char broadcast_table[1] = { -1 };
+channel SMI_Network_message broadcast_channels[0] __attribute__((depth(2)));
+
+
+// reduce_send: logical port -> index in reduce_send_table -> index in reduce_send_channels
+__constant char reduce_send_table[1] = { -1 };
+channel SMI_Network_message reduce_send_channels[0] __attribute__((depth(1)));
+
+// reduce_recv: logical port -> index in reduce_recv_table -> index in reduce_recv_channels
+__constant char reduce_recv_table[1] = { -1 };
+channel SMI_Network_message reduce_recv_channels[0] __attribute__((depth(1)));
+
+
+// scatter: logical port -> index in scatter_table -> index in scatter_channels
+__constant char scatter_table[1] = { -1 };
+channel SMI_Network_message scatter_channels[0] __attribute__((depth(2)));
+
+// gather: logical port -> index in gather_table -> index in gather_channels
+__constant char gather_table[1] = { 0 };
+channel SMI_Network_message gather_channels[1] __attribute__((depth(2)));
+
 
 __constant char QSFP_COUNT = 4;
 
@@ -135,9 +161,14 @@ channel SMI_Network_message channels_interconnect_ck_s_to_ck_r[QSFP_COUNT] __att
 // connect corresponding CK_R/CK_S pairs
 channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __attribute__((depth(16)));
 
+#include "smi/pop.h"
+#include "smi/push.h"
+#include "smi/bcast.h"
+#include "smi/reduce.h"
+#include "smi/scatter.h"
 #include "smi/gather.h"
 
-__kernel void smi_kernel_cks_0(__global volatile char *restrict rt, const int num_ranks)
+__kernel void smi_kernel_cks_0(__global volatile char *restrict rt, const char num_ranks)
 {
     char external_routing_table[MAX_RANKS];
     for (int i = 0; i < MAX_RANKS; i++)
@@ -178,7 +209,7 @@ __kernel void smi_kernel_cks_0(__global volatile char *restrict rt, const int nu
                 break;
             case 4:
                 // receive from app channel with logical port 0, hardware port 0, method data
-                message = read_channel_nb_intel(channels_cks_data[0], &valid);
+                message = read_channel_nb_intel(cks_data_channels[0], &valid);
                 break;
         }
 
@@ -296,7 +327,7 @@ __kernel void smi_kernel_ckr_0(__global volatile char *restrict rt, const char r
                     break;
                 case 4:
                     // send to app channel with logical port 0, hardware port 0, method data
-                    write_channel_intel(channels_ckr_data[0], message);
+                    write_channel_intel(ckr_data_channels[0], message);
                     break;
             }
         }
@@ -312,7 +343,7 @@ __kernel void smi_kernel_ckr_0(__global volatile char *restrict rt, const char r
         }
     }
 }
-__kernel void smi_kernel_cks_1(__global volatile char *restrict rt, const int num_ranks)
+__kernel void smi_kernel_cks_1(__global volatile char *restrict rt, const char num_ranks)
 {
     char external_routing_table[MAX_RANKS];
     for (int i = 0; i < MAX_RANKS; i++)
@@ -353,7 +384,7 @@ __kernel void smi_kernel_cks_1(__global volatile char *restrict rt, const int nu
                 break;
             case 4:
                 // receive from app channel with logical port 0, hardware port 0, method control
-                message = read_channel_nb_intel(channels_cks_control[0], &valid);
+                message = read_channel_nb_intel(cks_control_channels[0], &valid);
                 break;
         }
 
@@ -471,7 +502,7 @@ __kernel void smi_kernel_ckr_1(__global volatile char *restrict rt, const char r
                     break;
                 case 4:
                     // send to app channel with logical port 0, hardware port 0, method control
-                    write_channel_intel(channels_ckr_control[0], message);
+                    write_channel_intel(ckr_control_channels[0], message);
                     break;
             }
         }
@@ -487,7 +518,7 @@ __kernel void smi_kernel_ckr_1(__global volatile char *restrict rt, const char r
         }
     }
 }
-__kernel void smi_kernel_cks_2(__global volatile char *restrict rt, const int num_ranks)
+__kernel void smi_kernel_cks_2(__global volatile char *restrict rt, const char num_ranks)
 {
     char external_routing_table[MAX_RANKS];
     for (int i = 0; i < MAX_RANKS; i++)
@@ -654,7 +685,7 @@ __kernel void smi_kernel_ckr_2(__global volatile char *restrict rt, const char r
         }
     }
 }
-__kernel void smi_kernel_cks_3(__global volatile char *restrict rt, const int num_ranks)
+__kernel void smi_kernel_cks_3(__global volatile char *restrict rt, const char num_ranks)
 {
     char external_routing_table[MAX_RANKS];
     for (int i = 0; i < MAX_RANKS; i++)
@@ -822,3 +853,26 @@ __kernel void smi_kernel_ckr_3(__global volatile char *restrict rt, const char r
     }
 }
 
+
+
+
+
+__kernel void smi_kernel_gather_0(char num_rank)
+{
+    //receives the data from the application and
+    //forwards it to the root only when the SYNCH message arrives
+    SMI_Network_message mess;
+    
+    while(true)
+    {
+
+        mess=read_channel_intel(gather_channels[0]);
+        if(GET_HEADER_OP(mess.header)==SMI_SYNCH)
+        {
+            
+            SMI_Network_message req=read_channel_intel(ckr_control_channels[0]);
+        }
+
+        write_channel_intel(cks_data_channels[0], mess);
+    }
+}
