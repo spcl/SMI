@@ -210,7 +210,8 @@ int main(int argc, char **argv) {
     cl::Program program;
     std::vector<cl::Kernel> kernels;
     std::vector<cl::CommandQueue> queues;
-    std::vector<std::string> kernel_names={"CK_S_0", "CK_S_1", "CK_S_2", "CK_S_3", "CK_R_0", "CK_R_1", "CK_R_2", "CK_R_3",
+    std::vector<std::string> kernel_names={"smi_kernel_cks_0", "smi_kernel_cks_1", "smi_kernel_cks_2", "smi_kernel_cks_3", 
+                                          "smi_kernel_ckr_0", "smi_kernel_ckr_1", "smi_kernel_ckr_2", "smi_kernel_ckr_3",
                                           "ConvertReceiveLeft", "ConvertReceiveRight", "ConvertReceiveTop", "ConvertReceiveBottom", "ConvertSendLeft", "ConvertSendRight", "ConvertSendTop", "ConvertSendBottom",
                                           "Read", "Stencil","Write"};
     IntelFPGAOCLUtils::initEnvironment(platform,device,fpga,context,program,kernel_path,kernel_names, kernels,queues);
@@ -267,14 +268,15 @@ int main(int argc, char **argv) {
     queues[0].enqueueWriteBuffer(routing_table_ck_r_2, CL_TRUE,0,8,&routing_tables_ckr[2][0]);
     queues[0].enqueueWriteBuffer(routing_table_ck_r_3, CL_TRUE,0,8,&routing_tables_ckr[3][0]);
 
+    char mpi_ranks=mpi_size;
     kernels[0].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
-    kernels[0].setArg(1,sizeof(int),&mpi_size);
+    kernels[0].setArg(1,sizeof(char),&mpi_ranks);
     kernels[1].setArg(0,sizeof(cl_mem),&routing_table_ck_s_1);
-    kernels[1].setArg(1,sizeof(int),&mpi_size);
+    kernels[1].setArg(1,sizeof(char),&mpi_ranks);
     kernels[2].setArg(0,sizeof(cl_mem),&routing_table_ck_s_2);
-    kernels[2].setArg(1,sizeof(int),&mpi_size);
+    kernels[2].setArg(1,sizeof(char),&mpi_ranks);
     kernels[3].setArg(0,sizeof(cl_mem),&routing_table_ck_s_3);
-    kernels[3].setArg(1,sizeof(int),&mpi_size);
+    kernels[3].setArg(1,sizeof(char),&mpi_ranks);
 
     //args for the CK_Rs
     char my_rank=mpi_rank;
