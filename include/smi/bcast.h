@@ -144,6 +144,103 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data)
     {
         if(chan->packet_element_id_rcv==0 )
         {
+            const char chan_idx_data=ckr_data_table[chan->port]; //TODO: se questo e' costante allora va bene
+            chan->net_2=read_channel_intel(ckr_data_channels[chan_idx_data]);
+        }
+        char *data_rcv=chan->net_2.data;
+        switch(chan->data_type)
+        {
+            case SMI_CHAR:
+            {
+                char * ptr=data_rcv;
+                *(char *)data= *(char*)(ptr);
+                break;
+            }
+            case SMI_INT:
+            {
+                char * ptr=data_rcv+(chan->packet_element_id_rcv)*4;
+                *(int *)data= *(int*)(ptr);
+                break;
+            }
+            case SMI_FLOAT:
+            {
+                char * ptr=data_rcv+(chan->packet_element_id_rcv)*4;
+                *(float *)data= *(float*)(ptr);
+                break;
+            }
+            case SMI_SHORT:
+            {
+                char * ptr=data_rcv+(chan->packet_element_id_rcv)*2;
+                *(short *)data= *(short*)(ptr);
+                break;
+            }
+            //TODO: add double support
+            /*case SMI_DOUBLE:
+            {
+                char * ptr=data_rcv+(chan->packet_element_id_rcv)*8;
+                *(double *)data= *(double*)(ptr);
+                break;
+            }*/
+        }
+        chan->packet_element_id_rcv++;
+        if( chan->packet_element_id_rcv==chan->elements_per_packet)
+            chan->packet_element_id_rcv=0;
+    }
+}
+#if 0
+void SMI_Bcast_int(SMI_BChannel *chan, volatile void* data)
+{
+    if(chan->my_rank==chan->root_rank)//I'm the root
+    {
+
+        char *conv=(char*)data;
+
+        char *data_snd=chan->net.data;
+        const unsigned int message_size=chan->message_size;
+        chan->processed_elements++;
+
+        switch(chan->data_type) //copy the data
+        {
+            case SMI_CHAR:
+                data_snd[chan->packet_element_id]=*conv;
+                break;
+            case SMI_SHORT:
+                #pragma unroll
+                for(int jj=0;jj<2;jj++)
+                    data_snd[chan->packet_element_id*2+jj]=conv[jj];
+                break;
+            case SMI_INT:
+            case SMI_FLOAT:
+                #pragma unroll
+                for(int jj=0;jj<4;jj++)
+                    data_snd[chan->packet_element_id*4+jj]=conv[jj];
+                break;
+            //TODO: add double support
+           /* case SMI_DOUBLE:
+                #pragma unroll
+                for(int jj=0;jj<8;jj++) //copy the data
+                    data_snd[chan->packet_element_id*8+jj]=conv[jj];
+            break;*/
+
+        }
+        chan->packet_element_id++;
+        //send the network packet if it is full or we reached the message size
+        if(chan->packet_element_id==chan->elements_per_packet || chan->processed_elements==message_size)
+        {
+            SET_HEADER_NUM_ELEMS(chan->net.header,chan->packet_element_id);
+            SET_HEADER_PORT(chan->net.header,chan->port);
+            chan->packet_element_id=0;
+            //offload to support kernel
+            const char chan_bcast_idx=broadcast_table[chan->port];
+            write_channel_intel(broadcast_channels[chan_bcast_idx],chan->net);
+            SET_HEADER_OP(chan->net.header,SMI_BROADCAST);  //for the subsequent network packets
+        }
+
+    }
+    else //I have to receive
+    {
+        if(chan->packet_element_id_rcv==0 )
+        {
             const char chan_idx_data=ckr_data_table[chan->port];
             chan->net_2=read_channel_intel(ckr_data_channels[chan_idx_data]);
         }
@@ -188,5 +285,5 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data)
     }
 }
 
-
+#endif
 #endif // BCAST_H

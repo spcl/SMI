@@ -1,0 +1,14 @@
+[{
+    "buffer_size": 128,
+            "ports": [{
+                          "id": 0,
+                          "type": "reduce",
+                          "args": {"data_type": "float"}
+                      },
+                      {
+                          "id": 1,
+                          "type": "reduce",
+                          "args": {"data_type": "float"}
+                      }],                     
+            "fpgas": ["fpga-0006:acl0","fpga-0006:acl1","fpga-0007:acl0", "fpga-0007:acl1","fpga-0008:acl0", "fpga-0008:acl1","fpga-0009:acl0", "fpga-0009:acl1"]
+}]

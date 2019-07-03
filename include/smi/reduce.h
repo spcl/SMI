@@ -21,8 +21,8 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     char root_rank;
     char my_rank;                       //communicator infos
     char num_rank;
-    uint message_size;                  //given in number of data elements
-    uint processed_elements;            //how many data elements we have sent/received
+    unsigned int message_size;                  //given in number of data elements
+    unsigned int processed_elements;            //how many data elements we have sent/received
     char packet_element_id;             //given a packet, the id of the element that we are currently processing (from 0 to the data elements per packet)
     SMI_Datatype data_type;             //type of message
     char size_of_type;                  //size of data type
@@ -32,7 +32,7 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
 }SMI_RChannel;
 
 
-SMI_RChannel SMI_Open_reduce_channel(uint count, SMI_Datatype data_type, uint port, uint root, uint my_rank, uint num_ranks)
+SMI_RChannel SMI_Open_reduce_channel(unsigned int count, SMI_Datatype data_type, unsigned int port, unsigned int root, unsigned int my_rank, unsigned int num_ranks)
 {
     SMI_RChannel chan;
     //setup channel descriptor
@@ -91,9 +91,11 @@ void SMI_Reduce(SMI_RChannel *chan, volatile void* data_snd, volatile void* data
 
     if(chan->my_rank==chan->root_rank) //root
     {
-        write_channel_intel(reduce_send_channels[0],chan->net);
+        const char chan_reduce_send_idx=reduce_send_table[chan->port];
+        write_channel_intel(reduce_send_channels[chan_reduce_send_idx],chan->net);
         mem_fence(CLK_CHANNEL_MEM_FENCE);
-        chan->net_2=read_channel_intel(reduce_recv_channels[0]);
+        const char chan_reduce_receive_idx=reduce_recv_table[chan->port];
+        chan->net_2=read_channel_intel(reduce_recv_channels[chan_reduce_receive_idx]);
 
         char * ptr=chan->net_2.data;
         switch(chan->data_type)

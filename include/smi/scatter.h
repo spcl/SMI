@@ -161,7 +161,6 @@ void SMI_Scatter(SMI_ScatterChannel *chan, void* send_data, void* rcv_data)
     {
         if(chan->packet_element_id_rcv==0)
         {
-          //  const char chan_idx=internal_receiver_rt[chan->tag_in];
             const char chan_idx_data=ckr_data_table[chan->port];
             chan->net_2=read_channel_intel(ckr_data_channels[chan_idx_data]);
         }

@@ -53,9 +53,9 @@ SMI_Channel SMI_Open_receive_channel(unsigned int count, SMI_Datatype data_type,
             break;
          //TODO add more data types
     }
-    //chan.tokens=MIN(chan.max_tokens/((unsigned int)8),count); //needed to prevent the compiler to optimize-away channel connections
+    chan.tokens=MIN(chan.max_tokens/((unsigned int)8),count); //needed to prevent the compiler to optimize-away channel connections
     //The receiver sends tokens to the sender once every chan.max_tokens/8 received data elements
-    chan.tokens=chan.max_tokens/((unsigned int)8);
+    //chan.tokens=chan.max_tokens/((unsigned int)8);
     SET_HEADER_NUM_ELEMS(chan.net.header,0);    //at the beginning no data
     chan.packet_element_id=0; //data per packet
     chan.processed_elements=0;

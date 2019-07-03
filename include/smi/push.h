@@ -58,8 +58,8 @@ SMI_Channel SMI_Open_send_channel(unsigned int count, SMI_Datatype data_type, un
     SET_HEADER_DST(chan.net.header,chan.receiver_rank);
     SET_HEADER_PORT(chan.net.header,chan.port);
     SET_HEADER_OP(chan.net.header,SMI_SEND);
-    chan.tokens=chan.max_tokens;
-    //chan.tokens=MIN(chan.max_tokens,count);//needed to prevent the compiler to optimize-away channel connections
+    //chan.tokens=chan.max_tokens;
+    chan.tokens=MIN(chan.max_tokens,count);//needed to prevent the compiler to optimize-away channel connections
     chan.receiver_rank=destination;
     chan.processed_elements=0;
     chan.packet_element_id=0;
