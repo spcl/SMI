@@ -1,5 +1,11 @@
 #ifndef CHANNEL_DESCRIPTOR_H
 #define CHANNEL_DESCRIPTOR_H
+/**
+  @file channel_descriptor.h
+  Point-to-point transient channel descriptor.
+  It maintains all the informations that are necessary for performing a point-to-point communication (Push/Pop)
+*/
+
 #include "network_message.h"
 #include "operation_type.h"
 #include "data_types.h"
@@ -7,10 +13,7 @@
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
-/**
-  Point-to-point transient channel descriptor.
-  It maintains all the informations that are necessary for performing a point-to-point communication (Push/Pop)
-*/
+
 typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     SMI_Network_message net;            //buffered network message
     char sender_rank;                   //rank of the sender

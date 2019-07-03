@@ -3,7 +3,7 @@
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
 /**
-  @file bcast.h
+   @file bcast.h
    This file contains the definition of channel descriptor,
    open channel and communication primitive for Broadcast
 */

@@ -3,7 +3,8 @@
 #define DATA_TYPES_H
 
 /**
-  Suported message data types
+  @file data_types.h
+  Supported message data types
 */
 
 typedef enum{
