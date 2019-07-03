@@ -1,6 +1,8 @@
 {% import 'utils.cl' as utils %}
 
 {% macro smi_reduce(program, op) -%}
+#include "smi/reduce_operations.h"
+
 __kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)
 {
 
@@ -64,7 +66,7 @@ __kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)
                     // apply reduce
                     char* ptr = mess.data;
                     {{ op.data_type }} data= *({{ op.data_type }}*) (ptr);
-                    reduce_result[add_to_root][SHIFT_REG] = data + reduce_result[add_to_root][0];
+                    reduce_result[add_to_root][SHIFT_REG] = SMI_OP_ADD(data, reduce_result[add_to_root][0]); //apply reduce
                     #pragma unroll
                     for (int j = 0; j < SHIFT_REG; j++)
                     {
@@ -91,7 +93,7 @@ __kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)
                     char addto = add_to[rank];
                     data_recvd[addto]++;
                     a = addto;
-                    reduce_result[addto][SHIFT_REG] = data+reduce_result[addto][0];        // SMI_ADD
+                    reduce_result[addto][SHIFT_REG] = SMI_OP_ADD(data,reduce_result[addto][0]);        // apply reduce
                     #pragma unroll
                     for (int j = 0; j < SHIFT_REG; j++)
                     {

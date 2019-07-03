@@ -1,6 +1,6 @@
 #define BUFFER_SIZE {{ program.buffer_size }}
 
-#include "smi/channel_helpers.h"
+#include "smi/network_message.h"
 {% import 'utils.cl' as utils %}
 {% import 'ckr.cl' as smi_ckr %}
 {% import 'cks.cl' as smi_cks %}

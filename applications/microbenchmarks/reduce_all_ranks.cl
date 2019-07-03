@@ -4,8 +4,8 @@
 
 __kernel void app(const int N, char root,char my_rank, char num_ranks, __global volatile char *mem)
 {
-    //double exp=(num_ranks*(num_ranks+1))/2;
-    double exp=num_ranks;
+    double exp=(num_ranks*(num_ranks+1))/2;
+    //double exp=num_ranks;
     char check=1;
     SMI_RChannel  __attribute__((register)) rchan_float= SMI_Open_reduce_channel(N, SMI_DOUBLE, 0,root,my_rank,num_ranks);
     for(int i=0;i<N;i++)

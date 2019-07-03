@@ -8,9 +8,13 @@
 #include "network_message.h"
 #include "operation_type.h"
 
+typedef enum{
+    SMI_ADD = 0,
+    SMI_MAX = 1,
+    SMI_MIN = 2
+}SMI_Op;
 
 
-//align to 64 to remove aliasing
 typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     SMI_Network_message net;            //buffered network message
     char port;                          //Output channel for the bcast, used by the root
@@ -23,7 +27,7 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     SMI_Datatype data_type;             //type of message
     char size_of_type;                  //size of data type
     char elements_per_packet;           //number of data elements per packet
-    SMI_Network_message net_2;          //buffered network message
+    SMI_Network_message net_2;          //buffered network message (we need two of them to remove aliasing)
     char packet_element_id_rcv;         //used by the receivers
 }SMI_RChannel;
 
