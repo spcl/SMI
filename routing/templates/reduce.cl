@@ -3,20 +3,21 @@
 {% macro smi_reduce(program, op) -%}
 __kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)
 {
+
     __constant int SHIFT_REG = {{ op.shift_reg() }};
 
     SMI_Network_message mess;
     SMI_Network_message reduce;
     bool init = true;
     char sender_id = 0;
-    const char credits_flow_control = 16; // apparently, this combination (credits, max ranks) is the max that we can support with II=1
-    // reduced results, organized in shift register to mask latency
+    const char credits_flow_control = 16; // choose it in order to have II=1
+    // reduced results, organized in shift register to mask latency (of the design, not related to the particular operation used)
     {{ op.data_type }} __attribute__((register)) reduce_result[credits_flow_control][SHIFT_REG + 1];
     char data_recvd[credits_flow_control];
     bool send_credits = false; // true if (the root) has to send reduce request
     char credits = credits_flow_control; // the number of credits that I have
     char send_to = 0;
-    char /*__attribute__((register))*/ add_to[MAX_RANKS];   // for each rank tells to what element in the buffer we should add the received item
+    char add_to[MAX_RANKS];   // for each rank tells to what element in the buffer we should add the received item
 {% set reduce_send = program.create_group("reduce_send") %}
 {% set reduce_recv = program.create_group("reduce_recv") %}
 {% set ckr_data = program.create_group("ckr_data") %}

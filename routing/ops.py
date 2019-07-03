@@ -55,12 +55,18 @@ class Reduce(SmiOperation):
     Maps data type to SHIFT_REG.
     """
     SHIFT_REG = {
+        "double": 4,
         "float": 4,
-        "int": 1
+        "int": 1,
+        "short": 1,
+        "char": 1
     }
     DATA_SIZE = {
+        "double": 8,
         "float": 4,
-        "int": 4
+        "int": 4,
+        "short": 2,
+        "char": 1
     }
 
     def __init__(self, logical_port, data_type):
