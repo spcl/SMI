@@ -1,10 +1,10 @@
-/**
-  Suported message data types
-*/
 
 #ifndef DATA_TYPES_H
 #define DATA_TYPES_H
 
+/**
+  Suported message data types
+*/
 
 typedef enum{
     SMI_INT = 1,

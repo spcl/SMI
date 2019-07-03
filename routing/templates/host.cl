@@ -1,5 +1,5 @@
 #include <utils/smi_utils.hpp>
-
+#include <vector>
 void SmiInit(
         unsigned int rank,
         unsigned int ranks_count,
@@ -9,7 +9,8 @@ void SmiInit(
         cl::Device &device, 
         cl::Context &context, 
         cl::Program &program, 
-        int fpga)
+        int fpga,
+        std::vector<cl::Buffer> &buffers)
 {
     std::vector<cl::Kernel> kernels;
     std::vector<cl::CommandQueue> queues;
@@ -89,10 +90,18 @@ void SmiInit(
 {{ setup_collective_kernels("reduce") }}
 {{ setup_collective_kernels("scatter") }}
 {{ setup_collective_kernels("gather") }}
+
+    //move buffers
+    {% for channel in range(program.channel_count) %}
+    buffers.push_back(std::move( routing_table_ck_s_{{ channel }}));
+    buffers.push_back(std::move( routing_table_ck_r_{{ channel }}));
+    {% endfor %}
+
     // start the kernels
     const int num_kernels = kernel_names.size();
     for(int i = num_kernels - 1; i >= 0; i--)
     {
         queues[i].enqueueTask(kernels[i]);
+        queues[i].flush();
     }
 }

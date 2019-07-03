@@ -27,6 +27,4 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     unsigned int max_tokens;            //max tokens on the sender side
 }SMI_Channel;
 
-
-
 #endif

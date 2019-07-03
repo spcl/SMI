@@ -76,8 +76,8 @@ int main(int argc, char *argv[])
     cl::Context context;
     cl::Program program;
     //sleep(rank);
-    std::cout << "Rank: " <<rank<<std::endl;
-    SmiInit(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga);
+    std::vector<cl::Buffer> buffers;
+    SmiInit(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga, buffers);
     cl::Kernel kernel;
     cl::CommandQueue queue;
     IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
