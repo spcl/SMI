@@ -31,7 +31,7 @@ __kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)
         #pragma unroll
         for(int j = 0; j < SHIFT_REG + 1; j++)
         {
-            reduce_result[i][j] = 0;
+            reduce_result[i][j] = {{ op.shift_reg_init() }};
         }
     }
 
@@ -66,7 +66,7 @@ __kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)
                     // apply reduce
                     char* ptr = mess.data;
                     {{ op.data_type }} data= *({{ op.data_type }}*) (ptr);
-                    reduce_result[add_to_root][SHIFT_REG] = SMI_OP_ADD(data, reduce_result[add_to_root][0]); //apply reduce
+                    reduce_result[add_to_root][SHIFT_REG] = {{ op.reduce_op() }}(data, reduce_result[add_to_root][0]); //apply reduce
                     #pragma unroll
                     for (int j = 0; j < SHIFT_REG; j++)
                     {
@@ -93,7 +93,7 @@ __kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)
                     char addto = add_to[rank];
                     data_recvd[addto]++;
                     a = addto;
-                    reduce_result[addto][SHIFT_REG] = SMI_OP_ADD(data,reduce_result[addto][0]);        // apply reduce
+                    reduce_result[addto][SHIFT_REG] = {{ op.reduce_op() }}(data,reduce_result[addto][0]);        // apply reduce
                     #pragma unroll
                     for (int j = 0; j < SHIFT_REG; j++)
                     {
@@ -117,7 +117,7 @@ __kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)
                     #pragma unroll
                     for (int i = 0; i < SHIFT_REG; i++)
                     {
-                        res += reduce_result[current_buffer_element][i];
+                        res = {{ op.reduce_op() }}(res,reduce_result[current_buffer_element][i]);
                     }
                     char* conv = (char*)(&res);
                     #pragma unroll
@@ -130,10 +130,11 @@ __kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)
                     credits++;
                     data_recvd[current_buffer_element] = 0;
 
+                    //reset shift register
                     #pragma unroll
                     for (int j = 0; j < SHIFT_REG + 1; j++)
                     {
-                        reduce_result[current_buffer_element][j] = 0;
+                        reduce_result[current_buffer_element][j] =  {{ op.shift_reg_init() }};
                     }
                     current_buffer_element++;
                     if (current_buffer_element == credits_flow_control)

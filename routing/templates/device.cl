@@ -77,6 +77,7 @@ channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __att
 #include "smi/reduce.h"
 #include "smi/scatter.h"
 #include "smi/gather.h"
+#include "smi/communicator.h"
 
 {% for channel in channels %}
 {{ smi_cks.smi_cks(program, channel, channels|length, target_index) }}

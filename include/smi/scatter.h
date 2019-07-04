@@ -3,34 +3,41 @@
 
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
+/**
+    @file scatter.h
+    This file contains the definition of channel descriptor,
+    open channel and communication primitive for Scatter.
+*/
+
 #include "data_types.h"
 #include "header_message.h"
 #include "operation_type.h"
 #include "network_message.h"
+#include "communicator.h"
 
 
 
 typedef struct __attribute__((packed)) __attribute__((aligned(64))){
-    SMI_Network_message net;         //buffered network message
-    char port;                    //Output channel for the bcast, used by the root
+    SMI_Network_message net;            //buffered network message
+    char port;                          //port
     char root_rank;
-    char my_rank;                   //These two are essentially the Communicator
-    char num_rank;
-    uint send_count;              //given in number of data elements
-    uint recv_count;              //given in number of data elements
-    uint processed_elements;        //how many data elements we have sent/received
-    char packet_element_id;         //given a packet, the id of the element that we are currently processing (from 0 to the data elements per packet)
-    char data_type;               //type of message
-    SMI_Network_message net_2;        //buffered network message
-    char size_of_type;              //size of data type
-    char elements_per_packet;       //number of data elements per packet
-    bool beginning;
-    char packet_element_id_rcv;     //used by the receivers
-    char next_rcv;                  //the next receiver
+    char my_rank;                       //rank of the caller
+    char num_ranks;                     //total number of ranks
+    unsigned int send_count;            //given in number of data elements
+    unsigned int recv_count;            //given in number of data elements
+    unsigned int processed_elements;    //how many data elements we have sent/received
+    char packet_element_id;             //given a packet, the id of the element that we are currently processing (from 0 to the data elements per packet)
+    char data_type;                     //type of message
+    SMI_Network_message net_2;          //buffered network message (used by non root ranks)
+    char size_of_type;                  //size of data type
+    char elements_per_packet;           //number of data elements per packet
+    char packet_element_id_rcv;         //used by the receivers
+    char next_rcv;                      //the  rank of the next receiver
 }SMI_ScatterChannel;
 
 
-SMI_ScatterChannel SMI_Open_scatter_channel(uint send_count,  uint recv_count, SMI_Datatype data_type, uint port, uint root, uint my_rank, uint num_ranks)
+SMI_ScatterChannel SMI_Open_scatter_channel(unsigned int send_count,  unsigned int recv_count,
+                                            SMI_Datatype data_type, unsigned int port, unsigned int root, SMI_Comm comm)
 {
     SMI_ScatterChannel chan;
     //setup channel descriptor
@@ -38,11 +45,10 @@ SMI_ScatterChannel SMI_Open_scatter_channel(uint send_count,  uint recv_count, S
     chan.recv_count=recv_count;
     chan.data_type=data_type;
     chan.port=(char)port;
-    chan.my_rank=(char)my_rank;
+    chan.my_rank=(char)comm[0];
+    chan.num_ranks=(char)comm[1];
     chan.root_rank=(char)root;
-    chan.num_rank=(char)num_ranks;
     chan.next_rcv=0;
-    chan.beginning=true;
     switch(data_type)
     {
         case(SMI_INT):
@@ -64,21 +70,21 @@ SMI_ScatterChannel SMI_Open_scatter_channel(uint send_count,  uint recv_count, S
     }
 
     //setup header for the message
-    if(my_rank!=root)
+    if(chan.my_rank!=chan.root_rank)
     {
         //this is set up to send a "ready to receive" to the root
         SET_HEADER_OP(chan.net.header,SMI_SYNCH);
-        SET_HEADER_DST(chan.net.header,root);
+        SET_HEADER_DST(chan.net.header,chan.root_rank);
         SET_HEADER_PORT(chan.net.header,chan.port);
         const char chan_idx_control=cks_control_table[chan.port];
         write_channel_intel(cks_control_channels[chan_idx_control],chan.net); 
-        // printf("non-root rank %d, I've sent the request\n",chan->my_rank);
     }
     else
     {
-        SET_HEADER_SRC(chan.net.header,root);
+        SET_HEADER_SRC(chan.net.header,chan.root_rank);
         SET_HEADER_PORT(chan.net.header,chan.port);         //used by destination
         SET_HEADER_NUM_ELEMS(chan.net.header,0);            //at the beginning no data
+        SET_HEADER_OP(chan.net.header,SMI_SYNCH);
     }
 
     chan.processed_elements=0;
@@ -99,7 +105,7 @@ void SMI_Scatter(SMI_ScatterChannel *chan, void* send_data, void* rcv_data)
         //If the receiver is itself it has to set the rcv_data accordingly
         char *conv=(char*)send_data;
         char *data_snd=chan->net.data;
-        const uint message_size=chan->send_count;
+        const unsigned int message_size=chan->send_count;
         chan->processed_elements++;
         switch(chan->data_type)
         {
@@ -137,27 +143,23 @@ void SMI_Scatter(SMI_ScatterChannel *chan, void* send_data, void* rcv_data)
             SET_HEADER_PORT(chan->net.header,chan->port); 
             SET_HEADER_DST(chan->net.header,chan->next_rcv);
             //offload to scatter kernel
-            if(chan->beginning) 
-            {
-                SET_HEADER_OP(chan->net.header,SMI_SYNCH);
-                chan->beginning=false;
-            }
-            else
-                 SET_HEADER_OP(chan->net.header,SMI_SCATTER);
+
             if(chan->next_rcv!=chan->my_rank)
             {
                 const char chan_scatter_idx=scatter_table[chan->port];
                 write_channel_intel(scatter_channels[chan_scatter_idx],chan->net);
+                SET_HEADER_OP(chan->net.header,SMI_SCATTER);
             }
+
             chan->packet_element_id=0;
             if(chan->processed_elements==message_size)
-            {   //we finished the data that need to be sent to this rcvr
+            {   //we finished the data that need to be sent to this receiver
                 chan->processed_elements=0;
                 chan->next_rcv++;
             }
         }
     }
-    else //I have to receive
+    else //non-root rank: receive and unpack
     {
         if(chan->packet_element_id_rcv==0)
         {
@@ -198,50 +200,5 @@ void SMI_Scatter(SMI_ScatterChannel *chan, void* send_data, void* rcv_data)
     }
 
 }
-
-#if 0
-//temp here, then if it works we need to move it
-//TODO: This receives the data only from the root
-//But it doesn't know when this is a beginning of a new broadcast
-//We can use
-//- special operation SMI_REQUEST to indicate the beginning of a broadcast
-//- then it will start receiving the SMI_REQUEST from all the involved ranks
-//- only when these are received can start the broadcast as usual
-__kernel void kernel_scatter(char num_rank)
-{
-    //decide whether we keep this argument or not
-    //otherwise we have to decide where to put it
-    bool external=true;
-    char received_request=0; //how many ranks are ready to receive
-    const char num_requests=num_rank-1;
-    SMI_Network_message mess;
-
-    while(true)
-    {
-        if(external) //read from the application
-        {
-            mess=read_channel_intel(channels_scatter_send);
-            if(GET_HEADER_OP(mess.header)==SMI_SYNCH)
-                received_request=num_requests;
-            external=false;
-        }
-        else //handle the request
-        {
-            if(received_request!=0)
-            {
-                SMI_Network_message req=read_channel_intel(channels_ckr_control[0]); //CODEGEN
-                received_request--;
-            }
-            else
-            {
-                //just push it to the network
-                write_channel_intel(channels_cks_data[0],mess); //CODEGEN
-                external=true;
-            }
-        }
-    }
-
-}
-#endif
 
 #endif // SCATTER_H

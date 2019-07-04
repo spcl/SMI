@@ -9,22 +9,22 @@
 
 #include "codegen_scaling/smi-device-0.h"
 
-__kernel void app(const int N, const char dest_rank)
+__kernel void app(const int N, const char dest_rank, const SMI_Comm comm)
 {
-//    printf("Size of: %d",sizeof(SMI_Channel));
-    SMI_Channel chan=SMI_Open_send_channel(N,SMI_DOUBLE,dest_rank,0);
+
+    SMI_Channel chan=SMI_Open_send_channel(N,SMI_DOUBLE,dest_rank,0,comm);
     const double start=0.1f;
     for(int i=0;i<N;i++)
     {
         double send=start+i;
-        SMI_Push(&chan,&send);
-       // printf("[APP 0] sent %d\n",i);
+       SMI_Push(&chan,&send);
     }
 }
 
-__kernel void app_1(const int N, const char dest_rank)
+__kernel void app_1(const int N, const char dest_rank, const SMI_Comm comm)
 {
-    SMI_Channel chan=SMI_Open_send_channel(N,SMI_DOUBLE,dest_rank,1);
+
+    SMI_Channel chan=SMI_Open_send_channel(N,SMI_DOUBLE,dest_rank,1, comm);
     const double start=0.1f;
     for(int i=0;i<N;i++)
     {

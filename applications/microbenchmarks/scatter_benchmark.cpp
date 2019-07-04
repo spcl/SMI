@@ -75,8 +75,8 @@ int main(int argc, char *argv[])
     cl::Device device;
     cl::Context context;
     cl::Program program;
-
-    SmiInit(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga);
+    std::vector<cl::Buffer> buffers;
+    SMI_Comm comm= SmiInit(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga, buffers);
 
     cl::Kernel kernel;
     cl::CommandQueue queue;
@@ -87,9 +87,8 @@ int main(int argc, char *argv[])
 
     kernel.setArg(0,sizeof(int),&n);
     kernel.setArg(1,sizeof(char),&root);
-    kernel.setArg(2,sizeof(char),&rank);
-    kernel.setArg(3,sizeof(char),&rank_count);
-    kernel.setArg(4,sizeof(cl_mem),&check);
+    kernel.setArg(2,sizeof(cl_mem),&check);
+    kernel.setArg(3,sizeof(SMI_Comm),&comm);
 
 
     std::vector<double> times;
@@ -112,12 +111,15 @@ int main(int argc, char *argv[])
             times.push_back(time);
         }
         //check
-        char res;
-        queue.enqueueReadBuffer(check,CL_TRUE,0,1,&res);
-        if(res==1)
-            cout << "Rank: " << rank << " Result is Ok!"<<endl;
-        else
-            cout << "Rank: " << rank  <<" Error!!!!"<<endl;
+        if(rank!=root)
+        {
+            char res;
+            queue.enqueueReadBuffer(check,CL_TRUE,0,1,&res);
+            if(res==1)
+                cout << "Rank: " << rank << " Result is Ok!"<<endl;
+            else
+                cout << "Rank: " << rank  <<" Error!!!!"<<endl;
+        }
     }
     if(rank==0)
     {

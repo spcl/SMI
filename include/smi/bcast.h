@@ -5,7 +5,7 @@
 /**
    @file bcast.h
    This file contains the definition of channel descriptor,
-   open channel and communication primitive for Broadcast
+   open channel and communication primitive for Broadcast.
 */
 
 #include "data_types.h"
@@ -17,10 +17,10 @@
 
 typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     SMI_Network_message net;            //buffered network message
-    char port;                          //Port number
     char root_rank;
     char my_rank;                       //These two are essentially the Communicator
     char num_rank;
+    char port;                          //Port number
     unsigned int message_size;          //given in number of data elements
     unsigned int processed_elements;    //how many data elements we have sent/received
     char packet_element_id;             //given a packet, the id of the element that we are currently processing (from 0 to the data elements per packet)
@@ -90,14 +90,11 @@ SMI_BChannel SMI_Open_bcast_channel(unsigned int count, SMI_Datatype data_type, 
     return chan;
 }
 
-
 void SMI_Bcast(SMI_BChannel *chan, volatile void* data)
 {
     if(chan->my_rank==chan->root_rank)//I'm the root
     {
-
         char *conv=(char*)data;
-
         char *data_snd=chan->net.data;
         const unsigned int message_size=chan->message_size;
         chan->processed_elements++;
@@ -144,7 +141,7 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data)
     {
         if(chan->packet_element_id_rcv==0 )
         {
-            const char chan_idx_data=ckr_data_table[chan->port]; //TODO: se questo e' costante allora va bene
+            const char chan_idx_data=ckr_data_table[chan->port]; //TODO: problematic for const prop. Seems to be completely wrong, no matter the port id claimed in the open channel
             chan->net_2=read_channel_intel(ckr_data_channels[chan_idx_data]);
         }
         char *data_rcv=chan->net_2.data;

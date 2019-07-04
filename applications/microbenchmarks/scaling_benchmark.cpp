@@ -14,7 +14,8 @@
 #include "../../include/utils/utils.hpp"
 #include <limits.h>
 #include <cmath>
-#include "../../include/utils/smi_utils.hpp"
+#include "codegen_scaling/smi-host-0.h"
+#include "../../include/smi/communicator.h"
 #define ROUTING_DIR "applications/microbenchmarks/codegen_scaling/"
 
 //#define CHECK
@@ -43,8 +44,7 @@ int main(int argc, char *argv[])
         {
             case 'k':
                 kb=atoi(optarg);
-                //n=(int)ceil(kb*54.8571); //the payload of each network packet is 28B, on each packet there is space for 3 doubles
-                n=kb;
+                n=(int)ceil(kb*54.8571); //the payload of each network packet is 28B, on each packet there is space for 3 doubles
                 break;
             case 'i':
                 runs=atoi(optarg);
@@ -89,122 +89,40 @@ int main(int argc, char *argv[])
     cl::Device device;
     cl::Context context;
     cl::Program program;
-    std::vector<cl::Kernel> kernels;
-    std::vector<cl::CommandQueue> queues;
-    std::vector<std::string> kernel_names;
+    std::vector<cl::Buffer> buffers;
 
-    kernel_names.push_back("app");
-    kernel_names.push_back("app_1");
-    kernel_names.push_back("smi_kernel_cks_0");
-    kernel_names.push_back("smi_kernel_cks_1");
-    kernel_names.push_back("smi_kernel_cks_2");
-    kernel_names.push_back("smi_kernel_cks_3");
-    kernel_names.push_back("smi_kernel_ckr_0");
-    kernel_names.push_back("smi_kernel_ckr_1");
-    kernel_names.push_back("smi_kernel_ckr_2");
-    kernel_names.push_back("smi_kernel_ckr_3");
+    SMI_Comm comm=SmiInit(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga,buffers);
+    printf("Rank: %d, communitor.my_rank:%d, num_rank:%d\n",rank,(char)comm.s[0],(char)comm.s[1]);
+    cl::Kernel kernels[2];
+    cl::CommandQueue queues[2];
+    IntelFPGAOCLUtils::createCommandQueue(context,device,queues[0]);
+    IntelFPGAOCLUtils::createCommandQueue(context,device,queues[1]);
+    IntelFPGAOCLUtils::createKernel(program,"app",kernels[0]);
+    IntelFPGAOCLUtils::createKernel(program,"app_1",kernels[1]);
 
-
-    //this is for the case with classi channels
-    IntelFPGAOCLUtils::initEnvironment(platform,device,fpga,context,program,program_path,kernel_names, kernels,queues);
-
-    //create memory buffers
-    const char tags=2;
-    std::cout << "Version with " <<(int)tags<< " tags" << std::endl;
-    cl::Buffer routing_table_ck_s_0(context,CL_MEM_READ_ONLY,rank_count);
-    cl::Buffer routing_table_ck_s_1(context,CL_MEM_READ_ONLY,rank_count);
-    cl::Buffer routing_table_ck_s_2(context,CL_MEM_READ_ONLY,rank_count);
-    cl::Buffer routing_table_ck_s_3(context,CL_MEM_READ_ONLY,rank_count);
-    cl::Buffer routing_table_ck_r_0(context,CL_MEM_READ_ONLY,tags*2); //NEW
-    cl::Buffer routing_table_ck_r_1(context,CL_MEM_READ_ONLY,tags*2);
-    cl::Buffer routing_table_ck_r_2(context,CL_MEM_READ_ONLY,tags*2);
-    cl::Buffer routing_table_ck_r_3(context,CL_MEM_READ_ONLY,tags*2);
     cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
     cl::Buffer check2(context,CL_MEM_WRITE_ONLY,1);
-
-    //load routing tables
-    char routing_tables_ckr[4][tags*2]; //only one tag
-    char routing_tables_cks[4][rank_count];
-    for (int i = 0; i < kChannelsPerRank; ++i) {
-        LoadRoutingTable<char>(rank, i, tags*2, ROUTING_DIR, "ckr", &routing_tables_ckr[i][0]);
-        LoadRoutingTable<char>(rank, i, rank_count, ROUTING_DIR, "cks", &routing_tables_cks[i][0]);
-    }
-
-    queues[0].enqueueWriteBuffer(routing_table_ck_s_0, CL_TRUE,0,rank_count,&routing_tables_cks[0][0]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_s_1, CL_TRUE,0,rank_count,&routing_tables_cks[1][0]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_s_2, CL_TRUE,0,rank_count,&routing_tables_cks[2][0]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_s_3, CL_TRUE,0,rank_count,&routing_tables_cks[3][0]);
-
-    /*sleep(rank);
-    std::cout << "CK R Routing tables for rank "<<rank<<std::endl;
-    for(int i = 0; i < kChannelsPerRank; ++i) {
-        std::cout << "CK_R_" <<i<<std::endl;
-        for (int ii = 0; ii < 2; ii++)
-        {
-            std::cout << "\tPort: "<<ii<<": ";
-            std::cout << (int)routing_tables_ckr[i][ii*2] <<", " <<(int)routing_tables_ckr[i][ii*2+1]<<endl;
-        }
-    }*/
-
-    //NEW TEMP:
-    //duplicate the content of the CKR, will be sufficient for now
-    /*  for (int i = 0; i < kChannelsPerRank; ++i) {
-         for(int j=tags-1;j>=0;j--)
-         {
-             routing_tables_ckr[i][j*2]=routing_tables_ckr[i][j];
-             routing_tables_ckr[i][j*2+1]=routing_tables_ckr[i][j];
-         }
-
-    }*/
-    /*
-    printf("Copied\n");
-    for(int i=0;i<4;i++)
-       std::cout << "CKR"<<i<<": "<<(int)routing_tables_ckr[i][0]<<", "<<(int)routing_tables_ckr[i][1]<<", "<<(int)routing_tables_ckr[i][2]<<", "<<(int)routing_tables_ckr[i][3]<<std::endl;
-    */
-    queues[0].enqueueWriteBuffer(routing_table_ck_r_0, CL_TRUE,0,tags*2,&routing_tables_ckr[0][0]); //NEW
-    queues[0].enqueueWriteBuffer(routing_table_ck_r_1, CL_TRUE,0,tags*2,&routing_tables_ckr[1][0]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_r_2, CL_TRUE,0,tags*2,&routing_tables_ckr[2][0]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_r_3, CL_TRUE,0,tags*2,&routing_tables_ckr[3][0]);
 
     if(rank==0)
     {
         char dest=(char)recv_rank;
         kernels[0].setArg(0,sizeof(int),&n);
         kernels[0].setArg(1,sizeof(char),&dest);
+        kernels[0].setArg(2,sizeof(SMI_Comm),&comm);
         kernels[1].setArg(0,sizeof(int),&n);
         kernels[1].setArg(1,sizeof(char),&dest);
+        kernels[1].setArg(2,sizeof(SMI_Comm),&comm);
+
     }
     else
     {
         kernels[0].setArg(0,sizeof(cl_mem),&check);
         kernels[0].setArg(1,sizeof(int),&n);
+        kernels[0].setArg(2,sizeof(SMI_Comm),&comm);
         kernels[1].setArg(0,sizeof(cl_mem),&check2);
         kernels[1].setArg(1,sizeof(int),&n);
+        kernels[1].setArg(2,sizeof(SMI_Comm),&comm);
     }
-    //args for the CK_Ss
-    kernels[2].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
-    kernels[2].setArg(1,sizeof(char),&rank_count);
-    kernels[3].setArg(0,sizeof(cl_mem),&routing_table_ck_s_1);
-    kernels[3].setArg(1,sizeof(char),&rank_count);
-    kernels[4].setArg(0,sizeof(cl_mem),&routing_table_ck_s_2);
-    kernels[4].setArg(1,sizeof(char),&rank_count);
-    kernels[5].setArg(0,sizeof(cl_mem),&routing_table_ck_s_3);
-    kernels[5].setArg(1,sizeof(char),&rank_count);
-
-    //args for the CK_Rs
-    kernels[6].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
-    kernels[6].setArg(1,sizeof(char),&rank);
-    kernels[7].setArg(0,sizeof(cl_mem),&routing_table_ck_r_1);
-    kernels[7].setArg(1,sizeof(char),&rank);
-    kernels[8].setArg(0,sizeof(cl_mem),&routing_table_ck_r_2);
-    kernels[8].setArg(1,sizeof(char),&rank);
-    kernels[9].setArg(0,sizeof(cl_mem),&routing_table_ck_r_3);
-    kernels[9].setArg(1,sizeof(char),&rank);
-
-    //start the CKs
-    const int num_kernels=kernel_names.size();
-    for(int i=num_kernels-1;i>=num_kernels-8;i--)
-        queues[i].enqueueTask(kernels[i]);
     std::vector<double> times;
     for(int i=0;i<runs;i++)
     {

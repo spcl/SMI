@@ -39,11 +39,8 @@ if(PythonInterp_FOUND)
   add_smi_executable("hotspot_smi")
 
 
-  add_custom_target(generate_kmeans_smi_routing
-                    COMMAND ${CMAKE_COMMAND} -E copy_directory
-                    ${CMAKE_CURRENT_SOURCE_DIR}/host/k_means_routing 
-                    ${CMAKE_CURRENT_BINARY_DIR}/kmeans_smi_routing)
-  add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/kmeans_smi.cl" OFF ${SMI_KMEANS_RANKS} 6 ON)
+
+  add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/kmeans_smi.cl" OFF ${SMI_KMEANS_RANKS} 6 OFF)
   add_smi_executable("kmeans_smi")
   add_dependencies(kmeans_smi.exe generate_kmeans_smi_routing)
   add_dependencies(build_kmeans_smi_emulator generate_kmeans_smi_routing)

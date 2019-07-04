@@ -3,11 +3,13 @@
 #include "scatter_codegen/smi-device-0.h"
 
 
-
-__kernel void app(const int N, char root,char my_rank, char num_ranks, __global char* mem)
+__kernel void app(const int N, char root,__global char* mem, SMI_Comm comm)
 {
-    SMI_ScatterChannel  __attribute__((register)) chan= SMI_Open_scatter_channel(N,N, SMI_INT, 0,root,my_rank,num_ranks);
+
+    SMI_ScatterChannel  __attribute__((register)) chan= SMI_Open_scatter_channel(N,N, SMI_INT, 0,root,comm);
     char check=1;
+    char num_ranks=comm[1];
+    char my_rank=comm[0];
     const int loop_bound=(my_rank==root)?N*num_ranks:N;
     const int to_rcv_start=my_rank*N;
     for(int i=0;i<loop_bound;i++)

@@ -77,8 +77,8 @@ int main(int argc, char *argv[])
     cl::Device device;
     cl::Context context;
     cl::Program program;
-
-    SmiInit(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga);
+    std::vector<cl::Buffer> buffers;
+    SmiInit(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga,buffers);
 
     cl::Kernel kernel;
     cl::CommandQueue queue;

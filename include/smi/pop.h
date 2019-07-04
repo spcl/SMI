@@ -5,6 +5,7 @@
 #ifndef POP_H
 #define POP_H
 #include "channel_descriptor.h"
+#include "communicator.h"
 
 
 /**
@@ -13,9 +14,10 @@
  * @param data_type
  * @param source
  * @param port
+ * @param comm
  * @return
  */
-SMI_Channel SMI_Open_receive_channel(unsigned int count, SMI_Datatype data_type, unsigned int source, unsigned int port)
+SMI_Channel SMI_Open_receive_channel(unsigned int count, SMI_Datatype data_type, unsigned int source, unsigned int port, SMI_Comm comm)
 {
     SMI_Channel chan;
     //setup channel descriptor
@@ -60,6 +62,8 @@ SMI_Channel SMI_Open_receive_channel(unsigned int count, SMI_Datatype data_type,
     chan.packet_element_id=0; //data per packet
     chan.processed_elements=0;
     chan.sender_rank=chan.sender_rank;
+    chan.receiver_rank=comm[0];
+    //comm is not directly used in this first implementation
     return chan;
 }
 /**

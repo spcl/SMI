@@ -69,11 +69,38 @@ class Reduce(SmiOperation):
         "char": 1
     }
 
-    def __init__(self, logical_port, data_type):
+    OP_TYPE = {
+        "add": "SMI_OP_ADD",
+        "max": "SMI_OP_MAX",
+        "min": "SMI_OP_MIN"
+    }
+
+    SHIFT_REG_INIT = {
+        ("char","add") : "0",
+        ("short","add") : "0",
+        ("int","add") : "0",
+        ("float","add") : "0",
+        ("double","add") : "0",
+        ("char","max") : "CHAR_MIN",
+        ("short","max") : "SHRT_MIN",
+        ("int","max") : "INT_MIN",
+        ("float","max") : "FLT_MIN",
+        ("double","max") : "DBL_MIN",
+        ("char","min") : "CHAR_MAX",
+        ("short","min") : "SHRT_MAX",
+        ("int","min") : "INT_MAX",
+        ("float","min") : "FLT_MAX",
+        ("double","min") : "DBL_MAX"
+
+    }
+
+    def __init__(self, logical_port, data_type, op_type):
         super().__init__(logical_port)
 
         assert data_type in Reduce.SHIFT_REG
+        assert op_type in Reduce.OP_TYPE
         self.data_type = data_type
+        self.op_type = op_type
 
     def hw_port_usage(self) -> Set[str]:
         return {
@@ -90,6 +117,12 @@ class Reduce(SmiOperation):
 
     def data_size(self) -> int:
         return Reduce.DATA_SIZE[self.data_type]
+
+    def reduce_op(self) -> str:
+        return Reduce.OP_TYPE[self.op_type]
+
+    def shift_reg_init(self) ->str:
+        return Reduce.SHIFT_REG_INIT[(self.data_type,self.op_type)]
 
     def __repr__(self):
         return "Broadcast({})".format(self.logical_port)

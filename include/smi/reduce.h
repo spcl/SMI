@@ -29,10 +29,11 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     char elements_per_packet;           //number of data elements per packet
     SMI_Network_message net_2;          //buffered network message (we need two of them to remove aliasing)
     char packet_element_id_rcv;         //used by the receivers
+    char reduce_op;                     //applied reduce operation
 }SMI_RChannel;
 
 
-SMI_RChannel SMI_Open_reduce_channel(unsigned int count, SMI_Datatype data_type, unsigned int port, unsigned int root, unsigned int my_rank, unsigned int num_ranks)
+SMI_RChannel SMI_Open_reduce_channel(unsigned int count, SMI_Datatype data_type, SMI_Op op,  unsigned int port, unsigned int root, unsigned int my_rank, unsigned int num_ranks)
 {
     SMI_RChannel chan;
     //setup channel descriptor
@@ -42,6 +43,7 @@ SMI_RChannel SMI_Open_reduce_channel(unsigned int count, SMI_Datatype data_type,
     chan.my_rank=(char)my_rank;
     chan.root_rank=(char)root;
     chan.num_rank=(char)num_ranks;
+    chan.reduce_op=(char)op;
     switch(data_type)
     {
         case(SMI_SHORT):

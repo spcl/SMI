@@ -1,7 +1,7 @@
 #include "kmeans.h"
-#define SEQUENTIAL
+//#define SEQUENTIAL
 #if !defined(SEQUENTIAL)
-#include "smi.h"
+#include "smi-device-0.h"
 #endif
 
 // Every channel is set to twice the size it needs to be
@@ -131,7 +131,7 @@ kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
     // printf("[%i] Starting centroid reduce...\n", smi_rank);
 #if !defined(SEQUENTIAL)
     SMI_RChannel __attribute__((register)) reduce_mean_ch =
-        SMI_Open_reduce_channel(K * DIMS, SMI_FLOAT, 0, smi_rank, smi_size);
+        SMI_Open_reduce_channel(K * DIMS, SMI_FLOAT, 0, 0, smi_rank, smi_size);
 #endif
     #pragma loop_coalesce
     for (int k = 0; k < K; ++k) {
@@ -144,7 +144,7 @@ kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
           DTYPE send_val = send_vec[w];
           DTYPE recv_val;
 #if !defined(SEQUENTIAL)
-          SMI_Reduce_float(&reduce_mean_ch, &send_val, &recv_val);
+          SMI_Reduce(&reduce_mean_ch, &send_val, &recv_val);
           // It doesn't matter that we write junk on non-0 ranks
           means_reduced[w][d][k] = recv_val;
 #else
@@ -159,7 +159,7 @@ kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
     // printf("[%i] Starting centroid broadcast...\n", smi_rank);
 #if !defined(SEQUENTIAL)
     SMI_BChannel __attribute__((register)) broadcast_mean_ch =
-        SMI_Open_bcast_channel(K * DIMS, SMI_FLOAT, 0, smi_rank, smi_size);
+        SMI_Open_bcast_channel(K * DIMS, SMI_FLOAT, 1, 0, smi_rank, smi_size);
 #endif
     #pragma loop_coalesce
     for (int k = 0; k < K; ++k) {
@@ -168,7 +168,7 @@ kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
         for (int w = 0; w < W; ++w) {
           DTYPE bcast_val = means_reduced[w][d][k];
 #if !defined(SEQUENTIAL)
-          SMI_Bcast_float(&broadcast_mean_ch, &bcast_val);
+          SMI_Bcast(&broadcast_mean_ch, &bcast_val);
 #endif
           bcast_vec[w] = bcast_val;
         }
@@ -181,13 +181,13 @@ kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
     // printf("[%i] Starting count reduce...\n", smi_rank);
 #if !defined(SEQUENTIAL)
     SMI_RChannel __attribute__((register)) reduce_count_ch =
-        SMI_Open_reduce_channel(K, SMI_INT, 0, smi_rank, smi_size);
+        SMI_Open_reduce_channel(K, SMI_INT, 2, 0, smi_rank, smi_size);
 #endif
     for (int k = 0; k < K; k++) {
       int send_val = count[k]; 
       int recv_val;
 #if !defined(SEQUENTIAL)
-      SMI_Reduce_int(&reduce_count_ch, &send_val, &recv_val);
+      SMI_Reduce(&reduce_count_ch, &send_val, &recv_val);
       // Doesn't matter that this is junk on non-root ranks
       count_reduced[k] = recv_val;
 #else
@@ -200,7 +200,7 @@ kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
     // printf("[%i] Starting count broadcast...\n", smi_rank);
 #if !defined(SEQUENTIAL)
     SMI_BChannel __attribute__((register)) broadcast_count_ch =
-        SMI_Open_bcast_channel(K, SMI_INT, 0, smi_rank, smi_size);
+        SMI_Open_bcast_channel(K, SMI_INT, 3, 0, smi_rank, smi_size);
 #endif
     for (int k = 0; k < K; k++) {
       int bcast_val = count_reduced[k];

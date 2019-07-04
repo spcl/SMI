@@ -17,7 +17,10 @@ __kernel void smi_kernel_scatter_{{ op.logical_port }}(char num_rank)
         {
             mess = read_channel_intel({{ utils.channel_array("scatter") }}[{{ scatter.get_hw_port(op.logical_port) }}]);
             if(GET_HEADER_OP(mess.header)==SMI_SYNCH)
+            {
                 to_be_received_requests=num_requests;
+                SET_HEADER_OP(mess.header,SMI_SCATTER);
+            }
             external=false;
         }
         else // handle the request

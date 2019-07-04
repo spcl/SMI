@@ -9,7 +9,7 @@
 #include "network_message.h"
 #include "operation_type.h"
 #include "data_types.h"
-
+#include "communicator.h"
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 

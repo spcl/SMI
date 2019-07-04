@@ -5,6 +5,7 @@
 #ifndef PUSH_H
 #define PUSH_H
 #include "channel_descriptor.h"
+#include "communicator.h"
 
 /**
  * @brief SMI_OpenSendChannel
@@ -14,7 +15,7 @@
  * @param port
  * @return
  */
-SMI_Channel SMI_Open_send_channel(unsigned int count, SMI_Datatype data_type, unsigned int destination, unsigned int port)
+SMI_Channel SMI_Open_send_channel(unsigned int count, SMI_Datatype data_type, unsigned int destination, unsigned int port, SMI_Comm comm)
 {
     SMI_Channel chan;
     //setup channel descriptor
@@ -63,6 +64,8 @@ SMI_Channel SMI_Open_send_channel(unsigned int count, SMI_Datatype data_type, un
     chan.receiver_rank=destination;
     chan.processed_elements=0;
     chan.packet_element_id=0;
+    chan.sender_rank=comm[0];
+    //chan.comm=comm;//comm is not used in this first implemenation
     return chan;
 }
 

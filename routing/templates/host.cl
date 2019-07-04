@@ -1,6 +1,9 @@
+#define __HOST_PROGRAM__
 #include <utils/smi_utils.hpp>
 #include <vector>
-void SmiInit(
+#include <smi/communicator.h>
+
+SMI_Comm SmiInit(
         unsigned int rank,
         unsigned int ranks_count,
         const char* program_path,
@@ -104,4 +107,9 @@ void SmiInit(
         queues[i].enqueueTask(kernels[i]);
         queues[i].flush();
     }
+
+    //returns the communicator
+    SMI_Comm comm{char_rank,char_ranks_count};
+    return comm;
+
 }
