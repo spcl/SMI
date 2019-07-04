@@ -90,7 +90,6 @@ int main(int argc, char *argv[])
     cl::Context context;
     cl::Program program;
     std::vector<cl::Buffer> buffers;
-
     SMI_Comm comm=SmiInit(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga,buffers);
     printf("Rank: %d, communitor.my_rank:%d, num_rank:%d\n",rank,(char)comm.s[0],(char)comm.s[1]);
     cl::Kernel kernels[2];
