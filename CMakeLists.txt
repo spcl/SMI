@@ -4,6 +4,8 @@ project(smi)
 # Configuration
 set(SMI_TARGET_BOARD "p520_max_sg280l" CACHE STRING "aoc target board.")
 set(SMI_ROUTING_FILE "${CMAKE_SOURCE_DIR}/routing/fpga-06-07-08-09.routing" CACHE STRING "File describing routing setup.")
+set(TEST_ROUTING_FILE "${CMAKE_SOURCE_DIR}/test/network_topologies/8FPGAs-2D-torus.routing" CACHE STRING "File describing routing setup for testing.")
+
 set(SMI_FMAX "300" CACHE STRING "Target Fmax when compiling for hardware.")
 set(SMI_DEVICES_PER_NODE 2 CACHE STRING "Number of FPGA devices per node.")
 
@@ -18,6 +20,7 @@ include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/include)
 
 include_directories(SYSTEM ${MPI_CXX_INCLUDE_PATH})
 set(SMI_LIBS ${CMAKE_THREAD_LIBS_INIT} ${IntelFPGAOpenCL_LIBRARIES} ${MPI_CXX_LIBRARIES})
+set(GTEST_LIBS "-lgtest")
 
 # Build flags for host executables
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y -DHLSLIB_INTEL ${MPI_CXX_COMPILE_FLAGS}")
@@ -202,6 +205,89 @@ function(add_smi_microbenchmarks KERNEL_PATH NUM_RANKS MPMD)
     add_dependencies(build_${KERNEL_NAME}_hardware generate_${KERNEL_NAME}_routing)
 endfunction()
 
+#################################
+#TESTING
+################################
+enable_testing()
+function(add_smi_test_executable TEST_PATH)
+    get_filename_component(TEST_NAME ${TEST_PATH} NAME_WE)
+    get_filename_component(DIRECTORY_NAME ${TEST_PATH} DIRECTORY)
+    add_executable(${TEST_NAME}.exe ${DIRECTORY_NAME}/${TEST_NAME}.cpp)
+    target_link_libraries(${TEST_NAME}.exe ${SMI_LIBS} ${GTEST_LIBS})
+endfunction()
+
+##Target for building test program
+# NUM_RANKS is used for generating the right emulations binaries
+# MPMD used for the benchmarks described as MPMD programs
+function(add_smi_test KERNEL_PATH NUM_RANKS MPMD)
+    get_filename_component(KERNEL_NAME ${KERNEL_PATH} NAME_WE)
+    get_filename_component(DIRECTORY_NAME ${KERNEL_PATH} NAME_WE)
+    #code-gen
+
+    add_custom_target(generate_${KERNEL_NAME}_routing
+        COMMAND ${PYTHON_EXECUTABLE}
+        ${CMAKE_SOURCE_DIR}/routing/main.py build ${CMAKE_CURRENT_SOURCE_DIR}/${DIRECTORY_NAME}/${KERNEL_NAME}.json  ${TEST_ROUTING_FILE}
+        ${KERNEL_NAME}_routing)
+    #add_dependencies(generate_${KERNEL_NAME} generate_${KERNEL_NAME}_routing)
+    set(AOC_COMMAND
+        -I${CMAKE_SOURCE_DIR}/include
+        -I${CMAKE_SOURCE_DIR}/hlslib/include
+        -I${CMAKE_CURRENT_SOURCE_DIR}/include
+        -I${CMAKE_BINARY_DIR}
+        -I${CMAKE_CURRENT_BINARY_DIR}
+        -I${CMAKE_CURRENT_BINARY_DIR}/${KERNEL_NAME}_routing
+        -fp-relaxed
+        -no-interleaving=default
+        -fmax=${SMI_FMAX}
+        -board=${SMI_TARGET_BOARD}
+        -emulator-channel-depth-model=strict
+        )
+
+    if(MPMD)
+        # To emulate an MPI-like setup, we need to generate a separate emulation
+        # kernel for each rank
+        add_custom_target(build_${KERNEL_NAME}_emulator )
+        math(EXPR LOOP_END "${NUM_RANKS} - 1")
+        foreach(SMI_EMULATION_RANK RANGE 0 ${LOOP_END} 1)
+            if(SMI_EMULATION_RANK EQUAL 0)
+                set(KERNEL_FILE ${CMAKE_CURRENT_SOURCE_DIR}/${DIRECTORY_NAME}/${KERNEL_NAME}_rank0.cl)
+            else()
+                set(KERNEL_FILE ${CMAKE_CURRENT_SOURCE_DIR}/${DIRECTORY_NAME}/${KERNEL_NAME}_rank1.cl)
+            endif()
+            add_custom_target(build_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}
+                COMMAND ${IntelFPGAOpenCL_AOC}
+                ${AOC_COMMAND} ${KERNEL_FILE} -march=emulator
+                -DSMI_EMULATION_RANK=${SMI_EMULATION_RANK}
+                -emulator-channel-depth-model=strict
+                -o ${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}.aocx)
+            add_dependencies(build_${KERNEL_NAME}_emulator
+                build_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK})
+            add_dependencies(build_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}
+                generate_${KERNEL_NAME}_routing)
+        endforeach()
+    else()
+        # To emulate an MPI-like setup, we need to generate a separate emulation
+        # kernel for each rank
+        add_custom_target(build_${KERNEL_NAME}_emulator )
+        math(EXPR LOOP_END "${NUM_RANKS} - 1")
+        foreach(SMI_EMULATION_RANK RANGE 0 ${LOOP_END} 1)
+            set(KERNEL_FILE ${CMAKE_CURRENT_SOURCE_DIR}/${DIRECTORY_NAME}/${KERNEL_NAME}.cl)
+            add_custom_target(build_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}
+                COMMAND ${IntelFPGAOpenCL_AOC}
+                ${AOC_COMMAND} ${KERNEL_FILE} -march=emulator
+                -DSMI_EMULATION_RANK=${SMI_EMULATION_RANK}
+                -emulator-channel-depth-model=strict
+                -o ${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}.aocx)
+            add_dependencies(build_${KERNEL_NAME}_emulator
+                build_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK})
+            add_dependencies(build_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}
+                generate_${KERNEL_NAME}_routing)
+        endforeach()
+    endif()
+    add_dependencies(build_${KERNEL_NAME}_emulator generate_${KERNEL_NAME}_routing)
+endfunction()
+
 add_subdirectory(examples)
 add_subdirectory(microbenchmarks)
+add_subdirectory(test)
 #add_subdirectory(rodinia)

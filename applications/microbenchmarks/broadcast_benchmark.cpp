@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
     cl::Context context;
     cl::Program program;
     std::vector<cl::Buffer> buffers;
-    SmiInit(rank,rank_count,program_path.c_str(),ROUTING_DIR,platform,device,context,program,fpga,buffers);
+    SMI_Comm comm=SmiInit(rank,rank_count,program_path.c_str(),ROUTING_DIR,platform,device,context,program,fpga,buffers);
 
     //create the app
     cl::Kernel kernel;
@@ -88,8 +88,7 @@ int main(int argc, char *argv[])
     kernel.setArg(0,sizeof(cl_mem),&check);
     kernel.setArg(1,sizeof(int),&n);
     kernel.setArg(2,sizeof(char),&root);
-    kernel.setArg(3,sizeof(char),&rank);
-    kernel.setArg(4,sizeof(char),&rank_count);
+    kernel.setArg(3,sizeof(SMI_Comm),&comm);
 
 
     std::vector<double> times;

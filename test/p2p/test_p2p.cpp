@@ -72,7 +72,6 @@ TEST(P2P, IntegerMessages)
     int fpga=my_rank%2;
     program_path = replace(program_path, "<rank>", std::to_string(my_rank));
 
-    //remove old emulation files
 
     //create the program
     cl::Platform  platform;
@@ -101,7 +100,6 @@ TEST(P2P, IntegerMessages)
                 kernel.setArg(0,sizeof(int),&ml);
                 kernel.setArg(1,sizeof(char),&dest);
                 kernel.setArg(2,sizeof(SMI_Comm),&comm);
-
             }
             else
             {
@@ -153,7 +151,6 @@ int main(int argc, char *argv[])
         delete listeners.Release(listeners.default_result_printer());
     }
 
-    //MPI_Init(&argc, &argv);
     result = RUN_ALL_TESTS();
     MPI_Finalize();
 

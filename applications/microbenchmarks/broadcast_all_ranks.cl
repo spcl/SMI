@@ -5,17 +5,13 @@
 
 
 
-__kernel void app(__global char* mem, const int N, char root,char my_rank, char num_ranks/*, __global int * restrict  data*/)
+__kernel void app(__global char* mem, const int N, char root,SMI_Comm comm)
 {
     char check=1;
-    SMI_Channel chans=SMI_Open_send_channel(N,SMI_INT,1,0);
-    SMI_Channel chanr=SMI_Open_receive_channel(N,SMI_INT,0,0);
-    int data=N;
-    SMI_Push(&chans,&data);
-    SMI_Pop(&chanr,&data);
 
-    SMI_BChannel  __attribute__((register)) chan= SMI_Open_bcast_channel(N, SMI_FLOAT,1, root,my_rank,num_ranks);
-    for(int i=0;i<data;i++)
+
+    SMI_BChannel  __attribute__((register)) chan= SMI_Open_bcast_channel(N, SMI_FLOAT,0, root,comm);
+    for(int i=0;i<N;i++)
     {
 
         int to_comm=i;//count_updated[i];

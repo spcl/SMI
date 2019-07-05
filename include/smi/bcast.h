@@ -12,7 +12,7 @@
 #include "header_message.h"
 #include "operation_type.h"
 #include "network_message.h"
-
+#include "communicator.h"
 
 
 typedef struct __attribute__((packed)) __attribute__((aligned(64))){
@@ -31,17 +31,25 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     char packet_element_id_rcv;         //used by the receivers
 }SMI_BChannel;
 
-
-SMI_BChannel SMI_Open_bcast_channel(unsigned int count, SMI_Datatype data_type, unsigned int port, unsigned int root,  unsigned int my_rank, unsigned int num_ranks)
+/**
+ * @brief SMI_Open_bcast_channel
+ * @param count number of data elements to broadcast
+ * @param data_type type of the channel
+ * @param port port number
+ * @param root rank of the root
+ * @param comm communicator
+ * @return the channel descriptor
+ */
+SMI_BChannel SMI_Open_bcast_channel(unsigned int count, SMI_Datatype data_type, unsigned int port, unsigned int root,  SMI_Comm comm)
 {
     SMI_BChannel chan;
     //setup channel descriptor
     chan.message_size=count;
     chan.data_type=data_type;
     chan.port=(char)port;
-    chan.my_rank=(char)my_rank;
+    chan.my_rank=(char)SMI_Comm_rank(comm);
     chan.root_rank=(char)root;
-    chan.num_rank=num_ranks;
+    chan.num_rank=(char)SMI_Comm_size(comm);
     switch(data_type)
     {
         case(SMI_SHORT):
@@ -66,13 +74,13 @@ SMI_BChannel SMI_Open_bcast_channel(unsigned int count, SMI_Datatype data_type, 
             break;
     }
 
-    if(my_rank!=root)
+    if(chan.my_rank!=chan.root_rank)
     {
         //At the beginning, send a "ready to receive" to the root
         //This is needed to not inter-mix subsequent collectives
         SET_HEADER_OP(chan.net.header,SMI_SYNCH);
-        SET_HEADER_DST(chan.net.header,root);
-        SET_HEADER_SRC(chan.net.header,my_rank);
+        SET_HEADER_DST(chan.net.header,chan.root_rank);
+        SET_HEADER_SRC(chan.net.header,chan.my_rank);
         SET_HEADER_PORT(chan.net.header,chan.port);
         const char chan_idx_control=cks_control_table[chan.port];
         write_channel_intel(cks_control_channels[chan_idx_control],chan.net);
@@ -80,7 +88,7 @@ SMI_BChannel SMI_Open_bcast_channel(unsigned int count, SMI_Datatype data_type, 
     else
     {
         SET_HEADER_OP(chan.net.header,SMI_SYNCH);           //used to signal to the support kernel that a new broadcast has begun
-        SET_HEADER_SRC(chan.net.header,root);
+        SET_HEADER_SRC(chan.net.header,chan.root_rank);
         SET_HEADER_PORT(chan.net.header,chan.port);         //used by destination
         SET_HEADER_NUM_ELEMS(chan.net.header,0);            //at the beginning no data
     }
