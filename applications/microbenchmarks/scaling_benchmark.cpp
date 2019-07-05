@@ -65,7 +65,6 @@ int main(int argc, char *argv[])
                 cerr << "Usage: "<< argv[0]<<"-b <binary file> -n <length>"<<endl;
                 exit(-1);
         }
-    //n=40;
     cout << "Performing scaling test with "<<n<<" elements per app"<<endl;
     int rank_count;
     CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &rank_count));

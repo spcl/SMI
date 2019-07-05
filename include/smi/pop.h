@@ -14,7 +14,6 @@
  * @param data_type
  * @param source
  * @param port
- * @param comm
  * @return
  */
 SMI_Channel SMI_Open_receive_channel(unsigned int count, SMI_Datatype data_type, unsigned int source, unsigned int port, SMI_Comm comm)

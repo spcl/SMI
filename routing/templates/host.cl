@@ -52,7 +52,6 @@ SMI_Comm SmiInit(
     {% endfor %}
 
     // load routing tables
-    std::cout << "Using " << ports << " ports" << std::endl;
     char routing_tables_cks[{{ program.channel_count}}][cks_table_size];
     char routing_tables_ckr[{{ program.channel_count}}][ckr_table_size];
     for (int i = 0; i < {{ program.channel_count }}; i++)
