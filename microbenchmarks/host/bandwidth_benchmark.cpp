@@ -211,4 +211,5 @@ int main(int argc, char *argv[])
         fout.close();
     }
     CHECK_MPI(MPI_Finalize());
+
 }

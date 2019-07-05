@@ -1,0 +1,15 @@
+[{
+  "buffer_size": 128,
+  "ports": [{
+    "id": 0,
+    "type": "push"
+  }],
+  "fpgas": ["fpga-0001:acl0"]
+}, {
+  "buffer_size": 128,
+  "ports": [{
+    "id": 0,
+    "type": "pop"
+  }],
+  "fpgas": ["fpga-0001:acl1","fpga-0002:acl0", "fpga-0002:acl1","fpga-0003:acl0", "fpga-0003:acl1","fpga-0004:acl0", "fpga-0004:acl1"]
+}]

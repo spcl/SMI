@@ -93,7 +93,6 @@ int main(int argc, char *argv[])
         program_path = replace(program_path, "<rank>", std::to_string(rank));
     char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);
-    std::cout << "Rank" << rank<<" executing on host:" <<hostname << " program: "<<program_path<<std::endl;
 
     cl::Platform  platform;
     cl::Device device;
