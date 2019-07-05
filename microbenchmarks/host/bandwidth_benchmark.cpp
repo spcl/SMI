@@ -1,5 +1,5 @@
 /**
-    Bandiwdth benchmark
+    Scaling benchmark
 
  */
 
@@ -10,14 +10,12 @@
 #include <iostream>
 #include <fstream>
 #include <unistd.h>
-#include "../../include/utils/ocl_utils.hpp"
-#include "../../include/utils/utils.hpp"
+#include <utils/ocl_utils.hpp>
+#include <utils/utils.hpp>
 #include <limits.h>
 #include <cmath>
-#include "codegen_scaling/smi-host-0.h"
-#include "../../include/smi/communicator.h"
-#define ROUTING_DIR "applications/microbenchmarks/codegen_scaling/"
-
+#include "bandwidth_routing/smi-host-0.h"
+#define ROUTING_DIR "bandwidth_routing/"
 using namespace std;
 int main(int argc, char *argv[])
 {
@@ -213,5 +211,4 @@ int main(int argc, char *argv[])
         fout.close();
     }
     CHECK_MPI(MPI_Finalize());
-
 }
