@@ -4,8 +4,8 @@
 #include <smi/communicator.h>
 
 SMI_Comm SmiInit(
-        unsigned int rank,
-        unsigned int ranks_count,
+        int rank,
+        int ranks_count,
         const char* program_path,
         const char* routing_dir,
         cl::Platform &platform, 

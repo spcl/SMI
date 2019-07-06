@@ -10,19 +10,19 @@
 
 /**
  * @brief SMI_Open_receive_channel opens a receive transient channel
- * @param count
+ * @param count num
  * @param data_type
  * @param source
  * @param port
  * @return
  */
-SMI_Channel SMI_Open_receive_channel(unsigned int count, SMI_Datatype data_type, unsigned int source, unsigned int port, SMI_Comm comm)
+SMI_Channel SMI_Open_receive_channel(int count, SMI_Datatype data_type, int source, int port, SMI_Comm comm)
 {
     SMI_Channel chan;
     //setup channel descriptor
     chan.port=(char)port;
     chan.sender_rank=(char)source;
-    chan.message_size=count;
+    chan.message_size=(unsigned int)count;
     chan.data_type=data_type;
     chan.op_type=SMI_RECEIVE;
     switch(data_type)

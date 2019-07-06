@@ -13,38 +13,47 @@
 #include "header_message.h"
 #include "operation_type.h"
 #include "network_message.h"
-
+#include "communicator.h"
 
 typedef struct __attribute__((packed)) __attribute__((aligned(64))){
-    SMI_Network_message net;                //buffered network message
-    unsigned int recv_count;                //number of data elements that will be received by the root
+    SMI_Network_message net;        //buffered network message
+    int recv_count;                 //number of data elements that will be received by the root
     char port;
-    unsigned int processed_elements_root;   //number of elements processed by the root
-    char packet_element_id_rcv;             //used by the receivers
-    char next_contrib;                      //the rank of the next contributor
+    int processed_elements_root;    //number of elements processed by the root
+    char packet_element_id_rcv;     //used by the receivers
+    char next_contrib;              //the rank of the next contributor
     char my_rank;
     char num_rank;
     char root_rank;
-    SMI_Network_message net_2;              //buffered network message, used by root rank to send synchronization messages
-    unsigned int send_count;                //number of elements sent by each non-root ranks
-    unsigned int processed_elements;        //how many data elements we have sent (non-root)
-    char packet_element_id;                 //given a packet, the id of the element that we are currently processing (from 0 to the data elements per packet)
-    char data_type;                         //type of message
-    char size_of_type;                      //size of data type
-    char elements_per_packet;               //number of data elements per packet
+    SMI_Network_message net_2;      //buffered network message, used by root rank to send synchronization messages
+    int send_count;                 //number of elements sent by each non-root ranks
+    int processed_elements;         //how many data elements we have sent (non-root)
+    char packet_element_id;         //given a packet, the id of the element that we are currently processing (from 0 to the data elements per packet)
+    char data_type;                 //type of message
+    char size_of_type;              //size of data type
+    char elements_per_packet;       //number of data elements per packet
 }SMI_GatherChannel;
 
-
-SMI_GatherChannel SMI_Open_gather_channel(unsigned int send_count,  unsigned int recv_count, SMI_Datatype data_type, unsigned int port, unsigned int root, unsigned int my_rank, unsigned int num_ranks)
+/**
+ * @brief SMI_Open_gather_channel
+ * @param send_count number of data elements transmitted by each rank
+ * @param recv_count number of data elements received by each rank (i.e. num_ranks*send_count)
+ * @param data_type type of the channel
+ * @param port port number
+ * @param root rank of the root
+ * @param comm communicator
+ * @return the channel descriptor
+ */
+SMI_GatherChannel SMI_Open_gather_channel(int send_count,  int recv_count, SMI_Datatype data_type, int port, int root, SMI_Comm comm)
 {
     SMI_GatherChannel chan;
     chan.port=(char)port;
     chan.send_count=send_count;
     chan.recv_count=recv_count;
     chan.data_type=data_type;
-    chan.my_rank=(char)my_rank;
+    chan.my_rank=(char)SMI_Comm_rank(comm);
     chan.root_rank=(char)root;
-    chan.num_rank=(char)num_ranks;
+    chan.num_rank=(char)SMI_Comm_size(comm);
     chan.next_contrib=0;
     switch(data_type)
     {
@@ -71,7 +80,7 @@ SMI_GatherChannel SMI_Open_gather_channel(unsigned int send_count,  unsigned int
     }
 
     //setup header for the message
-    SET_HEADER_SRC(chan.net.header,my_rank);
+    SET_HEADER_SRC(chan.net.header,chan.my_rank);
     SET_HEADER_PORT(chan.net.header,chan.port);
     SET_HEADER_NUM_ELEMS(chan.net.header,0);
     SET_HEADER_OP(chan.net.header,SMI_SYNCH);
@@ -86,18 +95,21 @@ SMI_GatherChannel SMI_Open_gather_channel(unsigned int send_count,  unsigned int
     return chan;
 }
 
-
-
+/**
+ * @brief SMI_Gather
+ * @param chan pointer to the gather channel descriptor
+ * @param data_snd pointer to the data element that must be sent
+ * @param data_rcv pointer to the receiving data element (significant on the root rank only)
+ */
 void SMI_Gather(SMI_GatherChannel *chan, volatile void* send_data, volatile void* rcv_data)
 {
     if(chan->my_rank==chan->root_rank)//I'm the root
     {
         //we can't offload this part to the kernel, by passing a network message
         //because it will replies to the root once every elem_per_packet cycles
-
         //the root is responsible for receiving data from a contributor, after sending it a request
         //for sending the data. If the contributor is itself it has to set the rcv_data accordingly
-        const unsigned int message_size=chan->recv_count;
+        const int message_size=chan->recv_count;
 
         if(chan->next_contrib!=chan->my_rank && chan->processed_elements_root==0 )//at the beginning we have to send the request
         {
@@ -197,7 +209,7 @@ void SMI_Gather(SMI_GatherChannel *chan, volatile void* send_data, volatile void
         //Non root rank, pack the data and send it
         char *conv=(char*)send_data;
         char *data_snd=chan->net.data;
-        const unsigned int message_size=chan->send_count;
+        const int message_size=chan->send_count;
         chan->processed_elements++;
         //copy the data
         switch(chan->data_type)

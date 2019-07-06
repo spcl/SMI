@@ -9,18 +9,19 @@
 
 /**
  * @brief SMI_OpenSendChannel
- * @param count
- * @param data_type
- * @param destination
- * @param port
- * @return
+ * @param count number of data elements to send
+ * @param data_type type of the data element
+ * @param destination rank of the destination
+ * @param port port number
+ * @param comm communicator
+ * @return channel descriptor
  */
-SMI_Channel SMI_Open_send_channel(unsigned int count, SMI_Datatype data_type, unsigned int destination, unsigned int port, SMI_Comm comm)
+SMI_Channel SMI_Open_send_channel(int count, SMI_Datatype data_type, int destination, int port, SMI_Comm comm)
 {
     SMI_Channel chan;
     //setup channel descriptor
     chan.port=(char)port;
-    chan.message_size=count;
+    chan.message_size=(unsigned int)count;
     chan.data_type=data_type;
     chan.op_type=SMI_SEND;
     chan.receiver_rank=(char)destination;

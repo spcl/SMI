@@ -1,12 +1,19 @@
-
 #ifndef REDUCE_H
 #define REDUCE_H
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
+
+/**
+  @file reduce.h
+  This file contains the channel descriptor, open channel, operation types,
+  and communication primitive for reduce
+*/
+
 
 #include "data_types.h"
 #include "header_message.h"
 #include "network_message.h"
 #include "operation_type.h"
+#include "communicator.h"
 
 typedef enum{
     SMI_ADD = 0,
@@ -14,15 +21,17 @@ typedef enum{
     SMI_MIN = 2
 }SMI_Op;
 
-
+/**
+    Channel descriptor for reduce
+*/
 typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     SMI_Network_message net;            //buffered network message
     char port;                          //Output channel for the bcast, used by the root
     char root_rank;
     char my_rank;                       //communicator infos
     char num_rank;
-    unsigned int message_size;                  //given in number of data elements
-    unsigned int processed_elements;            //how many data elements we have sent/received
+    int message_size;          //given in number of data elements
+    int processed_elements;    //how many data elements we have sent/received
     char packet_element_id;             //given a packet, the id of the element that we are currently processing (from 0 to the data elements per packet)
     SMI_Datatype data_type;             //type of message
     char size_of_type;                  //size of data type
@@ -33,16 +42,26 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
 }SMI_RChannel;
 
 
-SMI_RChannel SMI_Open_reduce_channel(unsigned int count, SMI_Datatype data_type, SMI_Op op,  unsigned int port, unsigned int root, unsigned int my_rank, unsigned int num_ranks)
+/**
+ * @brief SMI_Open_reduce_channel
+ * @param count number of data elements to reduce
+ * @param data_type type of the channel
+ * @param op rapplied reduce operation
+ * @param port port number
+ * @param root rank of the root
+ * @param comm communicator
+ * @return the channel descriptor
+ */
+SMI_RChannel SMI_Open_reduce_channel(int count, SMI_Datatype data_type, SMI_Op op,  int port, int root, SMI_Comm comm)
 {
     SMI_RChannel chan;
     //setup channel descriptor
     chan.message_size=count;
     chan.data_type=data_type;
     chan.port=(char)port;
-    chan.my_rank=(char)my_rank;
+    chan.my_rank=(char)SMI_Comm_rank(comm);
     chan.root_rank=(char)root;
-    chan.num_rank=(char)num_ranks;
+    chan.num_rank=(char)SMI_Comm_size(comm);
     chan.reduce_op=(char)op;
     switch(data_type)
     {
@@ -69,8 +88,8 @@ SMI_RChannel SMI_Open_reduce_channel(unsigned int count, SMI_Datatype data_type,
     }
 
     //setup header for the message
-    SET_HEADER_DST(chan.net.header,root);
-    SET_HEADER_SRC(chan.net.header,my_rank);
+    SET_HEADER_DST(chan.net.header,chan.root_rank);
+    SET_HEADER_SRC(chan.net.header,chan.my_rank);
     SET_HEADER_PORT(chan.net.header,chan.port);        //used by destination
     SET_HEADER_NUM_ELEMS(chan.net.header,0);           //at the beginning no data
     chan.processed_elements=0;
@@ -79,7 +98,12 @@ SMI_RChannel SMI_Open_reduce_channel(unsigned int count, SMI_Datatype data_type,
     return chan;
 }
 
-
+/**
+ * @brief SMI_Reduce
+ * @param chan pointer to the reduce channel descriptor
+ * @param data_snd pointer to the data element that must be reduced
+ * @param data_rcv pointer to the receiving data element  (root only)
+ */
 void SMI_Reduce(SMI_RChannel *chan, volatile void* data_snd, volatile void* data_rcv)
 {
 
@@ -121,13 +145,11 @@ void SMI_Reduce(SMI_RChannel *chan, volatile void* data_snd, volatile void* data
     }
     else
     {
-
         //wait for credits
         const char chan_idx_control=ckr_control_table[chan->port];
         SMI_Network_message req=read_channel_intel(ckr_control_channels[chan_idx_control]);
         mem_fence(CLK_CHANNEL_MEM_FENCE);
         //then send the data
-        //printf("NOn-root, received credits, send data\n");
         SET_HEADER_OP(chan->net.header,SMI_REDUCE);
         const char chan_idx_data=cks_data_table[chan->port];
         write_channel_intel(cks_data_channels[chan_idx_data],chan->net);

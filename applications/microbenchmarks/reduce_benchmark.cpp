@@ -16,7 +16,6 @@
 #include "reduce_codegen/smi-host-0.h"
 #define ROUTING_DIR "applications/microbenchmarks/reduce_codegen/"
 
-//#define CHECK
 using namespace std;
 int main(int argc, char *argv[])
 {
@@ -57,28 +56,21 @@ int main(int argc, char *argv[])
                 exit(-1);
         }
 
-    cout << "Performing reduce with  "<<1<<" elements, root: "<<(char)root<< " (attention: lenght is currently used to express the number of iteration)"<<endl;
     int rank_count;
     CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &rank_count));
     CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
-    fpga = rank % 2; // in this case is ok, pay attention
-    //fpga=0; //executed on 15 and 16
-    std::cout << "Rank: " << rank << " out of " << rank_count << " ranks" << std::endl;
+    fpga = rank % 2; 
     program_path = replace(program_path, "<rank>", std::to_string(rank));
-    std::cout << "Program: " << program_path << " executed on fpga: "<<fpga<<std::endl;
     char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);
-    printf("Rank %d executing on host: %s\n",rank,hostname);
-    float power;
-    size_t returnedSize;
-
+    std::cout << "Rank" << rank<<" executing on host:" <<hostname << " program: "<<program_path<<std::endl;
 
     cl::Platform  platform;
     cl::Device device;
     cl::Context context;
     cl::Program program;
     std::vector<cl::Buffer> buffers;
-    SmiInit(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga,buffers);
+    SMI_Comm comm=SmiInit(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga,buffers);
 
     cl::Kernel kernel;
     cl::CommandQueue queue;
@@ -91,20 +83,17 @@ int main(int argc, char *argv[])
    
     kernel.setArg(0,sizeof(int),&n);
     kernel.setArg(1,sizeof(char),&root);
-    kernel.setArg(2,sizeof(char),&rank);
-    kernel.setArg(3,sizeof(char),&rank_count);
-    kernel.setArg(4,sizeof(cl_mem),&check);
+    kernel.setArg(2,sizeof(cl_mem),&check);
+    kernel.setArg(3,sizeof(SMI_Comm),&comm);
     std::vector<double> times;
     for(int i=0;i<runs;i++)
     {
-        cl::Event events; //this defination must stay here
+        cl::Event events; 
         // wait for other nodes
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
 
         queue.enqueueTask(kernel,nullptr,&events);
-
         queue.finish();
-
 
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
         if(rank==root)
@@ -120,15 +109,11 @@ int main(int argc, char *argv[])
                 cout << "Result is Ok!"<<endl;
             else
                 cout << "Error!!!!"<<endl;
-
-
         }
     }
     CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
     if(rank==root)
     {
-
-       //check
         double mean=0;
         for(auto t:times)
             mean+=t;
@@ -161,10 +146,6 @@ int main(int argc, char *argv[])
         for(auto t:times)
             fout << t << endl;
         fout.close();
-
     }
-
-
     CHECK_MPI(MPI_Finalize());
-
 }

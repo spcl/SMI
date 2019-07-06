@@ -64,7 +64,6 @@ int main(int argc, char *argv[])
     CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
 
     fpga = rank % 2;
-    std::cout << "Rank: " << rank << " out of " << rank_count << " ranks" << std::endl;
     program_path = replace(program_path, "<rank>", std::to_string(rank));
     char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);

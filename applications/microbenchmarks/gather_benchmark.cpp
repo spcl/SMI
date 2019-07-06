@@ -16,7 +16,7 @@
 #include "../../include/utils/utils.hpp"
 #include "gather_codegen/smi-host-0.h"
 #define ROUTING_DIR "applications/microbenchmarks/gather_codegen/"
-//#define CHECK
+
 using namespace std;
 int main(int argc, char *argv[])
 {
@@ -57,27 +57,22 @@ int main(int argc, char *argv[])
                 exit(-1);
         }
 
-    cout << "Performing gather wit  "<<n<<" elements, root: "<<(char)root<<endl;
     int rank_count;
     CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &rank_count));
     CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
-    fpga = rank % 2; // in this case is ok, pay attention
-    //fpga=0; //executed on 15 and 16
-    std::cout << "Rank: " << rank << " out of " << rank_count << " ranks" << std::endl;
+    fpga = rank % 2;
     program_path = replace(program_path, "<rank>", std::to_string(rank));
-    std::cout << "Program: " << program_path << " executed on fpga: "<<fpga<<std::endl;
     char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);
-    printf("Rank %d executing on host: %s\n",rank,hostname);
+    std::cout << "Rank" << rank<<" executing on host:" <<hostname << " program: "<<program_path<<std::endl;
 
  
     cl::Platform  platform;
     cl::Device device;
     cl::Context context;
     cl::Program program;
-    //sleep(rank);
     std::vector<cl::Buffer> buffers;
-    SmiInit(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga, buffers);
+    SMI_Comm comm=SmiInit(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga, buffers);
     cl::Kernel kernel;
     cl::CommandQueue queue;
     IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
@@ -87,14 +82,13 @@ int main(int argc, char *argv[])
 
     kernel.setArg(0,sizeof(int),&n);
     kernel.setArg(1,sizeof(char),&root);
-    kernel.setArg(2,sizeof(char),&rank);
-    kernel.setArg(3,sizeof(char),&rank_count);
-    kernel.setArg(4,sizeof(cl_mem),&mem);
+    kernel.setArg(2,sizeof(cl_mem),&mem);
+    kernel.setArg(3,sizeof(SMI_Comm),&comm);
 
     std::vector<double> times;
     for(int i=0;i<runs;i++)
     {
-        cl::Event events; //this defination must stay here
+        cl::Event events; 
         // wait for other nodes
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
         queue.enqueueTask(kernel,nullptr,&events);
