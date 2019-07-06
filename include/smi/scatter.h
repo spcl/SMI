@@ -36,13 +36,13 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
 }SMI_ScatterChannel;
 
 
-SMI_ScatterChannel SMI_Open_scatter_channel(unsigned int send_count,  unsigned int recv_count,
-                                            SMI_Datatype data_type, unsigned int port, unsigned int root, SMI_Comm comm)
+SMI_ScatterChannel SMI_Open_scatter_channel(int send_count,  int recv_count,
+                                            SMI_Datatype data_type, int port, int root, SMI_Comm comm)
 {
     SMI_ScatterChannel chan;
     //setup channel descriptor
-    chan.send_count=send_count;
-    chan.recv_count=recv_count;
+    chan.send_count=(unsigned int)send_count;
+    chan.recv_count=(unsigned int)recv_count;
     chan.data_type=data_type;
     chan.port=(char)port;
     chan.my_rank=(char)comm[0];
@@ -93,8 +93,13 @@ SMI_ScatterChannel SMI_Open_scatter_channel(unsigned int send_count,  unsigned i
     return chan;
 }
 
-
-void SMI_Scatter(SMI_ScatterChannel *chan, void* send_data, void* rcv_data)
+/**
+ * @brief SMI_Scatter
+ * @param chan pointer to the scatter channel descriptor
+ * @param data_snd pointer to the data element that must be reduced
+ * @param data_rcv pointer to the receiving data element  (root only)
+ */
+void SMI_Scatter(SMI_ScatterChannel *chan, void* data_snd, void* data_rcv)
 {
     //take here the pointers to send/recv data to avoid fake dependencies
     const char elem_per_packet=chan->elements_per_packet;
@@ -102,35 +107,35 @@ void SMI_Scatter(SMI_ScatterChannel *chan, void* send_data, void* rcv_data)
     {
         //the root is responsible for splitting the data in packets
         //and set the right receviver.
-        //If the receiver is itself it has to set the rcv_data accordingly
-        char *conv=(char*)send_data;
-        char *data_snd=chan->net.data;
+        //If the receiver is itself it has to set the data_rcv accordingly
+        char *conv=(char*)data_snd;
+        char *data_send=chan->net.data;
         const unsigned int message_size=chan->send_count;
         chan->processed_elements++;
         switch(chan->data_type)
         {
             case SMI_CHAR:
                 if(chan->next_rcv==chan->my_rank)
-                    ((char *)(rcv_data))[0]=*conv;
+                    ((char *)(data_rcv))[0]=*conv;
                 else
-                    data_snd[chan->packet_element_id]=*conv;
+                    data_send[chan->packet_element_id]=*conv;
             break;
             case SMI_INT:
             case SMI_FLOAT:
                 #pragma unroll
                 for(int jj=0;jj<4;jj++) //copy the data
                     if(chan->next_rcv==chan->my_rank)
-                        ((char *)(rcv_data))[jj]=conv[jj]; //in this case is the root
+                        ((char *)(data_rcv))[jj]=conv[jj]; //in this case is the root
                     else
-                        data_snd[chan->packet_element_id*4+jj]=conv[jj];
+                        data_send[chan->packet_element_id*4+jj]=conv[jj];
             break;
             case SMI_DOUBLE:
                 #pragma unroll
                 for(int jj=0;jj<8;jj++) //copy the data
                     if(chan->next_rcv==chan->my_rank)
-                         ((char *)(rcv_data))[jj]=conv[jj];
+                         ((char *)(data_rcv))[jj]=conv[jj];
                     else
-                        data_snd[chan->packet_element_id*8+jj]=conv[jj];
+                        data_send[chan->packet_element_id*8+jj]=conv[jj];
             break;
         }
 
@@ -166,31 +171,31 @@ void SMI_Scatter(SMI_ScatterChannel *chan, void* send_data, void* rcv_data)
             const char chan_idx_data=ckr_data_table[chan->port];
             chan->net_2=read_channel_intel(ckr_data_channels[chan_idx_data]);
         }
-        char *data_rcv=chan->net_2.data;
+        char *data_recv=chan->net_2.data;
         switch(chan->data_type)
         {
             case SMI_CHAR:
             {
-                char * ptr=data_rcv;
-                *(char *)rcv_data= *(char*)(ptr);
+                char * ptr=data_recv;
+                *(char *)data_rcv= *(char*)(ptr);
                 break;
             }
             case SMI_INT:
             {
-                 char * ptr=data_rcv+(chan->packet_element_id_rcv)*4;
-                 *(int *)rcv_data= *(int*)(ptr);
+                 char * ptr=data_recv+(chan->packet_element_id_rcv)*4;
+                 *(int *)data_rcv= *(int*)(ptr);
                 break;
             }
             case SMI_FLOAT:
             {
-                 char * ptr=data_rcv+(chan->packet_element_id_rcv)*4;
-                 *(float *)rcv_data= *(float*)(ptr);
+                 char * ptr=data_recv+(chan->packet_element_id_rcv)*4;
+                 *(float *)data_rcv= *(float*)(ptr);
                 break;
             }
             case SMI_DOUBLE:
             {
-                char * ptr=data_rcv+(chan->packet_element_id_rcv)*8;
-                *(double *)rcv_data= *(double*)(ptr);
+                char * ptr=data_recv+(chan->packet_element_id_rcv)*8;
+                *(double *)data_rcv= *(double*)(ptr);
                 break;
             }
         }

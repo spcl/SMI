@@ -1,5 +1,6 @@
 /**
-    Broadcast benchmark
+    Gather benchmark
+
  */
 
 #include <stdio.h>
@@ -11,9 +12,8 @@
 #include <cmath>
 #include <utils/ocl_utils.hpp>
 #include <utils/utils.hpp>
-#include "broadcast_routing/smi-host-0.h"
-#define ROUTING_DIR "broadcast_routing/"
-
+#include "gather_routing/smi-host-0.h"
+#define ROUTING_DIR "gather_routing/"
 
 using namespace std;
 int main(int argc, char *argv[])
@@ -51,73 +51,62 @@ int main(int argc, char *argv[])
                 break;
 
             default:
-                cerr << "Usage: "<< argv[0]<<"-b <binary file> -n <length> -r <who is the root> -i <number of iterations>"<<endl;
+                cerr << "Usage: "<< argv[0]<<"-b <binary file> -n <length>"<<endl;
                 exit(-1);
         }
 
-    cout << "Performing broadcast wit  "<<n<<" elements, root: "<<(char)root<<endl;
     int rank_count;
     CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &rank_count));
     CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
-
     fpga = rank % 2;
     program_path = replace(program_path, "<rank>", std::to_string(rank));
     char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);
     std::cout << "Rank" << rank<<" executing on host:" <<hostname << " program: "<<program_path<<std::endl;
 
+ 
     cl::Platform  platform;
     cl::Device device;
     cl::Context context;
     cl::Program program;
     std::vector<cl::Buffer> buffers;
-    SMI_Comm comm=SmiInit(rank,rank_count,program_path.c_str(),ROUTING_DIR,platform,device,context,program,fpga,buffers);
-
-    //create the app
+    SMI_Comm comm=SmiInit(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga, buffers);
     cl::Kernel kernel;
     cl::CommandQueue queue;
     IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
     IntelFPGAOCLUtils::createKernel(program,"app",kernel);
 
-    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
+    cl::Buffer mem(context,CL_MEM_WRITE_ONLY,1);
 
-    kernel.setArg(0,sizeof(cl_mem),&check);
-    kernel.setArg(1,sizeof(int),&n);
-    kernel.setArg(2,sizeof(char),&root);
+    kernel.setArg(0,sizeof(int),&n);
+    kernel.setArg(1,sizeof(char),&root);
+    kernel.setArg(2,sizeof(cl_mem),&mem);
     kernel.setArg(3,sizeof(SMI_Comm),&comm);
-
 
     std::vector<double> times;
     for(int i=0;i<runs;i++)
     {
-        cl::Event event;
+        cl::Event events; 
+        // wait for other nodes
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-
-        queue.enqueueTask(kernel,nullptr,&event);
+        queue.enqueueTask(kernel,nullptr,&events);
         queue.finish();
-
-
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
         if(rank==0)
         {
             ulong end, start;
-            event.getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
-            event.getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
+            events.getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
+            events.getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
             double time= (double)((end-start)/1000.0f);
             times.push_back(time);
-        }
-        if(rank!=root)
-        {
             char res;
-            queue.enqueueReadBuffer(check,CL_TRUE,0,1,&res);
+            queue.enqueueReadBuffer(mem,CL_TRUE,0,1,&res);
             if(res==1)
-                cout << "Rank: " << rank<<" Result is Ok!"<<endl;
+                cout << "Result is Ok!"<<endl;
             else
-                cout << "Rank: " << rank<<" Error!!!!"<<endl;
+                cout << "Error!!!!"<<endl;
         }
     }
-    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-
     if(rank==0)
     {
 
@@ -133,7 +122,7 @@ int main(int argc, char *argv[])
         stddev=sqrt(stddev/runs);
         double conf_interval_99=2.58*stddev/sqrt(runs);
         double data_sent_KB=(double)(n*sizeof(float))/1024.0;
-        cout << "-------------------------------------------------------------------"<<std::endl;       
+        cout << "-------------------------------------------------------------------"<<std::endl;
         cout << "Computation time (usec): " << mean << " (sttdev: " << stddev<<")"<<endl;
         cout << "Conf interval 99: "<<conf_interval_99<<endl;
         cout << "Conf interval 99 within " <<(conf_interval_99/mean)*100<<"% from mean" <<endl;
@@ -143,10 +132,10 @@ int main(int argc, char *argv[])
 
         //save the info into output file
         std::ostringstream filename;
-        filename << "smi_broadcast_"<<rank_count <<"_"<< n << ".dat";
+        filename << "smi_gather_"<<rank_count <<"_"<< n << ".dat";
         std::cout << "Saving info into: "<<filename.str()<<std::endl;
         ofstream fout(filename.str());
-        fout << "#SMI Broadcast, executed with " << rank_count <<" ranks, streaming: " << n <<" elements"<<endl;
+        fout << "#SMI Gather, executed with " << rank_count <<" ranks, streaming: " << n <<" elements"<<endl;
         fout << "#Sent (KB) = "<<data_sent_KB<<", Runs = "<<runs<<endl;
         fout << "#Average Computation time (usecs): "<<mean<<endl;
         fout << "#Standard deviation (usecs): "<<stddev<<endl;
@@ -157,5 +146,8 @@ int main(int argc, char *argv[])
             fout << t << endl;
         fout.close();
     }
+
+
     CHECK_MPI(MPI_Finalize());
+
 }

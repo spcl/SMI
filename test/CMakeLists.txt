@@ -43,3 +43,11 @@ add_test(
    NAME p2p
    COMMAND  "env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 ./test_p2p.exe" "./p2p_emulator_<rank>.aocx"
  )
+
+#broadcast
+add_smi_test("${CMAKE_CURRENT_SOURCE_DIR}/broadcast/broadcast.cl" 8 OFF)
+add_smi_test_executable("${CMAKE_CURRENT_SOURCE_DIR}/broadcast/test_broadcast.cpp")
+add_test(
+   NAME broadcast
+   COMMAND  "env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 ./test_broadcast.exe" "./broadcast_emulator_<rank>.aocx"
+ )

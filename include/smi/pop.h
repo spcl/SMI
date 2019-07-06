@@ -10,11 +10,12 @@
 
 /**
  * @brief SMI_Open_receive_channel opens a receive transient channel
- * @param count num
- * @param data_type
- * @param source
- * @param port
- * @return
+ * @param count number of data elements to receive
+ * @param data_type data type of the data elements
+ * @param source rank of the sender
+ * @param port port number
+ * @param comm communicator
+ * @return channel descriptor
  */
 SMI_Channel SMI_Open_receive_channel(int count, SMI_Datatype data_type, int source, int port, SMI_Comm comm)
 {
@@ -95,7 +96,7 @@ void SMI_Pop(SMI_Channel *chan, void *data)
     if(chan->data_type==SMI_DOUBLE)
         *(double *)data= *(double*)(ptr);
     chan->tokens--;
-    //This is used to prevent this funny compiler to re-oder the two *_channel_intel operations
+    //TODO: This is used to prevent this funny compiler to re-oder the two *_channel_intel operations
    // mem_fence(CLK_CHANNEL_MEM_FENCE);
 
     if(chan->tokens==0)

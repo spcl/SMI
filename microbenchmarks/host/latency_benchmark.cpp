@@ -11,12 +11,12 @@
 #include <iostream>
 #include <fstream>
 #include <unistd.h>
-#include "../../include/utils/ocl_utils.hpp"
-#include "../../include/utils/utils.hpp"
+#include <utils/ocl_utils.hpp>
+#include <utils/utils.hpp>
 #include <limits.h>
 #include <cmath>
-#define ROUTING_DIR "applications/microbenchmarks/latency_codegen/"
-#include "latency_codegen/smi-host-0.h"
+#define ROUTING_DIR "latency_routing/"
+#include "latency_routing/smi-host-0.h"
 
 
 using namespace std;
@@ -163,9 +163,11 @@ int main(int argc, char *argv[])
             stddev+=((t-mean)*(t-mean));
         stddev=sqrt(stddev/runs);
         double conf_interval_99=2.58*stddev/sqrt(runs);
+        cout << "-------------------------------------------------------------------"<<std::endl;
         cout << "Average Latency (usec): " << mean << " (sttdev: " << stddev<<")"<<endl;
         cout << "Conf interval 99: "<<conf_interval_99<<endl;
         cout << "Conf interval 99 within " <<(conf_interval_99/mean)*100<<"% from mean" <<endl;
+        cout << "-------------------------------------------------------------------"<<std::endl;
 
         //save the info into output file
         std::ostringstream filename;

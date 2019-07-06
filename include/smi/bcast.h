@@ -40,7 +40,7 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
  * @param comm communicator
  * @return the channel descriptor
  */
-SMI_BChannel SMI_Open_bcast_channel(unsigned int count, SMI_Datatype data_type, unsigned int port, unsigned int root,  SMI_Comm comm)
+SMI_BChannel SMI_Open_bcast_channel(int count, SMI_Datatype data_type, int port, int root,  SMI_Comm comm)
 {
     SMI_BChannel chan;
     //setup channel descriptor

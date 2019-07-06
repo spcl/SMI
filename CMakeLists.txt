@@ -197,8 +197,7 @@ function(add_smi_microbenchmarks KERNEL_PATH NUM_RANKS MPMD)
         endforeach()
         add_custom_target(build_${KERNEL_NAME}_hardware
             COMMAND ${IntelFPGAOpenCL_AOC}
-            ${AOC_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR}/kernels/${KERNEL_NAME}_rank0.cl -o ${KERNEL_NAME}_rank0_hardware.aocx
-            COMMAND ${IntelFPGAOpenCL_AOC} ${AOC_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR}/kernels/${KERNEL_NAME}_rank1.cl -o ${KERNEL_NAME}_rank1_hardware.aocx;)
+            ${AOC_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR}/kernels/${KERNEL_NAME}.cl -o ${KERNEL_NAME}_hardware.aocx)
     endif()
     add_dependencies(build_${KERNEL_NAME}_report generate_${KERNEL_NAME}_routing)
     add_dependencies(build_${KERNEL_NAME}_emulator generate_${KERNEL_NAME}_routing)
@@ -224,7 +223,7 @@ function(add_smi_test KERNEL_PATH NUM_RANKS MPMD)
     get_filename_component(DIRECTORY_NAME ${KERNEL_PATH} NAME_WE)
     #code-gen
 
-    add_custom_target(generate_${KERNEL_NAME}_routing
+    add_custom_target(generate_test_${KERNEL_NAME}_routing
         COMMAND ${PYTHON_EXECUTABLE}
         ${CMAKE_SOURCE_DIR}/routing/main.py build ${CMAKE_CURRENT_SOURCE_DIR}/${DIRECTORY_NAME}/${KERNEL_NAME}.json  ${TEST_ROUTING_FILE}
         ${KERNEL_NAME}_routing)
@@ -246,7 +245,7 @@ function(add_smi_test KERNEL_PATH NUM_RANKS MPMD)
     if(MPMD)
         # To emulate an MPI-like setup, we need to generate a separate emulation
         # kernel for each rank
-        add_custom_target(build_${KERNEL_NAME}_emulator )
+        add_custom_target(build_test_${KERNEL_NAME}_emulator )
         math(EXPR LOOP_END "${NUM_RANKS} - 1")
         foreach(SMI_EMULATION_RANK RANGE 0 ${LOOP_END} 1)
             if(SMI_EMULATION_RANK EQUAL 0)
@@ -254,37 +253,37 @@ function(add_smi_test KERNEL_PATH NUM_RANKS MPMD)
             else()
                 set(KERNEL_FILE ${CMAKE_CURRENT_SOURCE_DIR}/${DIRECTORY_NAME}/${KERNEL_NAME}_rank1.cl)
             endif()
-            add_custom_target(build_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}
+            add_custom_target(build_test_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}
                 COMMAND ${IntelFPGAOpenCL_AOC}
                 ${AOC_COMMAND} ${KERNEL_FILE} -march=emulator
                 -DSMI_EMULATION_RANK=${SMI_EMULATION_RANK}
                 -emulator-channel-depth-model=strict
                 -o ${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}.aocx)
-            add_dependencies(build_${KERNEL_NAME}_emulator
-                build_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK})
-            add_dependencies(build_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}
-                generate_${KERNEL_NAME}_routing)
+            add_dependencies(build_test_${KERNEL_NAME}_emulator
+                build_test_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK})
+            add_dependencies(build_test_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}
+                generate_test_${KERNEL_NAME}_routing)
         endforeach()
     else()
         # To emulate an MPI-like setup, we need to generate a separate emulation
         # kernel for each rank
-        add_custom_target(build_${KERNEL_NAME}_emulator )
+        add_custom_target(build_test_${KERNEL_NAME}_emulator )
         math(EXPR LOOP_END "${NUM_RANKS} - 1")
         foreach(SMI_EMULATION_RANK RANGE 0 ${LOOP_END} 1)
             set(KERNEL_FILE ${CMAKE_CURRENT_SOURCE_DIR}/${DIRECTORY_NAME}/${KERNEL_NAME}.cl)
-            add_custom_target(build_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}
+            add_custom_target(build_test_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}
                 COMMAND ${IntelFPGAOpenCL_AOC}
                 ${AOC_COMMAND} ${KERNEL_FILE} -march=emulator
                 -DSMI_EMULATION_RANK=${SMI_EMULATION_RANK}
                 -emulator-channel-depth-model=strict
                 -o ${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}.aocx)
-            add_dependencies(build_${KERNEL_NAME}_emulator
-                build_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK})
-            add_dependencies(build_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}
-                generate_${KERNEL_NAME}_routing)
+            add_dependencies(build_test_${KERNEL_NAME}_emulator
+                build_test_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK})
+            add_dependencies(build_test_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}
+                generate_test_${KERNEL_NAME}_routing)
         endforeach()
     endif()
-    add_dependencies(build_${KERNEL_NAME}_emulator generate_${KERNEL_NAME}_routing)
+    add_dependencies(build_test_${KERNEL_NAME}_emulator generate_test_${KERNEL_NAME}_routing)
 endfunction()
 
 add_subdirectory(examples)

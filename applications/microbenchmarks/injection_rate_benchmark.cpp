@@ -1,23 +1,27 @@
 /**
-    Latency benchmark:
-    a ping-pong occurs between two ranks using channels of size 1.
-    The latency is computed as half of the RTT.
+    Injection rate  benchmark
+    A sender, push message of size 1 to a receiver.
+    The average injection rate is computed.
+
+    The FPGA program is written as MPMD with two programs, one for the sender
+    and one for the receiver. The sender is rank 0, while the receiver can
+    be any other rank between 1 and NUM_RANKS. For the intermediate ranks,
+    the program for rank1 is loaded, in order to guarantee the routing
+    of the transient channels.
+
+
  */
-
-
 
 #include <stdio.h>
 #include <string>
 #include <iostream>
 #include <fstream>
 #include <unistd.h>
+#include <cmath>
 #include "../../include/utils/ocl_utils.hpp"
 #include "../../include/utils/utils.hpp"
-#include <limits.h>
-#include <cmath>
-#define ROUTING_DIR "applications/microbenchmarks/latency_codegen/"
-#include "latency_codegen/smi-host-0.h"
-
+#include "codegen_scaling/smi-host-0.h"
+#define ROUTING_DIR "applications/microbenchmarks/injection_rate_codegen/"
 
 using namespace std;
 int main(int argc, char *argv[])
@@ -28,25 +32,22 @@ int main(int argc, char *argv[])
     //command line argument parsing
     if(argc<11)
     {
-        cerr << "Send/Receiver tester " <<endl;
-        cerr << "Usage: mpirun -np <num_ranks>"<< argv[0]<<" -m <emulator/hardware> -b <binary file> -n <length> -r <rank on which run the receiver> -i <number of runs>"<<endl;
+        cerr << "Ingestion rate " <<endl;
+        cerr << "Usage: "<< argv[0]<<"-m <emulator/hardware> -b <binary file> -n <length> -r <rank on which run the receiver> -i <number of runs> "<<endl;
         exit(-1);
     }
     int n;
     int c;
     std::string program_path;
-    int recv_rank;
-    int fpga,runs;
     int rank;
     bool emulator;
-    while ((c = getopt (argc, argv, "m:n:b:r:f:i:")) != -1)
+    char recv_rank;
+    int fpga,runs;
+    while ((c = getopt (argc, argv, "m:n:b:r:i:")) != -1)
         switch (c)
         {
             case 'n':
                 n=atoi(optarg);
-                break;
-            case 'i':
-                runs=atoi(optarg);
                 break;
             case 'm':
             {
@@ -62,46 +63,36 @@ int main(int argc, char *argv[])
             case 'b':
                 program_path=std::string(optarg);
                 break;
-            case 'f':
-                fpga=atoi(optarg);
+            case 'i':
+                runs=atoi(optarg);
                 break;
             case 'r':
-                {
-                    recv_rank=atoi(optarg);
-                    if(recv_rank>4)
-                    {
-                        cerr << "Error: rank may be 0-1"<<endl;
-                        exit(-1);
-                    }
-
-                    break;
-                }
-
+                recv_rank=atoi(optarg);
+                break;
             default:
-                cerr << "Usage: "<< argv[0]<<"-m <emulator/hardware> -b <binary file> -n <length> -r <rank on which run the receiver> -i <number of runs>"<<endl;
+                cerr << "Usage: "<< argv[0]<<"-m <emulator/hardware> -b <binary file> -n <length> -r <rank on which run the receiver> -i <number of runs> "<<endl;
                 exit(-1);
         }
 
-    cout << "Performing send/receive test with "<<n<<" elements"<<endl;
+    cout << "Performing ingestion rate test with "<<n<<" elements"<<endl;
     int rank_count;
     CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &rank_count));
     CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
     fpga = rank % 2; // in this case is ok, pay attention
-    std::cout << "Rank: " << rank << " out of " << rank_count << " ranks, executing on fpga " <<fpga<< std::endl;
+    std::cout << "Rank: " << rank << " out of " << rank_count << " ranks" << std::endl;
     if(!emulator)
     {
         if(rank==0)
-        program_path = replace(program_path, "<rank>", std::string("0"));
-        else
-        program_path = replace(program_path, "<rank>", std::string("1"));
+            program_path = replace(program_path, "<rank>", std::string("0"));
+        else //any rank other than 0
+            program_path = replace(program_path, "<rank>", std::string("1"));
     }
-    else
+    else//for emulation
         program_path = replace(program_path, "<rank>", std::to_string(rank));
 
-    char hostname[HOST_NAME_MAX];
-    gethostname(hostname, HOST_NAME_MAX);
+    char hostname[256];
+    gethostname(hostname, 256);
     std::cout << "Rank" << rank<<" executing on host:" <<hostname << " program: "<<program_path<<std::endl;
-
 
     cl::Platform  platform;
     cl::Device device;
@@ -114,11 +105,11 @@ int main(int argc, char *argv[])
     IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
     IntelFPGAOCLUtils::createKernel(program,"app",kernel);
 
+    std::vector<double> times;
     if(rank==0)
     {
-        char dest=(char)recv_rank;
         kernel.setArg(0,sizeof(int),&n);
-        kernel.setArg(1,sizeof(char),&dest);
+        kernel.setArg(1,sizeof(char),&recv_rank);
         kernel.setArg(2,sizeof(SMI_Comm),&comm);
     }
     else
@@ -126,33 +117,32 @@ int main(int argc, char *argv[])
         kernel.setArg(0,sizeof(int),&n);
         kernel.setArg(1,sizeof(SMI_Comm),&comm);
     }
-    std::vector<double> times;
     for(int i=0;i<runs;i++)
     {
-
-        cl::Event event; 
+        cl::Event event;
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-        //only rank 0 and the recv rank start the app kernels
-        timestamp_t startt=current_time_usecs();
-        //
+        timestamp_t start=current_time_usecs();
+
         if(rank==0 || rank==recv_rank)
         {
             queue.enqueueTask(kernel,nullptr,&event);
             queue.finish();
         }
+        timestamp_t end=current_time_usecs();
+
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
         if(rank==0)
         {
             ulong end, start;
             event.getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
             event.getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
+
             double time= (double)((end-start)/1000.0f);
-            times.push_back(time/(2*n));
+            times.push_back(time);
         }
     }
-
     if(rank==0)
-    {
+    {   //compute means
         double mean=0;
         for(auto t:times)
             mean+=t;
@@ -163,15 +153,19 @@ int main(int argc, char *argv[])
             stddev+=((t-mean)*(t-mean));
         stddev=sqrt(stddev/runs);
         double conf_interval_99=2.58*stddev/sqrt(runs);
-        cout << "Average Latency (usec): " << mean << " (sttdev: " << stddev<<")"<<endl;
+        cout << "-------------------------------------------------------------------"<<std::endl;
+        cout << "Computation time (usec): " << mean << " (sttdev: " << stddev<<")"<<endl;
         cout << "Conf interval 99: "<<conf_interval_99<<endl;
         cout << "Conf interval 99 within " <<(conf_interval_99/mean)*100<<"% from mean" <<endl;
+        cout << "-------------------------------------------------------------------"<<std::endl;
 
         //save the info into output file
         std::ostringstream filename;
-        filename << "latency.dat";
+        filename << "ingestion_rate_" << n << ".dat";
+        std::cout << "Saving info into: "<<filename.str()<<std::endl;
         ofstream fout(filename.str());
-        fout << "#Average Latency (usecs): "<<mean<<endl;
+        fout << "#Ingestion rate benchnmark: sending  "<<n<<" messages of size 1" <<std::endl;
+        fout << "#Average Computation time (usecs): "<<mean<<endl;
         fout << "#Standard deviation (usecs): "<<stddev<<endl;
         fout << "#Confidence interval 99%: +- "<<conf_interval_99<<endl;
         fout << "#Execution times (usecs):"<<endl;

@@ -1,8 +1,6 @@
 /**
     Reduce benchmark
-
  */
-
 
 
 #include <stdio.h>
@@ -78,8 +76,6 @@ int main(int argc, char *argv[])
     IntelFPGAOCLUtils::createKernel(program,"app",kernel);
 
     cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
-
-
    
     kernel.setArg(0,sizeof(int),&n);
     kernel.setArg(1,sizeof(char),&root);
@@ -125,18 +121,20 @@ int main(int argc, char *argv[])
         stddev=sqrt(stddev/runs);
         double conf_interval_99=2.58*stddev/sqrt(runs);
         double data_sent_KB=(double)(n*sizeof(float))/1024.0;
+        cout << "-------------------------------------------------------------------"<<std::endl;
         cout << "Computation time (usec): " << mean << " (sttdev: " << stddev<<")"<<endl;
         cout << "Conf interval 99: "<<conf_interval_99<<endl;
         cout << "Conf interval 99 within " <<(conf_interval_99/mean)*100<<"% from mean" <<endl;
         cout << "Sent (KB): " <<data_sent_KB<<endl;
         cout << "Average bandwidth (Gbit/s): " <<  (data_sent_KB*8/(mean/1000000.0))/(1024*1024) << endl;
+        cout << "-------------------------------------------------------------------"<<std::endl;
 
         //save the info into output file
         std::ostringstream filename;
         filename << "smi_reduce_"<<rank_count <<"_"<< n << ".dat";
         std::cout << "Saving info into: "<<filename.str()<<std::endl;
         ofstream fout(filename.str());
-        fout << "#SMI Broadcast, executed with " << rank_count <<" ranks, streaming: " << n <<" elements"<<endl;
+        fout << "#SMI Reduce, executed with " << rank_count <<" ranks, streaming: " << n <<" elements"<<endl;
         fout << "#Sent (KB) = "<<data_sent_KB<<", Runs = "<<runs<<endl;
         fout << "#Average Computation time (usecs): "<<mean<<endl;
         fout << "#Standard deviation (usecs): "<<stddev<<endl;

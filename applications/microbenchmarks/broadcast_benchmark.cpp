@@ -1,9 +1,6 @@
 /**
     Broadcast benchmark
-
  */
-
-
 
 #include <stdio.h>
 #include <string>
@@ -109,15 +106,14 @@ int main(int argc, char *argv[])
             double time= (double)((end-start)/1000.0f);
             times.push_back(time);
         }
-        if(rank==1)
+        if(rank!=root)
         {
             char res;
             queue.enqueueReadBuffer(check,CL_TRUE,0,1,&res);
             if(res==1)
-                cout << "Result is Ok!"<<endl;
+                cout << "Rank: " << rank<<"Result is Ok!"<<endl;
             else
-                cout << "Error!!!!"<<endl;
-
+                cout << "Rank: " << rank<<"Error!!!!"<<endl;
         }
     }
     if(rank==0)
