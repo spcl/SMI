@@ -35,9 +35,18 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     char next_rcv;                      //the  rank of the next receiver
 }SMI_ScatterChannel;
 
-
+/**
+ * @brief SMI_Open_scatter_channel
+ * @param send_count number of data elements transmitted by root 
+ * @param recv_count number of data elements received by each rank 
+ * @param data_type type of the channel
+ * @param port port number
+ * @param root rank of the root
+ * @param comm communicator
+ * @return the channel descriptor
+ */
 SMI_ScatterChannel SMI_Open_scatter_channel(int send_count,  int recv_count,
-                                            SMI_Datatype data_type, int port, int root, SMI_Comm comm)
+ SMI_Datatype data_type, int port, int root, SMI_Comm comm)
 {
     SMI_ScatterChannel chan;
     //setup channel descriptor

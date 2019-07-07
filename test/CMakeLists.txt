@@ -51,3 +51,21 @@ add_test(
    NAME broadcast
    COMMAND  "env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 ./test_broadcast.exe" "./broadcast_emulator_<rank>.aocx"
  )
+
+
+ #gather
+add_smi_test("${CMAKE_CURRENT_SOURCE_DIR}/gather/gather.cl" 8 OFF)
+add_smi_test_executable("${CMAKE_CURRENT_SOURCE_DIR}/gather/test_gather.cpp")
+add_test(
+   NAME gather
+   COMMAND  "env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 ./test_gather.exe" "./gather_emulator_<rank>.aocx"
+ )
+
+ #reduce
+
+add_smi_test("${CMAKE_CURRENT_SOURCE_DIR}/reduce/reduce.cl" 8 OFF)
+add_smi_test_executable("${CMAKE_CURRENT_SOURCE_DIR}/reduce/test_reduce.cpp")
+add_test(
+   NAME reduce
+   COMMAND  "env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 ./test_reduce.exe" "./reduce_emulator_<rank>.aocx"
+ )

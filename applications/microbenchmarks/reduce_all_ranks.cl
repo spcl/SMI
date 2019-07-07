@@ -6,10 +6,11 @@ __kernel void app(const int N, char root, __global volatile char *mem, SMI_Comm 
 {
     unsigned int my_rank=SMI_Comm_rank(comm);
     unsigned int num_ranks=SMI_Comm_size(comm);
-    float exp=(num_ranks*(num_ranks+1))/2;
+    //float exp=(num_ranks*(num_ranks+1))/2;
+    float exp=num_ranks;
     char check=1;
 
-    SMI_RChannel  __attribute__((register)) rchan_float= SMI_Open_reduce_channel(N, SMI_INT, SMI_ADD, 0,root,comm);
+    SMI_RChannel  __attribute__((register)) rchan_float= SMI_Open_reduce_channel(N, SMI_FLOAT, SMI_ADD, 0,root,comm);
     for(int i=0;i<N;i++)
     {
         float to_comm, to_rcv=0;

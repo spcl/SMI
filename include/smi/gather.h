@@ -37,7 +37,7 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
 /**
  * @brief SMI_Open_gather_channel
  * @param send_count number of data elements transmitted by each rank
- * @param recv_count number of data elements received by each rank (i.e. num_ranks*send_count)
+ * @param recv_count number of data elements received by root rank (i.e. num_ranks*send_count)
  * @param data_type type of the channel
  * @param port port number
  * @param root rank of the root
