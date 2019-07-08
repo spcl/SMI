@@ -6,14 +6,14 @@ from program import Program, FailedAllocation
 
 def test_allocation_fail():
     with pytest.raises(FailedAllocation):
-        Program(4096, [
+        Program([
             Push(0),
             Broadcast(0)
         ])
 
 
 def test_allocation_overlap():
-    program = Program(4096, [
+    program = Program([
         Push(0),
         Broadcast(1)
     ])
@@ -32,7 +32,7 @@ def test_allocation_overlap():
 
 
 def test_allocation_hw_port():
-    program = Program(4096, [
+    program = Program([
         Push(0),
         Push(1),
         Pop(2),
@@ -47,7 +47,7 @@ def test_allocation_hw_port():
 
 
 def test_allocation_channel_to_ports():
-    program = Program(4096, [
+    program = Program([
         Push(0),
         Pop(0),
         Push(1),
@@ -74,7 +74,7 @@ def test_allocation_channel_to_ports():
 
 
 def test_allocation_get_channel():
-    program = Program(4096, [
+    program = Program([
         Push(0),
         Pop(0),
         Push(1),

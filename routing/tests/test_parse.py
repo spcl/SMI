@@ -6,6 +6,9 @@ def test_parse_programs():
     mapping = parse_programs("""
 [{
     "buffer_size": 4096,
+    "consecutive_reads": 16,
+    "max_ranks": 16,
+    "p2p_randezvous": false,
     "ports": [{
       "id": 0,
       "type": "push"
@@ -22,8 +25,15 @@ def test_parse_programs():
       "id": 4,
       "type": "reduce",
       "args": {
+        "op_type": "add",
         "data_type": "float"
       }
+    }, {
+      "id": 5,
+      "type": "scatter"
+    }, {
+      "id": 6,
+      "type": "gather"
     }],
     "fpgas": ["fpga-0015", "fpga-0016"]
 }, {
@@ -38,7 +48,10 @@ def test_parse_programs():
     assert len(mapping.programs) == 2
     program = mapping.programs[0]
     assert program.buffer_size == 4096
-    assert len(program.operations) == 5
+    assert program.consecutive_read_limit == 16
+    assert program.max_ranks == 16
+    assert not program.p2p_randezvous
+    assert len(program.operations) == 7
     assert isinstance(program.operations[0], Push)
     assert program.operations[0].logical_port == 0
     assert isinstance(program.operations[2], Pop)

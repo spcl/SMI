@@ -6,7 +6,7 @@ from routing import load_inter_fpga_connections, create_routing_context
 
 
 def test_load_inter_fpga_connections():
-    program = Program(256, [])
+    program = Program([])
     mapping = ProgramMapping([program], {
         "n1:f1": program,
         "n1:f2": program,
@@ -33,7 +33,7 @@ n2:f1:ch0 <-> n1:f1:ch1
 
 
 def test_routing_context():
-    program = Program(256, [])
+    program = Program([])
     mapping = ProgramMapping([program], {
         "n1:f1": program,
         "n1:f2": program,

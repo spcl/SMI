@@ -11,7 +11,6 @@ KEY_SCATTER = "scatter"
 KEY_GATHER = "gather"
 
 
-
 class SmiOperation:
     def __init__(self, logical_port):
         self.logical_port = logical_port
@@ -76,21 +75,21 @@ class Reduce(SmiOperation):
     }
 
     SHIFT_REG_INIT = {
-        ("char","add") : "0",
-        ("short","add") : "0",
-        ("int","add") : "0",
-        ("float","add") : "0",
-        ("double","add") : "0",
-        ("char","max") : "CHAR_MIN",
-        ("short","max") : "SHRT_MIN",
-        ("int","max") : "INT_MIN",
-        ("float","max") : "FLT_MIN",
-        ("double","max") : "DBL_MIN",
-        ("char","min") : "CHAR_MAX",
-        ("short","min") : "SHRT_MAX",
-        ("int","min") : "INT_MAX",
-        ("float","min") : "FLT_MAX",
-        ("double","min") : "DBL_MAX"
+        ("char", "add"): "0",
+        ("short", "add"): "0",
+        ("int", "add"): "0",
+        ("float", "add"): "0",
+        ("double", "add"): "0",
+        ("char", "max"): "CHAR_MIN",
+        ("short", "max"): "SHRT_MIN",
+        ("int", "max"): "INT_MIN",
+        ("float", "max"): "FLT_MIN",
+        ("double", "max"): "DBL_MIN",
+        ("char", "min"): "CHAR_MAX",
+        ("short", "min"): "SHRT_MAX",
+        ("int", "min"): "INT_MAX",
+        ("float", "min"): "FLT_MAX",
+        ("double", "min"): "DBL_MAX"
 
     }
 
@@ -121,8 +120,8 @@ class Reduce(SmiOperation):
     def reduce_op(self) -> str:
         return Reduce.OP_TYPE[self.op_type]
 
-    def shift_reg_init(self) ->str:
-        return Reduce.SHIFT_REG_INIT[(self.data_type,self.op_type)]
+    def shift_reg_init(self) -> str:
+        return Reduce.SHIFT_REG_INIT[(self.data_type, self.op_type)]
 
     def __repr__(self):
         return "Broadcast({})".format(self.logical_port)
@@ -154,5 +153,3 @@ class Gather(SmiOperation):
 
     def __repr__(self):
         return "Gather({})".format(self.logical_port)
-
-

@@ -36,7 +36,13 @@ def parse_programs(input: str) -> ProgramMapping:
     fpga_mapping = {}
 
     for prog in data:
-        program = Program(prog["buffer_size"], parse_ports(prog["ports"]))
+        program = Program(
+            parse_ports(prog["ports"]),
+            prog.get("buffer_size"),
+            prog.get("consecutive_reads"),
+            prog.get("max_ranks"),
+            prog.get("p2p_randezvous")
+        )
         programs.append(program)
         for fpga in prog["fpgas"]:
             assert fpga not in fpga_mapping

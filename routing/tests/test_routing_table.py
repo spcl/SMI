@@ -43,7 +43,7 @@ N1:F0:ch0 <-> N0:F0:ch1
 
 
 def test_ckr_table():
-    program = Program(4096, [
+    program = Program([
         Push(0),
         Pop(1),
         Push(2),
