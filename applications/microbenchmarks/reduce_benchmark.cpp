@@ -76,35 +76,49 @@ int main(int argc, char *argv[])
     IntelFPGAOCLUtils::createKernel(program,"app",kernel);
 
     cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
-   
-    kernel.setArg(0,sizeof(int),&n);
-    kernel.setArg(1,sizeof(char),&root);
-    kernel.setArg(2,sizeof(cl_mem),&check);
-    kernel.setArg(3,sizeof(SMI_Comm),&comm);
+    std::vector<int> message_lengths={1,2};
+    std::vector<int> roots={1,3,7};
     std::vector<double> times;
-    for(int i=0;i<runs;i++)
+    for(int root:roots)    //consider different roots
     {
-        cl::Event events; 
-        // wait for other nodes
-        CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
 
-        queue.enqueueTask(kernel,nullptr,&events);
-        queue.finish();
-
-        CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-        if(rank==root)
+        for(int ml:message_lengths)     //consider different message lengths
         {
-            ulong end, start;
-            events.getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
-            events.getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
-            double time= (double)((end-start)/1000.0f);
-            times.push_back(time);
-            char res;
-            queue.enqueueReadBuffer(check,CL_TRUE,0,1,&res);
-            if(res==1)
-                cout << "Result is Ok!"<<endl;
-            else
-                cout << "Error!!!!"<<endl;
+
+            kernel.setArg(0,sizeof(int),&ml);
+            kernel.setArg(1,sizeof(char),&root);
+            kernel.setArg(2,sizeof(cl_mem),&check);
+            kernel.setArg(3,sizeof(SMI_Comm),&comm);
+
+            for(int i=0;i<runs;i++)
+            {
+                CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+                printf("root: %d ml: %d, it:%d\n",root, ml,i);
+                if(rank==0)  //remove emulated channels
+                    system("rm emulated_chan* 2> /dev/null;");
+                CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+                cl::Event events;
+                // wait for other nodes
+
+                queue.enqueueTask(kernel,nullptr,&events);
+                queue.finish();
+
+                CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+                if(rank==root)
+                {
+                    ulong end, start;
+                    events.getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
+                    events.getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
+                    double time= (double)((end-start)/1000.0f);
+                    times.push_back(time);
+                    char res;
+                    queue.enqueueReadBuffer(check,CL_TRUE,0,1,&res);
+                    if(res==1)
+                        cout << "Result is Ok!"<<endl;
+                    else
+                        cout << "Error!!!!"<<endl;
+                }
+            }
         }
     }
     CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));

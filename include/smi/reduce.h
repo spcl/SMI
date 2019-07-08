@@ -30,8 +30,8 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     char root_rank;
     char my_rank;                       //communicator infos
     char num_rank;
-    int message_size;          //given in number of data elements
-    int processed_elements;    //how many data elements we have sent/received
+    unsigned int message_size;          //given in number of data elements
+    unsigned int processed_elements;    //how many data elements we have sent/received
     char packet_element_id;             //given a packet, the id of the element that we are currently processing (from 0 to the data elements per packet)
     SMI_Datatype data_type;             //type of message
     char size_of_type;                  //size of data type
@@ -56,7 +56,7 @@ SMI_RChannel SMI_Open_reduce_channel(int count, SMI_Datatype data_type, SMI_Op o
 {
     SMI_RChannel chan;
     //setup channel descriptor
-    chan.message_size=count;
+    chan.message_size=(unsigned int) count;
     chan.data_type=data_type;
     chan.port=(char)port;
     chan.my_rank=(char)SMI_Comm_rank(comm);
@@ -90,8 +90,12 @@ SMI_RChannel SMI_Open_reduce_channel(int count, SMI_Datatype data_type, SMI_Op o
     //setup header for the message
     SET_HEADER_DST(chan.net.header,chan.root_rank);
     SET_HEADER_SRC(chan.net.header,chan.my_rank);
-    SET_HEADER_PORT(chan.net.header,chan.port);        //used by destination
-    SET_HEADER_NUM_ELEMS(chan.net.header,0);           //at the beginning no data
+    SET_HEADER_PORT(chan.net.header,chan.port);         //used by destination
+    SET_HEADER_NUM_ELEMS(chan.net.header,0);            //at the beginning no data
+    //workaround: the support kernel has to know the message size to limit the number of credits
+    //exploiting the data buffer
+    *(unsigned int *)(&(chan.net.data[24]))=chan.message_size;
+    SET_HEADER_OP(chan.net.header,SMI_SYNCH);
     chan.processed_elements=0;
     chan.packet_element_id=0;
     chan.packet_element_id_rcv=0;
@@ -119,6 +123,7 @@ void SMI_Reduce(SMI_RChannel *chan, volatile void* data_snd, volatile void* data
     {
         const char chan_reduce_send_idx=reduce_send_table[chan->port];
         write_channel_intel(reduce_send_channels[chan_reduce_send_idx],chan->net);
+        SET_HEADER_OP(chan->net.header,SMI_REDUCE);          //after sending the first element of this reduce
         mem_fence(CLK_CHANNEL_MEM_FENCE);
         const char chan_reduce_receive_idx=reduce_recv_table[chan->port];
         chan->net_2=read_channel_intel(reduce_recv_channels[chan_reduce_receive_idx]);

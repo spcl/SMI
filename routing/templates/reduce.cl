@@ -10,7 +10,6 @@ __kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)
 
     SMI_Network_message mess;
     SMI_Network_message reduce;
-    bool init = true;
     char sender_id = 0;
     const char credits_flow_control = 16; // choose it in order to have II=1
     // reduced results, organized in shift register to mask latency (of the design, not related to the particular operation used)
@@ -20,6 +19,10 @@ __kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)
     char credits = credits_flow_control; // the number of credits that I have
     char send_to = 0;
     char add_to[MAX_RANKS];   // for each rank tells to what element in the buffer we should add the received item
+    unsigned int sent_credits=0;    //number of sent credits so far
+    unsigned int message_size;
+
+
 {% set reduce_send = program.create_group("reduce_send") %}
 {% set reduce_recv = program.create_group("reduce_recv") %}
 {% set ckr_data = program.create_group("ckr_data") %}
@@ -75,8 +78,16 @@ __kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)
 
                     data_recvd[add_to_root]++;
                     a = add_to_root;
-                    send_credits = init;      // the first reduce, we send this
-                    init = false;
+                    if(GET_HEADER_OP(mess.header)==SMI_SYNCH) //first element of a new reduce
+                    {
+                        sent_credits=0;
+                        send_to=0;
+                        //since data elements are not packed we exploit the data buffer
+                        //to indicate to the support kernel the lenght of the message
+                        message_size=*(unsigned int *)(&(mess.data[24]));
+                        send_credits=true;
+                        credits=MIN((unsigned int)credits_flow_control,message_size);
+                    }
                     add_to_root++;
                     if (add_to_root == credits_flow_control)
                     {
@@ -126,7 +137,7 @@ __kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)
                         data_snd[jj] = conv[jj];
                     }
                     write_channel_intel({{ utils.channel_array("reduce_recv") }}[{{ reduce_recv.get_hw_port(op.logical_port)}}], reduce);
-                    send_credits = true;
+                    send_credits = sent_credits<message_size;               //send additional tokes if there are other elements to reduce
                     credits++;
                     data_recvd[current_buffer_element] = 0;
 
@@ -169,6 +180,7 @@ __kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)
                 send_to = 0;
                 credits--;
                 send_credits = credits != 0;
+                sent_credits++;
             }
         }
     }
