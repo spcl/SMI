@@ -101,7 +101,7 @@ SMI_GatherChannel SMI_Open_gather_channel(int send_count,  int recv_count, SMI_D
  * @param data_snd pointer to the data element that must be sent
  * @param data_rcv pointer to the receiving data element (significant on the root rank only)
  */
-void SMI_Gather(SMI_GatherChannel *chan, volatile void* send_data, volatile void* rcv_data)
+void SMI_Gather(SMI_GatherChannel *chan, void* send_data, void* rcv_data)
 {
     if(chan->my_rank==chan->root_rank)//I'm the root
     {

@@ -37,7 +37,7 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
 
 /**
  * @brief SMI_Open_scatter_channel
- * @param send_count number of data elements transmitted by root 
+ * @param send_count number of data elements transmitted by root to each rank
  * @param recv_count number of data elements received by each rank 
  * @param data_type type of the channel
  * @param port port number
@@ -105,8 +105,8 @@ SMI_ScatterChannel SMI_Open_scatter_channel(int send_count,  int recv_count,
 /**
  * @brief SMI_Scatter
  * @param chan pointer to the scatter channel descriptor
- * @param data_snd pointer to the data element that must be reduced
- * @param data_rcv pointer to the receiving data element  (root only)
+ * @param data_snd pointer to the data element that must be sent (root only)
+ * @param data_rcv pointer to the receiving data element
  */
 void SMI_Scatter(SMI_ScatterChannel *chan, void* data_snd, void* data_rcv)
 {

@@ -75,7 +75,7 @@ TEST(Broadcast, IntegerMessages)
     IntelFPGAOCLUtils::createKernel(program,"test_int",kernel);
 
     cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
-    std::vector<int> message_lengths={1,128,1024,100000};
+    std::vector<int> message_lengths={1,128,1024,10000};
     std::vector<int> roots={0,4,7};
     int runs=2;
     for(int root:roots)    //consider different roots
@@ -97,7 +97,7 @@ TEST(Broadcast, IntegerMessages)
                 // run some_function() and compared with some_value
                 // but end the function if it exceeds 3 seconds
                 //source https://github.com/google/googletest/issues/348#issuecomment-492785854
-                ASSERT_DURATION_LE(3, {
+                ASSERT_DURATION_LE(5, {
                   ASSERT_TRUE(runAndReturn(queue,kernel,check));
                 });
             }

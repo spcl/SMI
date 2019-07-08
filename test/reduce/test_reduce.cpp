@@ -68,12 +68,12 @@ bool runAndReturn(cl::CommandQueue &queue, cl::Kernel &kernel, cl::Buffer &check
         return true;
 }
 
-TEST(Redice, MPIinit)
+TEST(Reduce, MPIinit)
 {
     ASSERT_EQ(rank_count,8);
 }
 
-TEST(Redice, FloatAdd)
+TEST(Reduce, FloatAdd)
 {
     //with this test we evaluate the correcteness of integer messages transmission
   
@@ -83,8 +83,8 @@ TEST(Redice, FloatAdd)
     IntelFPGAOCLUtils::createKernel(program,"test_float_add",kernel);
 
     cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
-    std::vector<int> message_lengths={1,128,1024,5000};
-    std::vector<int> roots={4,7};
+    std::vector<int> message_lengths={1,128,2000};
+    std::vector<int> roots={1,4,7};
     int runs=2;
     for(int root:roots)    //consider different roots
     {
@@ -98,7 +98,50 @@ TEST(Redice, FloatAdd)
 
             for(int i=0;i<runs;i++)
             {
-                printf("root: %d ml: %d, it:%d\n",root, ml,i);
+                //printf("root: %d ml: %d, it:%d\n",root, ml,i);
+                if(my_rank==0)  //remove emulated channels
+                    system("rm emulated_chan* 2> /dev/null;");
+
+
+                // run some_function() and compared with some_value
+                // but end the function if it exceeds 3 seconds
+                //source https://github.com/google/googletest/issues/348#issuecomment-492785854
+                //reduce mya needs more time
+                ASSERT_DURATION_LE(20, {
+                  ASSERT_TRUE(runAndReturn(queue,kernel,check,root));
+                });
+
+            }
+        }
+    }
+}
+
+TEST(Reduce, IntMax)
+{
+    //with this test we evaluate the correcteness of integer messages transmission
+
+    cl::Kernel kernel;
+    cl::CommandQueue queue;
+    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
+    IntelFPGAOCLUtils::createKernel(program,"test_int_max",kernel);
+
+    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
+    std::vector<int> message_lengths={1,128,2000};
+    std::vector<int> roots={1,4,7};
+    int runs=2;
+    for(int root:roots)    //consider different roots
+    {
+
+        for(int ml:message_lengths)     //consider different message lengths
+        {
+            kernel.setArg(0,sizeof(int),&ml);
+            kernel.setArg(1,sizeof(char),&root);
+            kernel.setArg(2,sizeof(cl_mem),&check);
+            kernel.setArg(3,sizeof(SMI_Comm),&comm);
+
+            for(int i=0;i<runs;i++)
+            {
+                //printf("root: %d ml: %d, it:%d\n",root, ml,i);
                 if(my_rank==0)  //remove emulated channels
                     system("rm emulated_chan* 2> /dev/null;");
 

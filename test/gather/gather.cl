@@ -14,7 +14,7 @@ __kernel void test_int(const int N, char root, __global char *mem, SMI_Comm comm
     int my_rank=SMI_Comm_rank(comm);
     int num_ranks=SMI_Comm_size(comm);
     const int loop_bound=(my_rank==root)?N*num_ranks:N;
-    int to_send=my_rank*N;
+    int to_send=(my_rank==root)?0:my_rank*N;    //starting point
     char check=1;
     for(int i=0;i<loop_bound;i++)
     {
@@ -22,10 +22,7 @@ __kernel void test_int(const int N, char root, __global char *mem, SMI_Comm comm
         SMI_Gather(&chan,&to_send, &to_rcv);
         to_send++;
         if(my_rank==root)
-        {
-            printf("Root my rank %d, received %d (expected %d)\n",root,to_rcv,i);
             check&=(to_rcv==i);
-        }
     }
     *mem=check;
 }
@@ -36,7 +33,7 @@ __kernel void test_float(const int N, char root, __global char *mem, SMI_Comm co
     int my_rank=SMI_Comm_rank(comm);
     int num_ranks=SMI_Comm_size(comm);
     const int loop_bound=(my_rank==root)?N*num_ranks:N;
-    float to_send=my_rank*N;
+    float to_send=(my_rank==root)?0:my_rank*N;    //starting point
     char check=1;
     for(int i=0;i<loop_bound;i++)
     {

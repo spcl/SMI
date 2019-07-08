@@ -76,15 +76,15 @@ TEST(Gather, MPIinit)
 TEST(Gather, IntegerMessages)
 {
     //with this test we evaluate the correcteness of integer messages transmission
-  
+
     cl::Kernel kernel;
     cl::CommandQueue queue;
     IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
     IntelFPGAOCLUtils::createKernel(program,"test_int",kernel);
 
     cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
-    std::vector<int> message_lengths={1,128,1024,100000};
-    std::vector<int> roots={4};
+    std::vector<int> message_lengths={1,16,128};
+    std::vector<int> roots={0,1,3};
     int runs=2;
     for(int root:roots)    //consider different roots
     {
@@ -98,7 +98,6 @@ TEST(Gather, IntegerMessages)
 
             for(int i=0;i<runs;i++)
             {
-                printf("root: %d ml: %d, it:%d\n",root, ml,i);
                 if(my_rank==0)  //remove emulated channels
                     system("rm emulated_chan* 2> /dev/null;");
 
@@ -106,7 +105,50 @@ TEST(Gather, IntegerMessages)
                 // run some_function() and compared with some_value
                 // but end the function if it exceeds 3 seconds
                 //source https://github.com/google/googletest/issues/348#issuecomment-492785854
-                ASSERT_DURATION_LE(5, {
+                ASSERT_DURATION_LE(10, {
+                  ASSERT_TRUE(runAndReturn(queue,kernel,check,root));
+                });
+
+            }
+        }
+    }
+}
+
+
+
+TEST(Gather, FloatMessages)
+{
+    //with this test we evaluate the correcteness of integer messages transmission
+
+    cl::Kernel kernel;
+    cl::CommandQueue queue;
+    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
+    IntelFPGAOCLUtils::createKernel(program,"test_float",kernel);
+
+    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
+    std::vector<int> message_lengths={1,16,128};
+    std::vector<int> roots={0,1,3};
+    int runs=2;
+    for(int root:roots)    //consider different roots
+    {
+
+        for(int ml:message_lengths)     //consider different message lengths
+        {
+            kernel.setArg(0,sizeof(int),&ml);
+            kernel.setArg(1,sizeof(char),&root);
+            kernel.setArg(2,sizeof(cl_mem),&check);
+            kernel.setArg(3,sizeof(SMI_Comm),&comm);
+
+            for(int i=0;i<runs;i++)
+            {
+                if(my_rank==0)  //remove emulated channels
+                    system("rm emulated_chan* 2> /dev/null;");
+
+
+                // run some_function() and compared with some_value
+                // but end the function if it exceeds 3 seconds
+                //source https://github.com/google/googletest/issues/348#issuecomment-492785854
+                ASSERT_DURATION_LE(10, {
                   ASSERT_TRUE(runAndReturn(queue,kernel,check,root));
                 });
 
