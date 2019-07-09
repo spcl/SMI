@@ -1,5 +1,5 @@
 #include "stencil.h"
-#include "smi-0.h"
+#include "smi-device-0.h"
 
 #if PX * PY != 8
 #error "Incompatible number of stencil processes and number of communication ranks."
@@ -232,13 +232,13 @@ kernel void Write(__global volatile VTYPE *restrict bank0,
   }
 }
 
-kernel void ConvertReceiveLeft(const int i_px, const int i_py) {
+kernel void ConvertReceiveLeft(const int i_px, const int i_py,SMI_Comm comm) {
   while (1) {
 #if HALO_Y > 1
     #error "NYI"
 #endif
     SMI_Channel from_network =
-        SMI_Open_receive_channel(X_LOCAL, SMI_TYPE, i_px * PY + (i_py - 1), 1);
+        SMI_Open_receive_channel(X_LOCAL, SMI_TYPE, i_px * PY + (i_py - 1), 1, comm);
     for (int i = 0; i < X_LOCAL; ++i) {
       DTYPE val; 
       SMI_Pop(&from_network, &val);
@@ -247,13 +247,13 @@ kernel void ConvertReceiveLeft(const int i_px, const int i_py) {
   }
 }
 
-kernel void ConvertReceiveRight(const int i_px, const int i_py) {
+kernel void ConvertReceiveRight(const int i_px, const int i_py, SMI_Comm comm) {
   while (1) {
 #if HALO_Y > 1
     #error "NYI"
 #endif
     SMI_Channel from_network =
-        SMI_Open_receive_channel(X_LOCAL, SMI_TYPE, i_px * PY + (i_py + 1), 3);
+        SMI_Open_receive_channel(X_LOCAL, SMI_TYPE, i_px * PY + (i_py + 1), 3, comm);
     for (int i = 0; i < X_LOCAL; ++i) {
       DTYPE val; 
       SMI_Pop(&from_network, &val);
@@ -262,10 +262,10 @@ kernel void ConvertReceiveRight(const int i_px, const int i_py) {
   }
 }
 
-kernel void ConvertReceiveTop(const int i_px, const int i_py) {
+kernel void ConvertReceiveTop(const int i_px, const int i_py, SMI_Comm comm) {
   while (1) {
     SMI_Channel from_network =
-        SMI_Open_receive_channel(Y_LOCAL, SMI_TYPE, (i_px - 1) * PY + i_py, 2);
+        SMI_Open_receive_channel(Y_LOCAL, SMI_TYPE, (i_px - 1) * PY + i_py, 2, comm);
     VTYPE vec[B];
     #pragma loop_coalesce
     for (int i = 0; i < Y_LOCAL / (B * W); ++i) {
@@ -286,10 +286,10 @@ kernel void ConvertReceiveTop(const int i_px, const int i_py) {
   }
 }
 
-kernel void ConvertReceiveBottom(const int i_px, const int i_py) {
+kernel void ConvertReceiveBottom(const int i_px, const int i_py, SMI_Comm comm) {
   while (1) {
     SMI_Channel from_network =
-        SMI_Open_receive_channel(Y_LOCAL, SMI_TYPE, (i_px + 1) * PY + i_py, 0);
+        SMI_Open_receive_channel(Y_LOCAL, SMI_TYPE, (i_px + 1) * PY + i_py, 0,comm);
     VTYPE vec[B];
     #pragma loop_coalesce
     for (int i = 0; i < Y_LOCAL / (B * W); ++i) {
@@ -310,13 +310,13 @@ kernel void ConvertReceiveBottom(const int i_px, const int i_py) {
   }
 }
 
-kernel void ConvertSendLeft(const int i_px, const int i_py) {
+kernel void ConvertSendLeft(const int i_px, const int i_py, SMI_Comm comm) {
   while (1) {
 #if HALO_Y > 1
     #error "NYI"
 #endif
     SMI_Channel to_network =
-        SMI_Open_send_channel(X_LOCAL, SMI_TYPE, i_px * PY + i_py - 1, 3);
+        SMI_Open_send_channel(X_LOCAL, SMI_TYPE, i_px * PY + i_py - 1, 3, comm);
     for (int i = 0; i < X_LOCAL; ++i) {
       DTYPE val = read_channel_intel(send_left);
       SMI_Push(&to_network, &val);
@@ -324,13 +324,13 @@ kernel void ConvertSendLeft(const int i_px, const int i_py) {
   }
 }
 
-kernel void ConvertSendRight(const int i_px, const int i_py) {
+kernel void ConvertSendRight(const int i_px, const int i_py, SMI_Comm comm) {
   while (1) {
 #if HALO_Y > 1
     #error "NYI"
 #endif
     SMI_Channel to_network =
-        SMI_Open_send_channel(X_LOCAL, SMI_TYPE, i_px * PY + i_py + 1, 1);
+        SMI_Open_send_channel(X_LOCAL, SMI_TYPE, i_px * PY + i_py + 1, 1,comm );
     for (int i = 0; i < X_LOCAL; ++i) {
       DTYPE val = read_channel_intel(send_right);
       SMI_Push(&to_network, &val);
@@ -338,10 +338,10 @@ kernel void ConvertSendRight(const int i_px, const int i_py) {
   }
 }
 
-kernel void ConvertSendTop(const int i_px, const int i_py) {
+kernel void ConvertSendTop(const int i_px, const int i_py, SMI_Comm comm) {
   while (1) {
     SMI_Channel to_network =
-        SMI_Open_send_channel(Y_LOCAL, SMI_TYPE, (i_px - 1) * PY + i_py, 0);
+        SMI_Open_send_channel(Y_LOCAL, SMI_TYPE, (i_px - 1) * PY + i_py, 0, comm);
     VTYPE vec[B];
     #pragma loop_coalesce
     for (int i = 0; i < Y_LOCAL / (B * W); ++i) {
@@ -361,10 +361,10 @@ kernel void ConvertSendTop(const int i_px, const int i_py) {
   }
 }
 
-kernel void ConvertSendBottom(const int i_px, const int i_py) {
+kernel void ConvertSendBottom(const int i_px, const int i_py, SMI_Comm comm) {
   while (1) {
     SMI_Channel to_network =
-        SMI_Open_send_channel(Y_LOCAL, SMI_TYPE, (i_px + 1) * PY + i_py, 2);
+        SMI_Open_send_channel(Y_LOCAL, SMI_TYPE, (i_px + 1) * PY + i_py, 2,comm);
     VTYPE vec[B];
     #pragma loop_coalesce
     for (int i = 0; i < Y_LOCAL / (B * W); ++i) {
