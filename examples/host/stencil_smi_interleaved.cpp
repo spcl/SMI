@@ -6,9 +6,9 @@
 #include <sstream>
 #include <vector>
 #include "common.h"
+#define __HOST_PROGRAM__
 #include "hlslib/intel/OpenCL.h"
 #include "stencil.h"
-#define __HOST_PROGRAM__
 #include <smi/communicator.h>
 
 // Convert from C to C++
