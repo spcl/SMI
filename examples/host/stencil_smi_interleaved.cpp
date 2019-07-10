@@ -8,6 +8,7 @@
 #include "common.h"
 #include "hlslib/intel/OpenCL.h"
 #include "stencil.h"
+#define __HOST_PROGRAM__
 #include <smi/communicator.h>
 
 // Convert from C to C++
