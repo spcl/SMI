@@ -285,9 +285,10 @@ int main(int argc, char **argv) {
     for (auto &k : conv_kernels) {
       //k.ExecuteTaskFork(); //HLSLIB
         cl::CommandQueue queue=k.commandQueue();
-        k.kernel().setArg(2,sizeof(SMI_Comm),&comm);
+        ck::Kernel ker=k.kernel();
+        ker.setArg(2,sizeof(SMI_Comm),&comm);
 
-        queue.enqueueTask(k.kernel());
+        queue.enqueueTask(ker);
         queue.flush();
 
 
