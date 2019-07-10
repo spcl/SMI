@@ -41,7 +41,7 @@ def parse_programs(input: str) -> ProgramMapping:
             prog.get("buffer_size"),
             prog.get("consecutive_reads"),
             prog.get("max_ranks"),
-            prog.get("p2p_randezvous")
+            prog.get("p2p_rendezvous")
         )
         programs.append(program)
         for fpga in prog["fpgas"]:

@@ -77,14 +77,14 @@ class Program:
                  buffer_size=None,
                  consecutive_read_limit=None,
                  max_ranks=None,
-                 p2p_randezvous=None,
+                 p2p_rendezvous=None,
                  channel_count=CHANNELS_PER_FPGA):
         assert are_ops_consecutive(operations)
 
         self.buffer_size = buffer_size or 256
         self.consecutive_read_limit = consecutive_read_limit or 8
         self.max_ranks = max_ranks or 8
-        self.p2p_randezvous = True if p2p_randezvous is None else p2p_randezvous
+        self.p2p_rendezvous = True if p2p_rendezvous is None else p2p_rendezvous
         self.operations = sorted(operations, key=lambda op: op.logical_port)
         self.channel_count = channel_count
 

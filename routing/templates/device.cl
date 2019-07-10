@@ -13,8 +13,14 @@
 #define READS_LIMIT {{ program.consecutive_read_limit }}
 // maximum number of ranks in the cluster
 #define MAX_RANKS {{ program.max_ranks }}
+{% if program.p2p_rendezvous  %}
+//P2P communications use synchronization
+#define P2P_RENDEZVOUS
+{% else %}
+//P2P communications use eager transmission protocol
+{% endif %}
 
-// QSFP channelsf
+// QSFP channels
 #ifndef SMI_EMULATION_RANK
 {% for channel in channels %}
 channel SMI_Network_message io_out_{{ channel.index }} __attribute__((depth(16))) __attribute__((io("kernel_output_ch{{ channel.index }}")));
