@@ -268,23 +268,25 @@ int main(int argc, char **argv) {
     MPIStatus(mpi_rank, "Starting memory conversion kernels...\n");
     std::vector<hlslib::ocl::Kernel> conv_kernels;
     conv_kernels.emplace_back(
-        program.MakeKernel("ConvertReceiveLeft", i_px, i_py, comm));
+        program.MakeKernel("ConvertReceiveLeft", i_px, i_py));
     conv_kernels.emplace_back(
-        program.MakeKernel("ConvertReceiveRight", i_px, i_py, comm));
+        program.MakeKernel("ConvertReceiveRight", i_px, i_py));
     conv_kernels.emplace_back(
-        program.MakeKernel("ConvertReceiveTop", i_px, i_py, comm));
+        program.MakeKernel("ConvertReceiveTop", i_px, i_py));
     conv_kernels.emplace_back(
-        program.MakeKernel("ConvertReceiveBottom", i_px, i_py, comm));
+        program.MakeKernel("ConvertReceiveBottom", i_px, i_py));
     conv_kernels.emplace_back(
-        program.MakeKernel("ConvertSendLeft", i_px, i_py, comm));
+        program.MakeKernel("ConvertSendLeft", i_px, i_py));
     conv_kernels.emplace_back(
-        program.MakeKernel("ConvertSendRight", i_px, i_py, comm));
-    conv_kernels.emplace_back(program.MakeKernel("ConvertSendTop", i_px, i_py, comm));
+        program.MakeKernel("ConvertSendRight", i_px, i_py));
+    conv_kernels.emplace_back(program.MakeKernel("ConvertSendTop", i_px, i_py));
     conv_kernels.emplace_back(
-        program.MakeKernel("ConvertSendBottom", i_px, i_py, comm));
+        program.MakeKernel("ConvertSendBottom", i_px, i_py));
     for (auto &k : conv_kernels) {
       //k.ExecuteTaskFork(); //HLSLIB
         cl::CommandQueue queue=k.commandQueue();
+        k.kernel().setArg(2,sizeof(SMI_Comm),&comm);
+
         queue.enqueueTask(k.kernel());
         queue.flush();
 
