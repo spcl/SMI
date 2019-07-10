@@ -8,6 +8,7 @@
 #include "common.h"
 #include "hlslib/intel/OpenCL.h"
 #include "stencil.h"
+#include <smi/communicator.h>
 
 // Convert from C to C++
 using Data_t = DTYPE;
@@ -129,6 +130,7 @@ int main(int argc, char **argv) {
   MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
   const int i_px = mpi_rank / kPY;
   const int i_py = mpi_rank % kPY;
+  SMI_Comm comm{(char)mpi_size,(char)mpi_rank};
 
   // Handle input arguments
   if (argc != 3) {
@@ -265,20 +267,20 @@ int main(int argc, char **argv) {
     MPIStatus(mpi_rank, "Starting memory conversion kernels...\n");
     std::vector<hlslib::ocl::Kernel> conv_kernels;
     conv_kernels.emplace_back(
-        program.MakeKernel("ConvertReceiveLeft", i_px, i_py));
+        program.MakeKernel("ConvertReceiveLeft", i_px, i_py, comm));
     conv_kernels.emplace_back(
-        program.MakeKernel("ConvertReceiveRight", i_px, i_py));
+        program.MakeKernel("ConvertReceiveRight", i_px, i_py, comm));
     conv_kernels.emplace_back(
-        program.MakeKernel("ConvertReceiveTop", i_px, i_py));
+        program.MakeKernel("ConvertReceiveTop", i_px, i_py, comm));
     conv_kernels.emplace_back(
-        program.MakeKernel("ConvertReceiveBottom", i_px, i_py));
+        program.MakeKernel("ConvertReceiveBottom", i_px, i_py, comm));
     conv_kernels.emplace_back(
-        program.MakeKernel("ConvertSendLeft", i_px, i_py));
+        program.MakeKernel("ConvertSendLeft", i_px, i_py, comm));
     conv_kernels.emplace_back(
-        program.MakeKernel("ConvertSendRight", i_px, i_py));
-    conv_kernels.emplace_back(program.MakeKernel("ConvertSendTop", i_px, i_py));
+        program.MakeKernel("ConvertSendRight", i_px, i_py, comm));
+    conv_kernels.emplace_back(program.MakeKernel("ConvertSendTop", i_px, i_py, comm));
     conv_kernels.emplace_back(
-        program.MakeKernel("ConvertSendBottom", i_px, i_py));
+        program.MakeKernel("ConvertSendBottom", i_px, i_py, comm));
     for (auto &k : conv_kernels) {
       //k.ExecuteTaskFork(); //HLSLIB
         cl::CommandQueue queue=k.commandQueue();
