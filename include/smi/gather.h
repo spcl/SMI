@@ -120,8 +120,9 @@ void SMI_Gather(SMI_GatherChannel *chan, void* send_data, void* rcv_data)
             const char chan_idx_control=cks_control_table[chan->port];
             write_channel_intel(cks_control_channels[chan_idx_control],chan->net_2);
         }
-        //TODO: understand how to enable this without II penalties
-        mem_fence(CLK_CHANNEL_MEM_FENCE);
+        //This fence is not necessary, the two channel operation are independent
+        //and we don't need any ordering between them
+        //mem_fence(CLK_CHANNEL_MEM_FENCE);
 
         //receive the data
         if(chan->packet_element_id_rcv==0 && chan->next_contrib!=chan->my_rank) {

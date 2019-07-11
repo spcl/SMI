@@ -55,7 +55,11 @@ SMI_Channel SMI_Open_receive_channel(int count, SMI_Datatype data_type, int sour
             break;
          //TODO add more data types
     }
+#if defined P2P_RENDEZVOUS
     chan.tokens=MIN(chan.max_tokens/((unsigned int)8),count); //needed to prevent the compiler to optimize-away channel connections
+#else
+    chan.tokens=count+1;
+#endif
     //The receiver sends tokens to the sender once every chan.max_tokens/8 received data elements
     //chan.tokens=chan.max_tokens/((unsigned int)8);
     SET_HEADER_NUM_ELEMS(chan.net.header,0);    //at the beginning no data

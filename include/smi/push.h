@@ -61,7 +61,11 @@ SMI_Channel SMI_Open_send_channel(int count, SMI_Datatype data_type, int destina
     SET_HEADER_PORT(chan.net.header,chan.port);
     SET_HEADER_OP(chan.net.header,SMI_SEND);
     //chan.tokens=chan.max_tokens;
+#if defined P2P_RENDEZVOUS
     chan.tokens=MIN(chan.max_tokens,count);//needed to prevent the compiler to optimize-away channel connections
+#else //eager transmission protocol
+    chan.tokens=count+1;
+#endif
     chan.receiver_rank=destination;
     chan.processed_elements=0;
     chan.packet_element_id=0;
@@ -95,9 +99,9 @@ void SMI_Push_flush(SMI_Channel *chan, void* data, bool immediate)
         chan->packet_element_id=0;
         write_channel_intel(cks_data_channels[chan_idx_data],chan->net);
     }
-    //This is used to prevent this funny compiler to re-oder the two *_channel_intel operations
-    //TODO: understand how to deal with this
-     mem_fence(CLK_CHANNEL_MEM_FENCE);
+    //This fence is not mandatory, the two channel operations can be
+    //performed independently
+    // mem_fence(CLK_CHANNEL_MEM_FENCE);
 
     if(chan->tokens==0)
     {
