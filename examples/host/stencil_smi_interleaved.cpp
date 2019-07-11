@@ -249,7 +249,7 @@ int main(int argc, char **argv) {
     MPIStatus(mpi_rank, "Starting communication kernels...\n");
     for (int i = 0; i < kChannelsPerRank; ++i) {
       comm_kernels.emplace_back(program.MakeKernel(
-          "smi_kernel_cks_" + std::to_string(i), routing_tables_cks_device[i],mpi_size));
+          "smi_kernel_cks_" + std::to_string(i), routing_tables_cks_device[i],((char)mpi_size)));
       comm_kernels.emplace_back(program.MakeKernel("smi_kernel_ckr_" + std::to_string(i),
                                                    routing_tables_ckr_device[i],
                                                    char(mpi_rank)));
