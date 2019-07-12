@@ -36,6 +36,13 @@ typedef struct __attribute__((packed)) __attribute__((aligned(32))){
 #define SMI_FLOAT_ELEM_PER_PCKT     7
 #define SMI_DOUBLE_ELEM_PER_PCKT    3
 
+/*
+ * These two macro are used to manage network data.
+ * They are generic and used in collective/p2p.
+ * When a specialized version is needed, they are directly encapuslated in the
+ * communication primitive code
+ */
+
 /**
   Copies data from a given dest to the network message(NETM) into
   a given channel (CHAN)

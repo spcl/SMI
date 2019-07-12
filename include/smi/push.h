@@ -30,31 +30,25 @@ SMI_Channel SMI_Open_send_channel(int count, SMI_Datatype data_type, int destina
     switch(data_type)
     {
         case(SMI_CHAR):
-            chan.size_of_type=1;
-            chan.elements_per_packet=28;
+            chan.elements_per_packet=SMI_CHAR_ELEM_PER_PCKT;
             chan.max_tokens=BUFFER_SIZE*28;
             break;
         case(SMI_SHORT):
-            chan.size_of_type=2;
-            chan.elements_per_packet=14;
+            chan.elements_per_packet=SMI_SHORT_ELEM_PER_PCKT;
             chan.max_tokens=BUFFER_SIZE*14;
             break;
         case(SMI_INT):
-            chan.size_of_type=4;
-            chan.elements_per_packet=7;
+            chan.elements_per_packet=SMI_INT_ELEM_PER_PCKT;
             chan.max_tokens=BUFFER_SIZE*7;
             break;
         case (SMI_FLOAT):
-            chan.size_of_type=4;
-            chan.elements_per_packet=7;
+            chan.elements_per_packet=SMI_FLOAT_ELEM_PER_PCKT;
             chan.max_tokens=BUFFER_SIZE*7;
             break;
         case (SMI_DOUBLE):
-            chan.size_of_type=8;
-            chan.elements_per_packet=3;
+            chan.elements_per_packet=SMI_DOUBLE_ELEM_PER_PCKT;
             chan.max_tokens=BUFFER_SIZE*3;
             break;
-
     }
     //setup header for the message
     SET_HEADER_DST(chan.net.header,chan.receiver_rank);
@@ -84,11 +78,9 @@ SMI_Channel SMI_Open_send_channel(int count, SMI_Datatype data_type, int destina
 void SMI_Push_flush(SMI_Channel *chan, void* data, bool immediate)
 {
 
-    char *conv=(char*)data;
     const char chan_idx_data=cks_data_table[chan->port];
-    #pragma unroll
-    for(int jj=0;jj<chan->size_of_type;jj++) //copy the data into the network message
-        chan->net.data[chan->packet_element_id*chan->size_of_type+jj]=conv[jj];
+    char *conv=(char*)data;
+    COPY_DATA_TO_NET_MESSAGE(chan,net,conv);
     chan->processed_elements++;
     chan->packet_element_id++;
     chan->tokens--;
