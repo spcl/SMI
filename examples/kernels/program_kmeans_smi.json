@@ -3,7 +3,7 @@
             "ports": [{
                           "id": 0,
                           "type": "reduce",
-                          "args": {"data_type": "float"}
+                          "args": {"data_type": "float", "op_type" :"add"}
                       },
                       {
                           "id": 1,
@@ -12,7 +12,7 @@
                       {
                           "id": 2,
                           "type": "reduce",
-                          "args": {"data_type": "int"}
+                          "args": {"data_type": "int", "op_type" :"add"}
                       },
                       {
                           "id": 3,

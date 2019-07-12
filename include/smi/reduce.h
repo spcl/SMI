@@ -108,13 +108,12 @@ SMI_RChannel SMI_Open_reduce_channel(int count, SMI_Datatype data_type, SMI_Op o
  * @param data_snd pointer to the data element that must be reduced
  * @param data_rcv pointer to the receiving data element  (root only)
  */
-void SMI_Reduce(SMI_RChannel *chan, volatile void* data_snd, volatile void* data_rcv)
+void SMI_Reduce(SMI_RChannel *chan,  void* data_snd, void* data_rcv)
 {
 
     char *conv=(char*)data_snd;
-    #pragma unroll
-    for(int jj=0;jj<chan->size_of_type;jj++) //copy the data
-        chan->net.data[jj]=conv[jj];
+    //copy data to the network message
+    COPY_DATA_TO_NET_MESSAGE(chan,net,conv);
 
     //In this case we disabled network packetization: so we can just send the data as soon as we have it
     SET_HEADER_NUM_ELEMS(chan->net.header,1);
@@ -127,26 +126,8 @@ void SMI_Reduce(SMI_RChannel *chan, volatile void* data_snd, volatile void* data
         mem_fence(CLK_CHANNEL_MEM_FENCE);
         const char chan_reduce_receive_idx=reduce_recv_table[chan->port];
         chan->net_2=read_channel_intel(reduce_recv_channels[chan_reduce_receive_idx]);
-
-        char * ptr=chan->net_2.data;
-        switch(chan->data_type)
-        {
-            case(SMI_SHORT):
-                *(short *)data_rcv= *(short*)(ptr);
-                break;
-            case(SMI_INT):
-                *(int *)data_rcv= *(int*)(ptr);
-                break;
-            case (SMI_FLOAT):
-                *(float *)data_rcv= *(float*)(ptr);
-                break;
-            case (SMI_DOUBLE):
-                *(double *)data_rcv= *(double*)(ptr);
-                break;
-            case (SMI_CHAR):
-                *(char *)data_rcv= *(char*)(ptr);
-                break;
-        }
+        //copy data from the network message to user variable
+        COPY_DATA_FROM_NET_MESSAGE(chan,net_2,data_rcv);
     }
     else
     {

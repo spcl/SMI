@@ -10,14 +10,15 @@ __kernel void app(__global char* mem, const int N, char root,SMI_Comm comm)
     char check=1;
 
 
-    SMI_BChannel  __attribute__((register)) chan= SMI_Open_bcast_channel(N, SMI_FLOAT,0, root,comm);
+    SMI_BChannel  __attribute__((register)) chan= SMI_Open_bcast_channel(N, SMI_INT,0, root,comm);
     for(int i=0;i<N;i++)
     {
 
         int to_comm=i;//count_updated[i];
         SMI_Bcast(&chan,&to_comm);
-
-           check &= (to_comm==i);
+        if(to_comm!=i)
+            printf("Rank %d, received %d instead of %d\n",SMI_Comm_rank(comm),to_comm,i);
+        check &= (to_comm==i);
     }
 
     *mem=check;

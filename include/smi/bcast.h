@@ -14,7 +14,6 @@
 #include "network_message.h"
 #include "communicator.h"
 
-
 typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     SMI_Network_message net;            //buffered network message
     char root_rank;
@@ -105,39 +104,15 @@ SMI_BChannel SMI_Open_bcast_channel(int count, SMI_Datatype data_type, int port,
  * @param data pointer to the data element: on the root rank is the element that will be transmitted,
     on the non-root rank will be the received element
  */
-void SMI_Bcast(SMI_BChannel *chan, volatile void* data)
+void SMI_Bcast(SMI_BChannel *chan, void* data)
 {
+    char *conv=(char*)data;
     if(chan->my_rank==chan->root_rank)//I'm the root
     {
-        char *conv=(char*)data;
-        char *data_snd=chan->net.data;
         const unsigned int message_size=chan->message_size;
         chan->processed_elements++;
+        COPY_DATA_TO_NET_MESSAGE(chan,net,conv);
 
-        switch(chan->data_type) //copy the data
-        {
-            case SMI_CHAR:
-                data_snd[chan->packet_element_id]=*conv;
-                break;
-            case SMI_SHORT:
-                #pragma unroll
-                for(int jj=0;jj<2;jj++)
-                    data_snd[chan->packet_element_id*2+jj]=conv[jj];
-                break;
-            case SMI_INT:
-            case SMI_FLOAT:
-                #pragma unroll
-                for(int jj=0;jj<4;jj++)
-                    data_snd[chan->packet_element_id*4+jj]=conv[jj];
-                break;
-            //TODO: add double support
-           /* case SMI_DOUBLE:
-                #pragma unroll
-                for(int jj=0;jj<8;jj++) //copy the data
-                    data_snd[chan->packet_element_id*8+jj]=conv[jj];
-            break;*/
-
-        }
         chan->packet_element_id++;
         //send the network packet if it is full or we reached the message size
         if(chan->packet_element_id==chan->elements_per_packet || chan->processed_elements==message_size)
@@ -159,41 +134,9 @@ void SMI_Bcast(SMI_BChannel *chan, volatile void* data)
             const char chan_idx_data=ckr_data_table[chan->port]; //TODO: problematic for const prop. Seems to be completely wrong, no matter the port id claimed in the open channel
             chan->net_2=read_channel_intel(ckr_data_channels[chan_idx_data]);
         }
-        char *data_rcv=chan->net_2.data;
-        switch(chan->data_type)
-        {
-            case SMI_CHAR:
-            {
-                char * ptr=data_rcv;
-                *(char *)data= *(char*)(ptr);
-                break;
-            }
-            case SMI_INT:
-            {
-                char * ptr=data_rcv+(chan->packet_element_id_rcv)*4;
-                *(int *)data= *(int*)(ptr);
-                break;
-            }
-            case SMI_FLOAT:
-            {
-                char * ptr=data_rcv+(chan->packet_element_id_rcv)*4;
-                *(float *)data= *(float*)(ptr);
-                break;
-            }
-            case SMI_SHORT:
-            {
-                char * ptr=data_rcv+(chan->packet_element_id_rcv)*2;
-                *(short *)data= *(short*)(ptr);
-                break;
-            }
-            //TODO: add double support
-            /*case SMI_DOUBLE:
-            {
-                char * ptr=data_rcv+(chan->packet_element_id_rcv)*8;
-                *(double *)data= *(double*)(ptr);
-                break;
-            }*/
-        }
+
+        COPY_DATA_TO_NET_MESSAGE(chan,net_2,conv);
+
         chan->packet_element_id_rcv++;
         if( chan->packet_element_id_rcv==chan->elements_per_packet)
             chan->packet_element_id_rcv=0;

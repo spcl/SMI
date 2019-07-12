@@ -3,8 +3,8 @@
 //#include "smi_broadcast.h"
 #include "more_collectives/smi-device-0.h"
 
-#if 0
 //two reduces :works
+#if 0
 __kernel void app(__global char* mem, __global char* mem2, const int N, char root,char my_rank, char num_ranks/*, __global int * restrict  data*/)
 {
     char check=1;
@@ -40,16 +40,18 @@ __kernel void app(__global char* mem, __global char* mem2, const int N, char roo
     *mem2=check2;
 
 }
-
 #endif
+#if 0
 //reduce and broadcast: does not work
-__kernel void app(__global char* mem, __global char* mem2, const int N, char root,char my_rank, char num_ranks/*, __global int * restrict  data*/)
+__kernel void app(__global char* mem, __global char* mem2, const int N, char root,SMI_Comm comm)
 {
     char check=1;
     char check2=1;
+    char my_rank=SMI_Comm_rank(comm);
+    char num_ranks=SMI_Comm_size(comm);
     float exp=(num_ranks*(num_ranks+1))/2;
 
-     SMI_BChannel  __attribute__((register)) chan= SMI_Open_bcast_channel(N, SMI_INT,0, root,my_rank,num_ranks);
+     SMI_BChannel  __attribute__((register)) chan= SMI_Open_bcast_channel(N, SMI_INT,1, root,comm);
     for(int i=0;i<N;i++)
     {
         //chan.port=0;  //I need to enable this, to overwrite the port to be sure that the right circuitry is placed
@@ -60,7 +62,7 @@ __kernel void app(__global char* mem, __global char* mem2, const int N, char roo
     }
 
 
-    SMI_RChannel  __attribute__((register)) rchan_float= SMI_Open_reduce_channel(N, SMI_FLOAT, 1,root,my_rank,num_ranks);
+    SMI_RChannel  __attribute__((register)) rchan_float= SMI_Open_reduce_channel(N, SMI_FLOAT, SMI_ADD, 0,root,comm);
     for(int i=0;i<N;i++)
     {
 
@@ -81,6 +83,7 @@ __kernel void app(__global char* mem, __global char* mem2, const int N, char roo
     *mem2=check2;
 
 }
+#endif
 #if 0
 __kernel void app2(__global char* mem, __global char* mem2, const int N, char root,char my_rank, char num_ranks/*, __global int * restrict  data*/)
 {
@@ -108,17 +111,17 @@ __kernel void app2(__global char* mem, __global char* mem2, const int N, char ro
     *mem2=check2;
 }
 #endif
-#if 0
-//three
-__kernel void app(__global char* mem, __global char* mem2,__global char* mem3, const int N, char root,char my_rank, char num_ranks/*, __global int * restrict  data*/)
+__kernel void app(__global char* mem, __global char* mem2,__global char* mem3, const int N, char root, SMI_Comm comm)
 {
     char check=1;
     char check2=1;
     char check3=1;
+    char my_rank=SMI_Comm_rank(comm);
+    char num_ranks=SMI_Comm_size(comm);
     float exp=(num_ranks*(num_ranks+1))/2;
-    SMI_RChannel  __attribute__((register)) rchan_float= SMI_Open_reduce_channel(N, SMI_FLOAT, 0,root,my_rank,num_ranks);
-    SMI_BChannel  __attribute__((register)) chan= SMI_Open_bcast_channel(N, SMI_INT,1, root,my_rank,num_ranks);
-     SMI_ScatterChannel  __attribute__((register)) scattchan= SMI_Open_scatter_channel(N,N, SMI_INT, 2,root,my_rank,num_ranks);
+    SMI_RChannel  __attribute__((register)) rchan_float= SMI_Open_reduce_channel(N, SMI_FLOAT, SMI_ADD, 0,root,comm);
+    SMI_BChannel  __attribute__((register)) chan= SMI_Open_bcast_channel(N, SMI_INT,1, root,comm);
+     SMI_ScatterChannel  __attribute__((register)) scattchan= SMI_Open_scatter_channel(N,N, SMI_INT, 2,root,comm);
     for(int i=0;i<N;i++)
     {
 
@@ -155,7 +158,7 @@ __kernel void app(__global char* mem, __global char* mem2,__global char* mem3, c
     *mem3=check3;
 
 }
-#endif
+
 #if 0
 //two broadcast: works
 

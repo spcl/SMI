@@ -115,6 +115,7 @@ void SMI_Gather(SMI_GatherChannel *chan, void* send_data, void* rcv_data)
         {
             // SMI_Network_message request;
             SET_HEADER_OP(chan->net_2.header,SMI_SYNCH);
+            SET_HEADER_NUM_ELEMS(chan->net_2.header,1); //this is used in the support kernel
             SET_HEADER_DST(chan->net_2.header,chan->next_contrib);
             SET_HEADER_PORT(chan->net_2.header,chan->port);
             const char chan_idx_control=cks_control_table[chan->port];
@@ -130,6 +131,68 @@ void SMI_Gather(SMI_GatherChannel *chan, void* send_data, void* rcv_data)
             chan->net=read_channel_intel(ckr_data_channels[chan_idx_data]);
         }
 
+        char *data_recvd=chan->net.data;
+        char *conv=(char*)send_data;
+        switch(chan->data_type)
+        {
+            case SMI_CHAR:
+               #pragma unroll
+                for (int ee = 0; ee < SMI_CHAR_ELEM_PER_PCKT; ee++) {
+                    if (ee == chan->packet_element_id_rcv) {
+                       #pragma unroll
+                        for (int jj = 0; jj < SMI_CHAR_TYPE_SIZE; jj++) {
+                            if(chan->next_contrib!=chan->root_rank)     //not my turn
+                                ((char *)rcv_data)[jj] = data_recvd[(ee * SMI_CHAR_TYPE_SIZE) + jj];
+                            else
+                                ((char *)rcv_data)[jj] = conv[jj];
+                        }
+                    }
+                }
+                break;
+            case SMI_SHORT:
+               #pragma unroll
+                for (int ee = 0; ee < SMI_SHORT_ELEM_PER_PCKT; ee++) {
+                    if (ee == chan->packet_element_id_rcv) {
+                       #pragma unroll
+                        for (int jj = 0; jj < SMI_SHORT_TYPE_SIZE; jj++) {
+                            if(chan->next_contrib!=chan->root_rank)     //not my turn
+                                ((char *)rcv_data)[jj] = data_recvd[(ee * SMI_SHORT_TYPE_SIZE) + jj];
+                            else
+                                ((char *)rcv_data)[jj] = conv[jj];
+                        }
+                    }
+                }
+            case SMI_INT:
+            case SMI_FLOAT:
+               #pragma unroll
+                for (int ee = 0; ee < SMI_INT_ELEM_PER_PCKT; ee++) {
+                    if (ee == chan->packet_element_id_rcv) {
+                       #pragma unroll
+                        for (int jj = 0; jj < SMI_INT_TYPE_SIZE; jj++) {
+                            if(chan->next_contrib!=chan->root_rank)     //not my turn
+                                ((char *)rcv_data)[jj] = data_recvd[(ee * SMI_INT_TYPE_SIZE) + jj];
+                            else
+                                ((char *)rcv_data)[jj] = conv[jj];
+                        }
+                    }
+                }
+                break;
+            case SMI_DOUBLE:
+               #pragma unroll
+                for (int ee = 0; ee < SMI_DOUBLE_ELEM_PER_PCKT; ee++) {
+                    if (ee == chan->packet_element_id_rcv) {
+                       #pragma unroll
+                        for (int jj = 0; jj < SMI_DOUBLE_TYPE_SIZE; jj++) {
+                            if(chan->next_contrib!=chan->root_rank)     //not my turn
+                                ((char *)rcv_data)[jj] = data_recvd[(ee * SMI_DOUBLE_TYPE_SIZE) + jj];
+                            else
+                                ((char *)rcv_data)[jj] = conv[jj];
+                        }
+                    }
+                }
+                break;
+        }
+/*
         switch(chan->data_type)
         {
             case SMI_CHAR:
@@ -192,7 +255,7 @@ void SMI_Gather(SMI_GatherChannel *chan, void* send_data, void* rcv_data)
                         *(double *)rcv_data= *(double*)(send_data);
                     break;
                 }
-        }
+        }*/
         chan->processed_elements_root++;
         chan->packet_element_id_rcv++;
         if( chan->packet_element_id_rcv==chan->elements_per_packet)
@@ -209,10 +272,11 @@ void SMI_Gather(SMI_GatherChannel *chan, void* send_data, void* rcv_data)
     {
         //Non root rank, pack the data and send it
         char *conv=(char*)send_data;
-        char *data_snd=chan->net.data;
         const int message_size=chan->send_count;
         chan->processed_elements++;
         //copy the data
+        //COPY_DATA_TO_NET_MESSAGE(chan,net,conv);
+        char *data_snd=chan->net.data;
         switch(chan->data_type)
         {
             case SMI_CHAR:

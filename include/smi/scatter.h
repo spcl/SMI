@@ -64,6 +64,10 @@ SMI_ScatterChannel SMI_Open_scatter_channel(int send_count,  int recv_count,
             chan.size_of_type=4;
             chan.elements_per_packet=7;
             break;
+        case(SMI_SHORT):
+            chan.size_of_type=2;
+            chan.elements_per_packet=14;
+            break;
         case (SMI_FLOAT):
             chan.size_of_type=4;
             chan.elements_per_packet=7;
@@ -118,34 +122,69 @@ void SMI_Scatter(SMI_ScatterChannel *chan, void* data_snd, void* data_rcv)
         //and set the right receviver.
         //If the receiver is itself it has to set the data_rcv accordingly
         char *conv=(char*)data_snd;
-        char *data_send=chan->net.data;
         const unsigned int message_size=chan->send_count;
         chan->processed_elements++;
-        switch(chan->data_type)
+\
+        char *data_to_send=chan->net.data;
+        switch(chan->data_type) /*copy the data*/
         {
             case SMI_CHAR:
-                if(chan->next_rcv==chan->my_rank)
-                    ((char *)(data_rcv))[0]=*conv;
-                else
-                    data_send[chan->packet_element_id]=*conv;
+                #pragma unroll
+                for (int ee = 0; ee < SMI_CHAR_ELEM_PER_PCKT; ee++) {
+                    if (ee == chan->packet_element_id) {
+                         #pragma unroll
+                        for (int jj = 0; jj < SMI_CHAR_TYPE_SIZE; jj++) {
+                            if(chan->next_rcv==chan->my_rank)
+                                 ((char *)(data_rcv))[jj]=conv[jj];
+                            else
+                                data_to_send[(ee * SMI_CHAR_TYPE_SIZE) + jj] = conv[jj];
+                        }
+                    }
+                }
+            break;
+            case SMI_SHORT:
+                #pragma unroll
+                for (int ee = 0; ee < SMI_SHORT_ELEM_PER_PCKT; ee++) {
+                    if (ee == chan->packet_element_id) {
+                         #pragma unroll
+                        for (int jj = 0; jj < SMI_SHORT_TYPE_SIZE; jj++) {
+                            if(chan->next_rcv==chan->my_rank)
+                                 ((char *)(data_rcv))[jj]=conv[jj];
+                            else
+                                data_to_send[(ee * SMI_SHORT_TYPE_SIZE) + jj] = conv[jj];
+                        }
+                    }
+                }
             break;
             case SMI_INT:
             case SMI_FLOAT:
                 #pragma unroll
-                for(int jj=0;jj<4;jj++) //copy the data
-                    if(chan->next_rcv==chan->my_rank)
-                        ((char *)(data_rcv))[jj]=conv[jj]; //in this case is the root
-                    else
-                        data_send[chan->packet_element_id*4+jj]=conv[jj];
+                for (int ee = 0; ee < SMI_INT_ELEM_PER_PCKT; ee++) {
+                    if (ee == chan->packet_element_id) {
+                         #pragma unroll
+                        for (int jj = 0; jj < SMI_INT_TYPE_SIZE; jj++) {
+                            if(chan->next_rcv==chan->my_rank)
+                                 ((char *)(data_rcv))[jj]=conv[jj];
+                            else
+                                data_to_send[(ee * SMI_INT_TYPE_SIZE) + jj] = conv[jj];
+                        }
+                    }
+                }
             break;
             case SMI_DOUBLE:
                 #pragma unroll
-                for(int jj=0;jj<8;jj++) //copy the data
-                    if(chan->next_rcv==chan->my_rank)
-                         ((char *)(data_rcv))[jj]=conv[jj];
-                    else
-                        data_send[chan->packet_element_id*8+jj]=conv[jj];
-            break;
+                for (int ee = 0; ee < SMI_DOUBLE_ELEM_PER_PCKT; ee++) {
+                    if (ee == chan->packet_element_id) {
+                         #pragma unroll
+                        for (int jj = 0; jj < SMI_DOUBLE_TYPE_SIZE; jj++) {
+                            if(chan->next_rcv==chan->my_rank)
+                                 ((char *)(data_rcv))[jj]=conv[jj];
+                            else
+                                data_to_send[(ee * SMI_DOUBLE_TYPE_SIZE) + jj] = conv[jj];
+                        }
+                    }
+                }
+                break;
         }
 
         chan->packet_element_id++;
@@ -154,7 +193,7 @@ void SMI_Scatter(SMI_ScatterChannel *chan, void* data_snd, void* data_rcv)
         {
 
             SET_HEADER_NUM_ELEMS(chan->net.header,chan->packet_element_id);
-            SET_HEADER_PORT(chan->net.header,chan->port); 
+            SET_HEADER_PORT(chan->net.header,chan->port);
             SET_HEADER_DST(chan->net.header,chan->next_rcv);
             //offload to scatter kernel
 
@@ -180,35 +219,9 @@ void SMI_Scatter(SMI_ScatterChannel *chan, void* data_snd, void* data_rcv)
             const char chan_idx_data=ckr_data_table[chan->port];
             chan->net_2=read_channel_intel(ckr_data_channels[chan_idx_data]);
         }
-        char *data_recv=chan->net_2.data;
-        switch(chan->data_type)
-        {
-            case SMI_CHAR:
-            {
-                char * ptr=data_recv;
-                *(char *)data_rcv= *(char*)(ptr);
-                break;
-            }
-            case SMI_INT:
-            {
-                 char * ptr=data_recv+(chan->packet_element_id_rcv)*4;
-                 *(int *)data_rcv= *(int*)(ptr);
-                break;
-            }
-            case SMI_FLOAT:
-            {
-                 char * ptr=data_recv+(chan->packet_element_id_rcv)*4;
-                 *(float *)data_rcv= *(float*)(ptr);
-                break;
-            }
-            case SMI_DOUBLE:
-            {
-                char * ptr=data_recv+(chan->packet_element_id_rcv)*8;
-                *(double *)data_rcv= *(double*)(ptr);
-                break;
-            }
-        }
-        chan->packet_element_id_rcv++;                 
+        COPY_DATA_FROM_NET_MESSAGE(chan,net_2,data_rcv);
+
+        chan->packet_element_id_rcv++;
         if( chan->packet_element_id_rcv==elem_per_packet)
              chan->packet_element_id_rcv=0;
     }

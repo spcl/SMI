@@ -88,7 +88,7 @@ kernel void ComputeDistance(__global volatile const VTYPE points[],
 
 kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
                          const int num_points, const int iterations,
-                         const int smi_rank, const int smi_size) {
+                         const SMI_Comm comm) {
 
   for (int i = 0; i < iterations; ++i) {
 
@@ -131,7 +131,7 @@ kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
     // printf("[%i] Starting centroid reduce...\n", smi_rank);
 #if !defined(SEQUENTIAL)
     SMI_RChannel __attribute__((register)) reduce_mean_ch =
-        SMI_Open_reduce_channel(K * DIMS, SMI_FLOAT, 0, 0, smi_rank, smi_size);
+        SMI_Open_reduce_channel(K * DIMS, SMI_FLOAT, SMI_ADD, 0, 0, comm);
 #endif
     #pragma loop_coalesce
     for (int k = 0; k < K; ++k) {
@@ -159,7 +159,7 @@ kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
     // printf("[%i] Starting centroid broadcast...\n", smi_rank);
 #if !defined(SEQUENTIAL)
     SMI_BChannel __attribute__((register)) broadcast_mean_ch =
-        SMI_Open_bcast_channel(K * DIMS, SMI_FLOAT, 1, 0, smi_rank, smi_size);
+        SMI_Open_bcast_channel(K * DIMS, SMI_FLOAT, 1, 0, comm);
 #endif
     #pragma loop_coalesce
     for (int k = 0; k < K; ++k) {
@@ -181,7 +181,7 @@ kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
     // printf("[%i] Starting count reduce...\n", smi_rank);
 #if !defined(SEQUENTIAL)
     SMI_RChannel __attribute__((register)) reduce_count_ch =
-        SMI_Open_reduce_channel(K, SMI_INT, 2, 0, smi_rank, smi_size);
+        SMI_Open_reduce_channel(K, SMI_INT, SMI_ADD, 2, 0, comm);
 #endif
     for (int k = 0; k < K; k++) {
       int send_val = count[k]; 
@@ -200,13 +200,13 @@ kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
     // printf("[%i] Starting count broadcast...\n", smi_rank);
 #if !defined(SEQUENTIAL)
     SMI_BChannel __attribute__((register)) broadcast_count_ch =
-        SMI_Open_bcast_channel(K, SMI_INT, 3, 0, smi_rank, smi_size);
+        SMI_Open_bcast_channel(K, SMI_INT, 3, 0, comm);
 #endif
     for (int k = 0; k < K; k++) {
       int bcast_val = count_reduced[k];
 
 #if !defined(SEQUENTIAL)
-      SMI_Bcast_int(&broadcast_count_ch, &bcast_val);
+      SMI_Bcast(&broadcast_count_ch, &bcast_val);
 #endif
       count_updated[k] = bcast_val;
     }
