@@ -31,30 +31,29 @@ SMI_Channel SMI_Open_send_channel(int count, SMI_Datatype data_type, int destina
     {
         case(SMI_CHAR):
             chan.elements_per_packet=SMI_CHAR_ELEM_PER_PCKT;
-            chan.max_tokens=BUFFER_SIZE*28;
+            chan.max_tokens=BUFFER_SIZE*SMI_CHAR_ELEM_PER_PCKT;
             break;
         case(SMI_SHORT):
             chan.elements_per_packet=SMI_SHORT_ELEM_PER_PCKT;
-            chan.max_tokens=BUFFER_SIZE*14;
+            chan.max_tokens=BUFFER_SIZE*SMI_SHORT_ELEM_PER_PCKT;
             break;
         case(SMI_INT):
             chan.elements_per_packet=SMI_INT_ELEM_PER_PCKT;
-            chan.max_tokens=BUFFER_SIZE*7;
+            chan.max_tokens=BUFFER_SIZE*SMI_INT_ELEM_PER_PCKT;
             break;
         case (SMI_FLOAT):
             chan.elements_per_packet=SMI_FLOAT_ELEM_PER_PCKT;
-            chan.max_tokens=BUFFER_SIZE*7;
+            chan.max_tokens=BUFFER_SIZE*SMI_FLOAT_ELEM_PER_PCKT;
             break;
         case (SMI_DOUBLE):
             chan.elements_per_packet=SMI_DOUBLE_ELEM_PER_PCKT;
-            chan.max_tokens=BUFFER_SIZE*3;
+            chan.max_tokens=BUFFER_SIZE*SMI_DOUBLE_ELEM_PER_PCKT;
             break;
     }
     //setup header for the message
     SET_HEADER_DST(chan.net.header,chan.receiver_rank);
     SET_HEADER_PORT(chan.net.header,chan.port);
     SET_HEADER_OP(chan.net.header,SMI_SEND);
-    //chan.tokens=chan.max_tokens;
 #if defined P2P_RENDEZVOUS
     chan.tokens=MIN(chan.max_tokens,count);//needed to prevent the compiler to optimize-away channel connections
 #else //eager transmission protocol
@@ -102,7 +101,6 @@ void SMI_Push_flush(SMI_Channel *chan, void* data, bool immediate)
         const char chan_idx_control=ckr_control_table[chan->port];
         SMI_Network_message mess=read_channel_intel(ckr_control_channels[chan_idx_control]);
         unsigned int tokens=*(unsigned int *)mess.data;
-        //printf("PUSH: Remaining %u data elements, received %u tokens\n",chan->message_size-chan->processed_elements, tokens);
         chan->tokens+=tokens; //tokens
     }
 }

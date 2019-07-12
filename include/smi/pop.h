@@ -29,31 +29,25 @@ SMI_Channel SMI_Open_receive_channel(int count, SMI_Datatype data_type, int sour
     switch(data_type)
     {
         case(SMI_CHAR):
-            chan.size_of_type=1;
-            chan.elements_per_packet=28;
-            chan.max_tokens=BUFFER_SIZE*28;
+            chan.elements_per_packet=SMI_CHAR_ELEM_PER_PCKT;
+            chan.max_tokens=BUFFER_SIZE*SMI_CHAR_ELEM_PER_PCKT;
             break;
         case(SMI_SHORT):
-            chan.size_of_type=2;
-            chan.elements_per_packet=14;
-            chan.max_tokens=BUFFER_SIZE*14;
+            chan.elements_per_packet=SMI_SHORT_ELEM_PER_PCKT;
+            chan.max_tokens=BUFFER_SIZE*SMI_SHORT_ELEM_PER_PCKT;
             break;
         case(SMI_INT):
-            chan.size_of_type=4;
-            chan.elements_per_packet=7;
-            chan.max_tokens=BUFFER_SIZE*7;
+            chan.elements_per_packet=SMI_INT_ELEM_PER_PCKT;
+            chan.max_tokens=BUFFER_SIZE*SMI_INT_ELEM_PER_PCKT;
             break;
         case (SMI_FLOAT):
-            chan.size_of_type=4;
-            chan.elements_per_packet=7;
-            chan.max_tokens=BUFFER_SIZE*7;
+            chan.elements_per_packet=SMI_FLOAT_ELEM_PER_PCKT;
+            chan.max_tokens=BUFFER_SIZE*SMI_FLOAT_ELEM_PER_PCKT;
             break;
         case (SMI_DOUBLE):
-            chan.size_of_type=8;
-            chan.elements_per_packet=3;
-            chan.max_tokens=BUFFER_SIZE*3;
+            chan.elements_per_packet=SMI_DOUBLE_ELEM_PER_PCKT;
+            chan.max_tokens=BUFFER_SIZE*SMI_DOUBLE_ELEM_PER_PCKT;
             break;
-         //TODO add more data types
     }
 #if defined P2P_RENDEZVOUS
     chan.tokens=MIN(chan.max_tokens/((unsigned int)8),count); //needed to prevent the compiler to optimize-away channel connections
@@ -83,22 +77,60 @@ void SMI_Pop(SMI_Channel *chan, void *data)
         const char chan_idx_data=ckr_data_table[chan->port];
         chan->net=read_channel_intel(ckr_data_channels[chan_idx_data]);
     }
-    char * ptr=chan->net.data+(chan->packet_element_id)*chan->size_of_type;
-    chan->packet_element_id++;                      
+    chan->processed_elements++;
+    char *data_recvd=chan->net.data;
+
+    switch(chan->data_type)
+    {
+        case SMI_CHAR:
+            #pragma unroll
+            for (int ee = 0; ee < SMI_CHAR_ELEM_PER_PCKT; ee++) {
+                if (ee == chan->packet_element_id) {
+                    #pragma unroll
+                    for (int jj = 0; jj < SMI_CHAR_TYPE_SIZE; jj++) {
+                        ((char *)data)[jj] = data_recvd[(ee * SMI_CHAR_TYPE_SIZE) + jj];
+                    }
+                }
+            }
+            break;
+        case SMI_SHORT:
+            #pragma unroll
+            for (int ee = 0; ee < SMI_SHORT_ELEM_PER_PCKT; ee++) {
+                if (ee == chan->packet_element_id) {
+                    #pragma unroll
+                    for (int jj = 0; jj < SMI_SHORT_TYPE_SIZE; jj++) {
+                        ((char *)data)[jj] = data_recvd[(ee * SMI_SHORT_TYPE_SIZE) + jj];
+                    }
+                }
+            }
+            break;
+        case SMI_INT:
+        case SMI_FLOAT:
+            #pragma unroll
+            for (int ee = 0; ee < SMI_INT_ELEM_PER_PCKT; ee++) {
+                if (ee == chan->packet_element_id) {
+                    #pragma unroll
+                    for (int jj = 0; jj < SMI_INT_TYPE_SIZE; jj++) {
+                        ((char *)data)[jj] = data_recvd[(ee * SMI_INT_TYPE_SIZE) + jj];
+                    }
+                }
+            }
+            break;
+        case SMI_DOUBLE:
+            #pragma unroll
+            for (int ee = 0; ee < SMI_DOUBLE_ELEM_PER_PCKT; ee++) {
+                if (ee == chan->packet_element_id) {
+                    #pragma unroll
+                    for (int jj = 0; jj < SMI_DOUBLE_TYPE_SIZE; jj++) {
+                        ((char *)data)[jj] = data_recvd[(ee * SMI_DOUBLE_TYPE_SIZE) + jj];
+                    }
+                }
+            }
+            break;
+    }
+    chan->packet_element_id++;
     if(chan->packet_element_id==GET_HEADER_NUM_ELEMS(chan->net.header))
         chan->packet_element_id=0;
-    chan->processed_elements++;
-    //create data element
-    if(chan->data_type==SMI_CHAR)
-        *(char *)data= *(char*)(ptr);
-    if(chan->data_type==SMI_SHORT)
-        *(short *)data= *(short*)(ptr);
-    if(chan->data_type==SMI_INT)
-        *(int *)data= *(int*)(ptr);
-    if(chan->data_type==SMI_FLOAT)
-        *(float *)data= *(float*)(ptr);
-    if(chan->data_type==SMI_DOUBLE)
-        *(double *)data= *(double*)(ptr);
     chan->tokens--;
     //TODO: This is used to prevent this funny compiler to re-oder the two *_channel_intel operations
    // mem_fence(CLK_CHANNEL_MEM_FENCE);
@@ -109,7 +141,6 @@ void SMI_Pop(SMI_Channel *chan, void *data)
         //the new tokens to it
         unsigned int sender=((int)((int)chan->message_size-(int)chan->processed_elements-(int)chan->max_tokens*7/8)) < 0 ? 0: chan->message_size-chan->processed_elements-chan->max_tokens*7/8;
         chan->tokens=(unsigned int)(MIN(chan->max_tokens/8, sender)); //b/2
-        //printf("POP: Remaining %u data elements, sending %u tokens (MIN %d, %d)\n",(int)chan->message_size-(int)chan->processed_elements, chan->tokens,chan->max_tokens/8, MAX((int)chan->message_size-(int)chan->processed_elements-(int)chan->max_tokens*7/8,0));
         const char chan_idx_control=cks_control_table[chan->port];
         SMI_Network_message mess;
         *(unsigned int*)mess.data=chan->tokens;
