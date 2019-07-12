@@ -25,7 +25,7 @@ typedef struct __attribute__((packed)) __attribute__((aligned(32))){
 
 
 #define SMI_CHAR_TYPE_SIZE      1
-#define SMI_SHORT_TYPE_SIZE     1
+#define SMI_SHORT_TYPE_SIZE     2
 #define SMI_INT_TYPE_SIZE       4
 #define SMI_FLOAT_TYPE_SIZE     4
 #define SMI_DOUBLE_TYPE_SIZE    8
@@ -127,7 +127,8 @@ typedef struct __attribute__((packed)) __attribute__((aligned(32))){
                         ((char *)DST)[jj] = smi_macro_data_rcv[(ee * SMI_SHORT_TYPE_SIZE) + jj]; \
                     } \
                 } \
-            } \
+            }\
+            break;\
         case SMI_INT: \
         case SMI_FLOAT: \
             _Pragma("unroll")\

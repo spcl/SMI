@@ -6,9 +6,41 @@
 
 #include "p2p_routing/smi-device-1.h"
 
+__kernel void test_char(__global char *mem, const int N, SMI_Comm comm)
+{
+    const int port=1;
+    SMI_Channel chan=SMI_Open_receive_channel(N,SMI_CHAR,0,port,comm);
+    char check=1;
+    //since it is char, we send always the same number
+    const char expected=3;
+    for(int i=0;i<N;i++)
+    {
+        char rcvd;
+        SMI_Pop(&chan,&rcvd);
+        check &= (rcvd==(expected));
+    }
+    *mem=check;
+
+}
+
+__kernel void test_short(__global char *mem, const int N, SMI_Comm comm)
+{
+    SMI_Channel chan=SMI_Open_receive_channel(N,SMI_SHORT,0,0,comm);
+    char check=1;
+    const short expected=1001;
+    for(int i=0;i<N;i++)
+    {
+        short rcvd;
+        SMI_Pop(&chan,&rcvd);
+        check &= (rcvd==(expected));
+    }
+    *mem=check;
+
+}
+#if 0
 __kernel void test_int(__global char *mem, const int N, SMI_Comm comm)
 {
-    SMI_Channel chan=SMI_Open_receive_channel(N,SMI_INT,0,0,comm);
+    SMI_Channel chan=SMI_Open_receive_channel(N,SMI_INT,0,2,comm);
     char check=1;
     for(int i=0;i<N;i++)
     {
@@ -22,7 +54,7 @@ __kernel void test_int(__global char *mem, const int N, SMI_Comm comm)
 
 __kernel void test_float(__global char *mem, const int N, SMI_Comm comm)
 {
-    SMI_Channel chan=SMI_Open_receive_channel(N,SMI_FLOAT,0,0,comm);
+    SMI_Channel chan=SMI_Open_receive_channel(N,SMI_FLOAT,0,3,comm);
     char check=1;
     const float start=1.1f;
     for(int i=0;i<N;i++)
@@ -35,3 +67,19 @@ __kernel void test_float(__global char *mem, const int N, SMI_Comm comm)
     *mem=check;
 
 }
+
+__kernel void test_double(__global char *mem, const int N, SMI_Comm comm)
+{
+    SMI_Channel chan=SMI_Open_receive_channel(N,SMI_DOUBLE,0,4,comm);
+    char check=1;
+    const double start=1.1f;
+    for(int i=0;i<N;i++)
+    {
+        double rcvd;
+        SMI_Pop(&chan,&rcvd);
+        check &= (rcvd==(i+start));
+    }
+    *mem=check;
+
+}
+#endif

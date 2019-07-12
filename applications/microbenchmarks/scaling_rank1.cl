@@ -19,9 +19,8 @@ __kernel void app(__global char *mem, const int N, SMI_Comm comm)
 
         double rcvd;
         SMI_Pop(&chan,&rcvd);
-        //printf("[RCV 0] ricevuto %d\n",i);
-//        if(rcvd!=(start+i))
-  //          printf("Error in receiving...\n");
+     //  if(rcvd!=(start+i))
+       // printf("[RCV 0] ricevuto %.1f instead of %.1f\n",rcvd,start+i);
         check &= (rcvd==(start+i));
     }
     *mem=check;
@@ -40,6 +39,8 @@ __kernel void app_1(__global char *mem, const int N,SMI_Comm comm)
 
         double rcvd;
         SMI_Pop(&chan,&rcvd);
+       // if(rcvd!=(start+i))
+        // printf("[RCV 1] ricevuto %.1f instead of %.1f\n",rcvd,start+i);
         //printf("[RCV 1] ricevuto %d\n",i);
 
 //        if(rcvd!=(start+i))

@@ -77,7 +77,6 @@ SMI_Channel SMI_Open_send_channel(int count, SMI_Datatype data_type, int destina
 void SMI_Push_flush(SMI_Channel *chan, void* data, bool immediate)
 {
 
-    const char chan_idx_data=cks_data_table[chan->port];
     char *conv=(char*)data;
     COPY_DATA_TO_NET_MESSAGE(chan,net,conv);
     chan->processed_elements++;
@@ -87,6 +86,7 @@ void SMI_Push_flush(SMI_Channel *chan, void* data, bool immediate)
     if(chan->packet_element_id==chan->elements_per_packet || immediate || chan->processed_elements==chan->message_size)
     {
         SET_HEADER_NUM_ELEMS(chan->net.header,chan->packet_element_id);
+        const char chan_idx_data=cks_data_table[chan->port];
         chan->packet_element_id=0;
         write_channel_intel(cks_data_channels[chan_idx_data],chan->net);
     }

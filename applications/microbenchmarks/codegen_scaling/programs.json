@@ -1,5 +1,5 @@
 [{
-  "buffer_size": 128,
+  "buffer_size": 1024,
   "ports": [{
     "id": 0,
     "type": "push"
@@ -7,10 +7,9 @@
     "id": 1,
     "type": "push"
   }],
-  "p2p_rendezvous" : false,
   "fpgas": ["fpga-0006:acl0"]
 }, {
-  "buffer_size": 128,
+  "buffer_size": 1024,
   "ports": [{
     "id": 0,
     "type": "pop"
@@ -18,7 +17,6 @@
     "id" : 1,
     "type": "pop"
   }],
-  "p2p_rendezvous" : false,
   "max_ranks": 8,
   "fpgas": ["fpga-0006:acl1","fpga-0007:acl0", "fpga-0007:acl1","fpga-0008:acl0", "fpga-0008:acl1","fpga-0009:acl0", "fpga-0009:acl1"]
 }]
