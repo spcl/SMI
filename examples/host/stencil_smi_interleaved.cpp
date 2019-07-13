@@ -131,7 +131,7 @@ int main(int argc, char **argv) {
   MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
   const int i_px = mpi_rank / kPY;
   const int i_py = mpi_rank % kPY;
-  SMI_Comm comm{(char)mpi_size,(char)mpi_rank};
+    SMI_Comm comm{(char)mpi_rank,(char)mpi_size};
 
   // Handle input arguments
   if (argc != 3) {

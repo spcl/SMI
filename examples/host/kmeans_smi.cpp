@@ -5,12 +5,12 @@
 #include "hlslib/intel/OpenCL.h"
 #include "kmeans.h"
 #include "common.h"
-
+#include <smi/communicator.h>
 #include <mpi.h>
 
 // Convert from C to C++
 using Data_t = DTYPE;
-constexpr int kNumTags = 6;
+constexpr int kNumTags = 4;
 constexpr int kK = K;
 constexpr int kDims = DIMS;
 constexpr auto kUsage =
@@ -75,11 +75,11 @@ int main(int argc, char **argv) {
 
   // Read routing tables
   std::vector<std::vector<char>> routing_tables_ckr(
-      kChannelsPerRank, std::vector<char>(kNumTags));
+      kChannelsPerRank, std::vector<char>(kNumTags*2));
   std::vector<std::vector<char>> routing_tables_cks(
       kChannelsPerRank, std::vector<char>(mpi_size));
   for (int i = 0; i < kChannelsPerRank; ++i) {
-    LoadRoutingTable<char>(mpi_rank, i, kNumTags, "kmeans_smi_routing", "ckr",
+    LoadRoutingTable<char>(mpi_rank, i, kNumTags*2, "kmeans_smi_routing", "ckr",
                            &routing_tables_ckr[i][0]);
     LoadRoutingTable<char>(mpi_rank, i, mpi_size, "kmeans_smi_routing", "cks",
                            &routing_tables_cks[i][0]);
@@ -183,23 +183,22 @@ int main(int argc, char **argv) {
     auto program = context.MakeProgram(kernel_path);
 
     MPIStatus(mpi_rank, "Starting communication kernels...\n");
-    std::vector<hlslib::ocl::Kernel> comm_kernels;
-    for (int i = 0; i < kChannelsPerRank; ++i) {
+     for (int i = 0; i < kChannelsPerRank; ++i) {
       comm_kernels.emplace_back(program.MakeKernel(
-          "CK_S_" + std::to_string(i), routing_tables_cks_device[i]));
-      comm_kernels.emplace_back(program.MakeKernel("CK_R_" + std::to_string(i),
+          "smi_kernel_cks_" + std::to_string(i), routing_tables_cks_device[i],((char)mpi_size)));
+      comm_kernels.emplace_back(program.MakeKernel("smi_kernel_ckr_" + std::to_string(i),
                                                    routing_tables_ckr_device[i],
                                                    char(mpi_rank)));
     }
     char mpi_size_comm = mpi_size;
     comm_kernels.emplace_back(
-        program.MakeKernel("kernel_reduce_float", mpi_size_comm));
+        program.MakeKernel("smi_kernel_reduce_0", mpi_size_comm));
     comm_kernels.emplace_back(
-        program.MakeKernel("kernel_bcast_float", mpi_size_comm));
+        program.MakeKernel("smi_kernel_bcast_1", mpi_size_comm));
     comm_kernels.emplace_back(
-        program.MakeKernel("kernel_reduce_int", mpi_size_comm));
+        program.MakeKernel("smi_kernel_reduce_2", mpi_size_comm));
     comm_kernels.emplace_back(
-        program.MakeKernel("kernel_bcast_int", mpi_size_comm));
+        program.MakeKernel("smi_kernel_bcast_3", mpi_size_comm));
     for (auto &k : comm_kernels) {
       // Will never terminate, so we don't care about the return value of fork
     //  k.ExecuteTaskFork(); //HLSLIB
@@ -213,6 +212,8 @@ int main(int argc, char **argv) {
     MPI_Barrier(MPI_COMM_WORLD);
 
     MPIStatus(mpi_rank, "Creating compute kernels...\n");
+    SMI_Comm comm{(char)mpi_rank,(char)mpi_size};
+
     std::vector<hlslib::ocl::Kernel> kernels;
     kernels.emplace_back(program.MakeKernel("SendCentroids",
                                             centroids_device_read, iterations,
@@ -222,7 +223,7 @@ int main(int argc, char **argv) {
                                             mpi_rank, mpi_size));
     kernels.emplace_back(
         program.MakeKernel("ComputeMeans", centroids_device_write,
-                           points_per_rank, iterations, mpi_rank, mpi_size));
+                           points_per_rank, iterations, comm));
 
     // Wait for compute kernels to be initialized
     MPI_Barrier(MPI_COMM_WORLD);
