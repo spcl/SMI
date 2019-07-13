@@ -74,35 +74,9 @@ SMI_Channel SMI_Open_send_channel(int count, SMI_Datatype data_type, int destina
  * @param immediate: if true the data is immediately sent, without waiting for the completion of the network packet.
  *          In general, the user should use the athore Push definition
  */
-void SMI_Push_flush(SMI_Channel *chan, void* data, bool immediate)
+void SMI_Push_flush(SMI_Channel *chan, void* data, int immediate)
 {
-
-    char *conv=(char*)data;
-    COPY_DATA_TO_NET_MESSAGE(chan,net,conv);
-    chan->processed_elements++;
-    chan->packet_element_id++;
-    chan->tokens--;
-    //send the network packet if it full or we reached the message size
-    if(chan->packet_element_id==chan->elements_per_packet || immediate || chan->processed_elements==chan->message_size)
-    {
-        SET_HEADER_NUM_ELEMS(chan->net.header,chan->packet_element_id);
-        const char chan_idx_data=cks_data_table[chan->port];
-        chan->packet_element_id=0;
-        write_channel_intel(cks_data_channels[chan_idx_data],chan->net);
-    }
-    //This fence is not mandatory, the two channel operations can be
-    //performed independently
-    // mem_fence(CLK_CHANNEL_MEM_FENCE);
-
-    if(chan->tokens==0)
-    {
-        //receives also with tokens=0
-        //wait until the message arrives
-        const char chan_idx_control=ckr_control_table[chan->port];
-        SMI_Network_message mess=read_channel_intel(ckr_control_channels[chan_idx_control]);
-        unsigned int tokens=*(unsigned int *)mess.data;
-        chan->tokens+=tokens; //tokens
-    }
+    // implemented in codegen
 }
 
 /**
@@ -112,7 +86,7 @@ void SMI_Push_flush(SMI_Channel *chan, void* data, bool immediate)
  */
 void SMI_Push(SMI_Channel *chan, void* data)
 {
-    SMI_Push_flush(chan,data,false);
+    // implemented in codegen
 }
 
 #endif //ifndef PUSH_H

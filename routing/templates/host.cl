@@ -25,7 +25,7 @@ SMI_Comm SmiInit(
     kernel_names.push_back("smi_kernel_ckr_{{ channel }}");
     {% endfor %}
     {% macro generate_collective_kernels(key, kernel_name) %}
-    {% set ops = program.get_collective_ops(key) %}
+    {% set ops = program.get_ops_by_type(key) %}
     // {{ key }} kernels
     {% for op in ops %}
     kernel_names.push_back("{{ kernel_name }}_{{ op.logical_port }}");
@@ -81,7 +81,7 @@ SMI_Comm SmiInit(
     {% endfor %}
 
     {% macro setup_collective_kernels(key) %}
-{% set ops = program.get_collective_ops(key) %}
+{% set ops = program.get_ops_by_type(key) %}
 {% for op in ops %}
     // {{ key }} {{ op.logical_port }}
     kernels[{{ ctx.kernel }}].setArg(0, sizeof(char), &char_ranks_count);

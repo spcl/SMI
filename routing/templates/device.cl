@@ -4,6 +4,9 @@
 {% import 'utils.cl' as utils %}
 {% import 'ckr.cl' as smi_ckr %}
 {% import 'cks.cl' as smi_cks %}
+
+{% import 'push.cl' as smi_push %}
+{% import 'pop.cl' as smi_pop %}
 {% import 'bcast.cl' as smi_bcast %}
 {% import 'reduce.cl' as smi_reduce %}
 {% import 'scatter.cl' as smi_scatter %}
@@ -90,13 +93,18 @@ channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __att
 {{ smi_ckr.smi_ckr(program, channel, channels|length, target_index) }}
 {% endfor %}
 
-{% macro generate_collective_op(key, fn) %}
-{% for op in program.get_collective_ops(key) %}
+{% macro generate_op_impl(key, fn) %}
+{% for op in program.get_ops_by_type(key) %}
 {{ fn(program, op) }}
 {% endfor %}
 {% endmacro %}
 
-{{ generate_collective_op("broadcast", smi_bcast.smi_bcast) }}
-{{ generate_collective_op("reduce", smi_reduce.smi_reduce) }}
-{{ generate_collective_op("scatter", smi_scatter.smi_scatter) }}
-{{ generate_collective_op("gather", smi_gather.smi_gather) }}
+// P2P
+{{ generate_op_impl("push", smi_push.smi_push) }}
+{{ generate_op_impl("pop", smi_pop.smi_pop) }}
+
+// collectives
+{{ generate_op_impl("broadcast", smi_bcast.smi_bcast) }}
+{{ generate_op_impl("reduce", smi_reduce.smi_reduce) }}
+{{ generate_op_impl("scatter", smi_scatter.smi_scatter) }}
+{{ generate_op_impl("gather", smi_gather.smi_gather) }}

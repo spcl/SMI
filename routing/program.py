@@ -1,7 +1,7 @@
 from typing import List, Dict
 
 from ops import SmiOperation, Broadcast, KEY_CKS_DATA, KEY_CKS_CONTROL, KEY_CKR_DATA, KEY_BROADCAST, KEY_CKR_CONTROL, \
-    Reduce, KEY_REDUCE_SEND, KEY_REDUCE_RECV, Scatter, KEY_SCATTER, Gather, KEY_GATHER
+    Reduce, KEY_REDUCE_SEND, KEY_REDUCE_RECV, Scatter, KEY_SCATTER, Gather, KEY_GATHER, Push, Pop
 from utils import round_robin
 
 COST_INTER_FPGA = 100
@@ -124,8 +124,10 @@ class Program:
                     return channel
         return None
 
-    def get_collective_ops(self, type: str) -> List[SmiOperation]:
+    def get_ops_by_type(self, type: str) -> List[SmiOperation]:
         mapping = {
+            "push": Push,
+            "pop": Pop,
             "broadcast": Broadcast,
             "reduce": Reduce,
             "scatter": Scatter,
@@ -214,7 +216,7 @@ def are_ops_consecutive(ops: List[SmiOperation]) -> bool:
     ports = set([op.logical_port for op in ops])
     start = min(ports)
     end = max(ports)
-    return sorted(ports) == list(range(start, end + 1))
+    return sorted(ports) == list(range(start, end + 1)) and start == 0
 
 
 def target_index(source: int, target: int) -> int:
