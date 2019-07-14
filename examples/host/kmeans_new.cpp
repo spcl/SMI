@@ -246,12 +246,13 @@ int main(int argc, char *argv[])
 
     if(rank==0)
     {
+        printf("Finished");
         //copy centroids back
-        queues[12].enqueueReadBuffer(points_device, CL_TRUE,0,sizeof(float)*(points.size()),points.data());
+        queues[0].enqueueReadBuffer(points_device, CL_TRUE,0,sizeof(float)*(points.size()),points.data());
 
 
         //get back the results
-        queues[12].enqueueReadBuffer(centroids_device_write,CL_TRUE,0,sizeof(float)*(centroids.size()),centroids.data());
+        queues[0].enqueueReadBuffer(centroids_device_write,CL_TRUE,0,sizeof(float)*(centroids.size()),centroids.data());
         // Final centroids
         std::cout << "Final centroids:\n";
         for (int k = 0; k < kK; ++k) {
