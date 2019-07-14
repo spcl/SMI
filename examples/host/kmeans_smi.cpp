@@ -5,6 +5,8 @@
 #include "hlslib/intel/OpenCL.h"
 #include "kmeans.h"
 #include "common.h"
+#define __HOST_PROGRAM__
+
 #include <smi/communicator.h>
 #include <mpi.h>
 
@@ -183,6 +185,8 @@ int main(int argc, char **argv) {
     auto program = context.MakeProgram(kernel_path);
 
     MPIStatus(mpi_rank, "Starting communication kernels...\n");
+    std::vector<hlslib::ocl::Kernel> comm_kernels;
+
      for (int i = 0; i < kChannelsPerRank; ++i) {
       comm_kernels.emplace_back(program.MakeKernel(
           "smi_kernel_cks_" + std::to_string(i), routing_tables_cks_device[i],((char)mpi_size)));

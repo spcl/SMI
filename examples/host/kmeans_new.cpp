@@ -10,6 +10,9 @@
 #include "../../include/utils/ocl_utils.hpp"
 #include "../../include/utils/utils.hpp"
 #include "../../include/utils/smi_utils.hpp"
+#define __HOST_PROGRAM__
+
+#include <smi/communicator.h>
 #include "../include/kmeans_new.h"
 #include <random>
 #include "hlslib/intel/OpenCL.h"
@@ -17,7 +20,7 @@
 
 #define ROUTING_DIR "examples/host/k_means_routing/"
 using Data_t = DTYPE;
-constexpr int kNumTags = 6;
+constexpr int kNumTags = 4;
 constexpr int kK = K;
 constexpr int kDims = DIMS;
 using AlignedVec_t =
@@ -84,8 +87,8 @@ int main(int argc, char *argv[])
     cl::Program program;
     std::vector<cl::Kernel> kernels;
     std::vector<cl::CommandQueue> queues;
-    std::vector<std::string> kernel_names={"CK_S_0", "CK_S_1", "CK_S_2", "CK_S_3", "CK_R_0", "CK_R_1", "CK_R_2", "CK_R_3",
-                                           "kernel_reduce_float", "kernel_bcast_float", "kernel_reduce_int","kernel_bcast_int",
+    std::vector<std::string> kernel_names={"smi_kernel_cks_0", "smi_kernel_cks_1", "smi_kernel_cks_2", "smi_kernel_cks_3", "smi_kernel_ckr_0", "smi_kernel_ckr_1", "smi_kernel_ckr_2", "smi_kernel_ckr_3",
+                                           "smi_kernel_reduce_0", "smi_kernel_bcast_1", "smi_kernel_reduce_2","smi_kernel_bcast_3",
                                            "ComputeMeans", "SendCentroids", "ComputeDistance"};
 
     //this is for the case with classi channels
@@ -98,16 +101,16 @@ int main(int argc, char *argv[])
     cl::Buffer routing_table_ck_s_1(context,CL_MEM_READ_ONLY,rank_count);
     cl::Buffer routing_table_ck_s_2(context,CL_MEM_READ_ONLY,rank_count);
     cl::Buffer routing_table_ck_s_3(context,CL_MEM_READ_ONLY,rank_count);
-    cl::Buffer routing_table_ck_r_0(context,CL_MEM_READ_ONLY,tags);
-    cl::Buffer routing_table_ck_r_1(context,CL_MEM_READ_ONLY,tags);
-    cl::Buffer routing_table_ck_r_2(context,CL_MEM_READ_ONLY,tags);
-    cl::Buffer routing_table_ck_r_3(context,CL_MEM_READ_ONLY,tags);
+    cl::Buffer routing_table_ck_r_0(context,CL_MEM_READ_ONLY,tags*2);
+    cl::Buffer routing_table_ck_r_1(context,CL_MEM_READ_ONLY,tags*2);
+    cl::Buffer routing_table_ck_r_2(context,CL_MEM_READ_ONLY,tags*2);
+    cl::Buffer routing_table_ck_r_3(context,CL_MEM_READ_ONLY,tags*2);
 
     //load ck_r
     char routing_tables_ckr[4][tags]; //two tags
     char routing_tables_cks[4][rank_count]; //4 ranks
     for (int i = 0; i < kChannelsPerRank; ++i) {
-        LoadRoutingTable<char>(rank, i, tags, ROUTING_DIR, "ckr", &routing_tables_ckr[i][0]);
+        LoadRoutingTable<char>(rank, i, tags*2, ROUTING_DIR, "ckr", &routing_tables_ckr[i][0]);
         LoadRoutingTable<char>(rank, i, rank_count, ROUTING_DIR, "cks", &routing_tables_cks[i][0]);
     }
     //    std::cout << "Rank: "<< rank<<endl;
@@ -129,9 +132,13 @@ int main(int argc, char *argv[])
 
     //args for the CK_Ss
     kernels[0].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
+    kernels[0].setArg(1,sizeof(char),&rank_count);
     kernels[1].setArg(0,sizeof(cl_mem),&routing_table_ck_s_1);
+    kernels[1].setArg(1,sizeof(char),&rank_count);
     kernels[2].setArg(0,sizeof(cl_mem),&routing_table_ck_s_2);
+    kernels[2].setArg(1,sizeof(char),&rank_count);
     kernels[3].setArg(0,sizeof(cl_mem),&routing_table_ck_s_3);
+    kernels[3].setArg(1,sizeof(char),&rank_count);
 
     //args for the CK_Rs
     kernels[4].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
@@ -243,6 +250,7 @@ int main(int argc, char *argv[])
     cl::Buffer points_device(context,CL_MEM_READ_WRITE,sizeof(float)*(points.size()));
     cl::Buffer centroids_device_read(context,CL_MEM_READ_ONLY,sizeof(float)*(centroids.size()));
     cl::Buffer centroids_device_write(context,CL_MEM_WRITE_ONLY,sizeof(float)*(centroids.size()));
+    SMI_Comm comm{(char)mpi_rank,(char)mpi_size};
 
 
 
@@ -251,8 +259,7 @@ int main(int argc, char *argv[])
     kernels[12].setArg(0,sizeof(cl_mem),&centroids_device_write);
     kernels[12].setArg(1,sizeof(int),&points_per_rank);
     kernels[12].setArg(2,sizeof(int),&iterations);
-    kernels[12].setArg(3,sizeof(int),&mpi_rank);
-    kernels[12].setArg(4,sizeof(int),&mpi_size);
+    kernels[12].setArg(3,sizeof(SMI_Comm),&comm);
 
     //sen centroids
     kernels[13].setArg(0,sizeof(cl_mem),&centroids_device_read);
