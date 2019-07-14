@@ -58,27 +58,27 @@ SMI_ScatterChannel SMI_Open_scatter_channel(int send_count,  int recv_count,
     chan.num_ranks=(char)comm[1];
     chan.root_rank=(char)root;
     chan.next_rcv=0;
-    switch(data_type)
+     switch(data_type)
     {
-        case(SMI_INT):
-            chan.size_of_type=4;
-            chan.elements_per_packet=7;
+        case (SMI_CHAR):
+            chan.size_of_type=SMI_CHAR_TYPE_SIZE;
+            chan.elements_per_packet=SMI_CHAR_ELEM_PER_PCKT;
             break;
         case(SMI_SHORT):
-            chan.size_of_type=2;
-            chan.elements_per_packet=14;
+            chan.size_of_type=SMI_SHORT_TYPE_SIZE;
+            chan.elements_per_packet=SMI_SHORT_ELEM_PER_PCKT;
+            break;
+        case(SMI_INT):
+            chan.size_of_type=SMI_INT_TYPE_SIZE;
+            chan.elements_per_packet=SMI_INT_ELEM_PER_PCKT;
             break;
         case (SMI_FLOAT):
-            chan.size_of_type=4;
-            chan.elements_per_packet=7;
+            chan.size_of_type=SMI_FLOAT_TYPE_SIZE;
+            chan.elements_per_packet=SMI_FLOAT_ELEM_PER_PCKT;
             break;
         case (SMI_DOUBLE):
-            chan.size_of_type=8;
-            chan.elements_per_packet=3;
-            break;
-        case (SMI_CHAR):
-            chan.size_of_type=1;
-            chan.elements_per_packet=28;
+            chan.size_of_type=SMI_DOUBLE_TYPE_SIZE;
+            chan.elements_per_packet=SMI_DOUBLE_ELEM_PER_PCKT;
             break;
     }
 

@@ -370,6 +370,7 @@ int main(int argc, char *argv[])
 
         if(rank==0)
         {
+            /*
             std::cout << "Final centroids host:\n";
             for (int k = 0; k < kK; ++k) {
                 std::cout << "  {" << centroids_host[k * kDims];
@@ -377,7 +378,7 @@ int main(int argc, char *argv[])
                     std::cout << ", " << centroids_host[k * kDims + d];
                 }
                 std::cout << "}\n";
-            }
+            }*/
             std::cout << "CPU Computation time (usec): " << cpu_time <<std::endl;
 
             //compute difference with FPGA result
