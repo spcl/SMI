@@ -147,7 +147,7 @@ function(add_smi_microbenchmarks KERNEL_PATH NUM_RANKS MPMD)
             ${CMAKE_CURRENT_BINARY_DIR}
             ${SMI_GENERATED_HOST}
             ${SMI_GENERATED_DEVICE}
-            ${KERNEL_FILE})
+            ${KERNEL_PATH})
     add_dependencies(generate_${KERNEL_NAME}_routing rewriter)
     #add_dependencies(generate_${KERNEL_NAME} generate_${KERNEL_NAME}_routing)
     set(AOC_COMMAND

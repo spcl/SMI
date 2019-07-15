@@ -25,5 +25,9 @@ if(PythonInterp_FOUND)
     add_smi_microbenchmarks("${CMAKE_CURRENT_SOURCE_DIR}/kernels/reduce.cl" 8 OFF)
     add_smi_executable("gather_benchmark")
     add_smi_microbenchmarks("${CMAKE_CURRENT_SOURCE_DIR}/kernels/gather.cl" 8 OFF)
+
+    #s2s
+    add_smi_microbenchmarks("${CMAKE_CURRENT_SOURCE_DIR}/kernels/s2s_test_0.cl" 8 OFF)
+
 endif()
 
