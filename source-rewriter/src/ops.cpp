@@ -4,9 +4,13 @@
 
 using namespace clang;
 
-static std::string renameP2P(std::string& callName, const OperationMetadata& metadata)
+static std::string renamePort(const std::string& callName, const OperationMetadata& metadata)
 {
     return callName + "_" + std::to_string(metadata.port);
+}
+static std::string createChannelDataDeclaration(const std::string& name)
+{
+    return "void " + name + "(SMI_Channel* chan, void* data);";
 }
 
 class FindIntegerLiteral: public clang::RecursiveASTVisitor<FindIntegerLiteral>
@@ -47,12 +51,18 @@ OperationMetadata PushExtractor::GetOperationMetadata(VarDecl* channelDecl)
 }
 std::string PushExtractor::RenameCall(std::string callName, const OperationMetadata& metadata)
 {
-    return renameP2P(callName, metadata);
+    return renamePort(callName, metadata);
 }
 
 std::string PushExtractor::CreateDeclaration(std::string callName, const OperationMetadata& metadata)
 {
-    return "void " + this->RenameCall(callName, metadata) + "(SMI_Channel *chan, void* data);";
+    std::string args = "(SMI_Channel* chan, void* data";
+    if (callName == "SMI_Push_flush")
+    {
+        args += ", int immediate";
+    }
+
+    return "void " + this->RenameCall(callName, metadata) + args + ");";
 }
 
 OperationMetadata PopExtractor::GetOperationMetadata(clang::VarDecl* channelDecl)
@@ -61,10 +71,25 @@ OperationMetadata PopExtractor::GetOperationMetadata(clang::VarDecl* channelDecl
 }
 std::string PopExtractor::RenameCall(std::string callName, const OperationMetadata& metadata)
 {
-    return renameP2P(callName, metadata);
+    return renamePort(callName, metadata);
 }
 
 std::string PopExtractor::CreateDeclaration(std::string callName, const OperationMetadata& metadata)
 {
-    return "void " + this->RenameCall(callName, metadata) + "SMI_Channel *chan, void* data);";
+    return createChannelDataDeclaration(this->RenameCall(callName, metadata));
+}
+
+OperationMetadata BroadcastExtractor::GetOperationMetadata(clang::VarDecl* channelDecl)
+{
+    return OperationMetadata("broadcast", extractIntArg(channelDecl, 2));
+}
+
+std::string BroadcastExtractor::RenameCall(std::string callName, const OperationMetadata& metadata)
+{
+    return renamePort(callName, metadata);
+}
+
+std::string BroadcastExtractor::CreateDeclaration(std::string callName, const OperationMetadata& metadata)
+{
+    return createChannelDataDeclaration(this->RenameCall(callName, metadata));
 }
