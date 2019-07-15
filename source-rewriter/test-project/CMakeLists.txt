@@ -23,9 +23,10 @@ function(smi_weave python_script connections rewriter target out_src_host)
         list(APPEND WEAVED ${DEST_PATH})
     endforeach()
 
+    set(BUILD_OUTPUTS "${WEAVED} ${DEVICE_GENERATED_SRC}")
     get_target_property(DEVICE_INCLUDE_DIRS ${target} INCLUDE_DIRECTORIES)
     add_custom_command(
-            OUTPUT ${DEVICE_GENERATED_SRC}
+            OUTPUT ${BUILD_OUTPUTS}
             COMMAND python ${python_script} build --include '${DEVICE_INCLUDE_DIRS}' ${connections} ${rewriter} ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${HOST_GENERATED_SRC} ${DEVICE_GENERATED_SRC} ${DEVICE_SOURCES}
             DEPENDS ${DEVICE_SOURCES}
     )
