@@ -219,7 +219,7 @@ void SMI_Scatter(SMI_ScatterChannel *chan, void* data_snd, void* data_rcv)
             const char chan_idx_data=ckr_data_table[chan->port];
             chan->net_2=read_channel_intel(ckr_data_channels[chan_idx_data]);
         }
-        COPY_DATA_FROM_NET_MESSAGE(chan,net_2,data_rcv);
+        COPY_DATA_FROM_NET_MESSAGE(chan,chan->net_2,data_rcv);
 
         chan->packet_element_id_rcv++;
         if( chan->packet_element_id_rcv==elem_per_packet)

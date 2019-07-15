@@ -111,7 +111,7 @@ void SMI_Bcast(SMI_BChannel *chan, void* data)
     {
         const unsigned int message_size=chan->message_size;
         chan->processed_elements++;
-        COPY_DATA_TO_NET_MESSAGE(chan,net,conv);
+        COPY_DATA_TO_NET_MESSAGE(chan,chan->net,conv);
 
         chan->packet_element_id++;
         //send the network packet if it is full or we reached the message size
@@ -135,7 +135,7 @@ void SMI_Bcast(SMI_BChannel *chan, void* data)
             chan->net_2=read_channel_intel(ckr_data_channels[chan_idx_data]);
         }
 
-        COPY_DATA_TO_NET_MESSAGE(chan,net_2,conv);
+        COPY_DATA_TO_NET_MESSAGE(chan,chan->net_2,conv);
 
         chan->packet_element_id_rcv++;
         if( chan->packet_element_id_rcv==chan->elements_per_packet)

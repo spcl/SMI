@@ -78,7 +78,7 @@ void SMI_Push_flush(SMI_Channel *chan, void* data, bool immediate)
 {
 
     char *conv=(char*)data;
-    COPY_DATA_TO_NET_MESSAGE(chan,net,conv);
+    COPY_DATA_TO_NET_MESSAGE(chan,chan->net,conv);
     chan->processed_elements++;
     chan->packet_element_id++;
     chan->tokens--;
