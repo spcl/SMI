@@ -12,5 +12,4 @@ add_executable(rewriter ${SOURCES})
 target_link_libraries(rewriter clangRewrite clangAST clangTooling)
 target_include_directories(rewriter PRIVATE ${CLANG_INCLUDE_DIRS})
 
-add_subdirectory(test-project)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+#add_subdirectory(test-project)

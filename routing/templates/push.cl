@@ -8,7 +8,7 @@
  * @param immediate: if true the data is immediately sent, without waiting for the completion of the network packet.
  *          In general, the user should use the athore Push definition
  */
-void SMI_Push_Flush_{{ op.logical_port }}(char num_rank)
+void SMI_Push_Flush_{{ op.logical_port }}(SMI_Channel *chan, void* data, int immediate)
 {
     char* conv = (char*) data;
     COPY_DATA_TO_NET_MESSAGE(chan, net, conv);
@@ -46,6 +46,6 @@ void SMI_Push_Flush_{{ op.logical_port }}(char num_rank)
  */
 void SMI_Push_{{ op.logical_port }}(SMI_Channel *chan, void* data)
 {
-    SMI_Push_flush_{{ op.logical_port }}(chan, data, false);
+    SMI_Push_flush_{{ op.logical_port }}(chan, data, 0);
 }
 {% endmacro %}
