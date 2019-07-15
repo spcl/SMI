@@ -117,10 +117,10 @@ int main(int argc, char *argv[])
         /*for (int k = 0; k < kK; ++k) {
             const int n_per_centroid = num_points / kK;
             for (int i = k * n_per_centroid; i < (k + 1) * n_per_centroid; ++i) {
-                printf("Generating point %d\n",i);
+                //printf("Generating point %d\n",i);
                 for (int d = 0; d < kDims; ++d) {
-                    input[i * kDims + d] =
-                            normal_dist(rng) + gaussian_means[k * kDims + d];
+                    input[i * kDims + d] =1;
+                            //normal_dist(rng) + gaussian_means[k * kDims + d];
                 }
             }
         }*/

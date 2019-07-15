@@ -117,7 +117,7 @@ int main(int argc, char **argv) {
     MPIStatus(mpi_rank, ss.str());
     // Generate data with a separate Gaussian at each mean
     std::normal_distribution<Data_t> normal_dist;
-    for (int k = 0; k < kK; ++k) {
+    /*for (int k = 0; k < kK; ++k) {
       const int n_per_centroid = num_points / kK;
       for (int i = k * n_per_centroid; i < (k + 1) * n_per_centroid; ++i) {
         for (int d = 0; d < kDims; ++d) {
@@ -125,6 +125,14 @@ int main(int argc, char **argv) {
               normal_dist(rng) + gaussian_means[k * kDims + d];
         }
       }
+    }*/
+    for(int i=0;i<num_points;i++)
+    {
+        int k=i%kK;
+        for (int d = 0; d < kDims; ++d) {
+            input[i * kDims + d] =
+                    normal_dist(rng) + gaussian_means[k * kDims + d];
+        }
     }
     // For sampling indices for starting centroids
     std::uniform_int_distribution<size_t> index_dist(0, num_points);
@@ -192,7 +200,7 @@ int main(int argc, char **argv) {
           "smi_kernel_cks_" + std::to_string(i), routing_tables_cks_device[i],((char)mpi_size)));
       comm_kernels.emplace_back(program.MakeKernel("smi_kernel_ckr_" + std::to_string(i),
                                                    routing_tables_ckr_device[i],
-                                                   char(mpi_rank)));
+                                                   (char)(mpi_rank)));
     }
     char mpi_size_comm = mpi_size;
     comm_kernels.emplace_back(
