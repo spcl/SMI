@@ -39,8 +39,24 @@ class OperationExtractor
 public:
     virtual ~OperationExtractor() = default;
 
+    /**
+     * Extract metadata from a channel declaration.
+     * The metadata should contain the name of the operation, the used logical port and potentially other arguments
+     * like data type or reduce operation.
+     */
     virtual OperationMetadata GetOperationMetadata(clang::VarDecl* channelDecl) = 0;
+
+    /**
+     * Rename a function call given the extracted metadata.
+     * For example for callName="SMI_Push" and Metadata with port 0, it should return "SMI_Push_0".
+     */
     virtual std::string RenameCall(std::string callName, const OperationMetadata& metadata) = 0;
+
+    /**
+     * Forward declare a renamed function call.
+     * For example if RenameCall returned "SMI_Push_0" for a given metadata, this function should return
+     * "void SMI_Push_0(SMI_Channel *chan, void* data);" for the same metadata.
+     */
     virtual std::string CreateDeclaration(std::string callName, const OperationMetadata& metadata) = 0;
 };
 
@@ -53,6 +69,14 @@ public:
 };
 
 class PopExtractor: public OperationExtractor
+{
+public:
+    OperationMetadata GetOperationMetadata(clang::VarDecl* channelDecl) override;
+    std::string RenameCall(std::string callName, const OperationMetadata& metadata) override;
+    std::string CreateDeclaration(std::string callName, const OperationMetadata& metadata) override;
+};
+
+class BroadcastExtractor: public OperationExtractor
 {
 public:
     OperationMetadata GetOperationMetadata(clang::VarDecl* channelDecl) override;
