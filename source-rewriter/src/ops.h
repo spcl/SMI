@@ -3,7 +3,7 @@
 #include <utility>
 
 #pragma once
-
+#include <ostream>
 #include <cstddef>
 #include <vector>
 #include <string>
