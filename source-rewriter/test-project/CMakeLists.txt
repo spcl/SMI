@@ -4,8 +4,8 @@ function(smi_weave python_script connections rewriter target out_src_host)
     get_target_property(DEVICE_SOURCES ${target} SOURCES)
 
     set(WEAVED)
-    set(HOST_GENERATED_SRC ${CMAKE_CURRENT_BINARY_DIR}/_host.c)
-    set(DEVICE_GENERATED_SRC ${CMAKE_CURRENT_BINARY_DIR}/_device.c)
+    set(HOST_GENERATED_SRC ${CMAKE_CURRENT_BINARY_DIR}/host-smi-generated.c)
+    set(DEVICE_GENERATED_SRC ${CMAKE_CURRENT_BINARY_DIR}/device-smi-generated.cl)
     set(${out_src_host} ${HOST_GENERATED_SRC} PARENT_SCOPE)
 
     foreach(file IN ITEMS ${DEVICE_SOURCES})
@@ -23,12 +23,11 @@ function(smi_weave python_script connections rewriter target out_src_host)
         list(APPEND WEAVED ${DEST_PATH})
     endforeach()
 
-    set(BUILD_OUTPUTS "${WEAVED} ${DEVICE_GENERATED_SRC}")
     get_target_property(DEVICE_INCLUDE_DIRS ${target} INCLUDE_DIRECTORIES)
     add_custom_command(
-            OUTPUT ${BUILD_OUTPUTS}
+            TARGET ${target}
+            PRE_BUILD
             COMMAND python ${python_script} build --include '${DEVICE_INCLUDE_DIRS}' ${connections} ${rewriter} ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${HOST_GENERATED_SRC} ${DEVICE_GENERATED_SRC} ${DEVICE_SOURCES}
-            DEPENDS ${DEVICE_SOURCES}
     )
 
     file(WRITE ${HOST_GENERATED_SRC})
@@ -41,7 +40,7 @@ set(PYTHON_SCRIPT ${PROJECT_ROOT}/routing/main.py)
 set(REWRITER ${PROJECT_ROOT}/source-rewriter/cmake-build-debug/rewriter)
 set(CONNECTIONS ${PROJECT_ROOT}/routing/fpga-06.routing)
 
-set(SOURCES_DEVICE device.cl nested/device-nested.c)
+set(SOURCES_DEVICE device.cl)
 add_executable(weave_device ${SOURCES_DEVICE})
 target_include_directories(weave_device PRIVATE /home/kobzol/projects/eth/mpi-fpga/src/include)
 smi_weave(${PYTHON_SCRIPT} ${CONNECTIONS} ${REWRITER} weave_device "SOURCES_HOST_WEAVED")
