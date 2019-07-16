@@ -9,15 +9,15 @@
 #include <cmath>
 #include "../../include/utils/ocl_utils.hpp"
 #include "../../include/utils/utils.hpp"
-#include "../../include/utils/smi_utils.hpp"
+#include <smi-host-0.h>
 #include "../include/kmeans_new.h"
 #include <random>
 #include "hlslib/intel/OpenCL.h"
 
 
-#define ROUTING_DIR "examples/host/k_means_routing/"
+#define ROUTING_DIR "kmeans_smi_routing/"
 using Data_t = DTYPE;
-constexpr int kNumTags = 6;
+constexpr int kNumTags = 4;
 constexpr int kK = K;
 constexpr int kDims = DIMS;
 using AlignedVec_t =
@@ -82,82 +82,8 @@ int main(int argc, char *argv[])
     cl::Device device;
     cl::Context context;
     cl::Program program;
-    std::vector<cl::Kernel> kernels;
-    std::vector<cl::CommandQueue> queues;
-    std::vector<std::string> kernel_names={"CK_S_0", "CK_S_1", "CK_S_2", "CK_S_3", "CK_R_0", "CK_R_1", "CK_R_2", "CK_R_3",
-                                           "kernel_reduce_float", "kernel_bcast_float", "kernel_reduce_int","kernel_bcast_int",
-                                           "ComputeMeans", "SendCentroids", "ComputeDistance"};
-
-    //this is for the case with classi channels
-    IntelFPGAOCLUtils::initEnvironment(platform,device,fpga,context,program,program_path,kernel_names, kernels,queues);
-
-    //create memory buffers
-    char tags=6;
-    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
-    cl::Buffer routing_table_ck_s_0(context,CL_MEM_READ_ONLY,rank_count);
-    cl::Buffer routing_table_ck_s_1(context,CL_MEM_READ_ONLY,rank_count);
-    cl::Buffer routing_table_ck_s_2(context,CL_MEM_READ_ONLY,rank_count);
-    cl::Buffer routing_table_ck_s_3(context,CL_MEM_READ_ONLY,rank_count);
-    cl::Buffer routing_table_ck_r_0(context,CL_MEM_READ_ONLY,tags);
-    cl::Buffer routing_table_ck_r_1(context,CL_MEM_READ_ONLY,tags);
-    cl::Buffer routing_table_ck_r_2(context,CL_MEM_READ_ONLY,tags);
-    cl::Buffer routing_table_ck_r_3(context,CL_MEM_READ_ONLY,tags);
-
-    //load ck_r
-    char routing_tables_ckr[4][tags]; //two tags
-    char routing_tables_cks[4][rank_count]; //4 ranks
-    for (int i = 0; i < kChannelsPerRank; ++i) {
-        LoadRoutingTable<char>(rank, i, tags, ROUTING_DIR, "ckr", &routing_tables_ckr[i][0]);
-        LoadRoutingTable<char>(rank, i, rank_count, ROUTING_DIR, "cks", &routing_tables_cks[i][0]);
-    }
-    //    std::cout << "Rank: "<< rank<<endl;
-    //    for(int i=0;i<kChannelsPerRank;i++)
-    //        for(int j=0;j<rank_count;j++)
-    //            std::cout << i<< "," << j<<": "<< (int)routing_tables_cks[i][j]<<endl;
-    //    sleep(rank);
-
-    queues[0].enqueueWriteBuffer(routing_table_ck_s_0, CL_TRUE,0,rank_count,&routing_tables_cks[0][0]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_s_1, CL_TRUE,0,rank_count,&routing_tables_cks[1][0]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_s_2, CL_TRUE,0,rank_count,&routing_tables_cks[2][0]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_s_3, CL_TRUE,0,rank_count,&routing_tables_cks[3][0]);
-
-    queues[0].enqueueWriteBuffer(routing_table_ck_r_0, CL_TRUE,0,tags,&routing_tables_ckr[0][0]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_r_1, CL_TRUE,0,tags,&routing_tables_ckr[1][0]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_r_2, CL_TRUE,0,tags,&routing_tables_ckr[2][0]);
-    queues[0].enqueueWriteBuffer(routing_table_ck_r_3, CL_TRUE,0,tags,&routing_tables_ckr[3][0]);
-
-
-    //args for the CK_Ss
-    kernels[0].setArg(0,sizeof(cl_mem),&routing_table_ck_s_0);
-    kernels[1].setArg(0,sizeof(cl_mem),&routing_table_ck_s_1);
-    kernels[2].setArg(0,sizeof(cl_mem),&routing_table_ck_s_2);
-    kernels[3].setArg(0,sizeof(cl_mem),&routing_table_ck_s_3);
-
-    //args for the CK_Rs
-    kernels[4].setArg(0,sizeof(cl_mem),&routing_table_ck_r_0);
-    kernels[4].setArg(1,sizeof(char),&rank);
-    kernels[5].setArg(0,sizeof(cl_mem),&routing_table_ck_r_1);
-    kernels[5].setArg(1,sizeof(char),&rank);
-    kernels[6].setArg(0,sizeof(cl_mem),&routing_table_ck_r_2);
-    kernels[6].setArg(1,sizeof(char),&rank);
-    kernels[7].setArg(0,sizeof(cl_mem),&routing_table_ck_r_3);
-    kernels[7].setArg(1,sizeof(char),&rank);
-
-    //start the CKs
-    for(int i=0;i<8;i++) //start also the bcast kernel
-        queues[i].enqueueTask(kernels[i]);
-
-    //start support kernel for collectives
-    kernels[8].setArg(0,sizeof(char),&rank_count);
-    kernels[9].setArg(0,sizeof(char),&rank_count);
-
-    kernels[10].setArg(0,sizeof(char),&rank_count);
-    kernels[11].setArg(0,sizeof(char),&rank_count);
-
-    queues[8].enqueueTask(kernels[8]);
-    queues[9].enqueueTask(kernels[9]);
-    queues[10].enqueueTask(kernels[10]);
-    queues[11].enqueueTask(kernels[11]);
+    std::vector<cl::Buffer> buffers;
+    SMI_Comm comm=SmiInit(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga, buffers);
 
 
     //Application
@@ -170,7 +96,9 @@ int main(int argc, char *argv[])
     AlignedVec_t points(kDims * points_per_rank);
     AlignedVec_t centroids(kK * kDims);
     AlignedVec_t centroids_host(kK * kDims);    //for host checking
+
     if (mpi_rank == 0) {
+        printf("Creating data...\n");
         // std::random_device rd;
         std::default_random_engine rng(5);
         input = AlignedVec_t(num_points * kDims);  // TODO: load some data set
@@ -189,10 +117,10 @@ int main(int argc, char *argv[])
         /*for (int k = 0; k < kK; ++k) {
             const int n_per_centroid = num_points / kK;
             for (int i = k * n_per_centroid; i < (k + 1) * n_per_centroid; ++i) {
-                printf("Generating point %d\n",i);
+                //printf("Generating point %d\n",i);
                 for (int d = 0; d < kDims; ++d) {
-                    input[i * kDims + d] =
-                            normal_dist(rng) + gaussian_means[k * kDims + d];
+                    input[i * kDims + d] =1;
+                            //normal_dist(rng) + gaussian_means[k * kDims + d];
                 }
             }
         }*/
@@ -217,7 +145,7 @@ int main(int argc, char *argv[])
         // Print starting centroids
         std::stringstream ss;
 
-        /*ss.str("");
+        ss.str("");
         ss.clear();
         ss << "Means used to generate data:\n";
         ss << "Initial centroids:\n";
@@ -228,7 +156,7 @@ int main(int argc, char *argv[])
             }
             ss << "}\n";
         }
-        std::cout <<ss.str()<<std::endl;*/
+        std::cout <<ss.str()<<std::endl;
         std::copy(centroids.begin(),centroids.end(),centroids_host.begin());
     }
 
@@ -240,51 +168,58 @@ int main(int argc, char *argv[])
     MPI_Scatter(input.data(), points_per_rank* kDims, MPI_FLOAT, points.data(), //BUG TO FIX, missing *kDIMS
                 points_per_rank* kDims, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
+
+    std::vector<cl::Kernel> kernels(3);
+    std::vector<cl::CommandQueue> queues(3);
+    IntelFPGAOCLUtils::createCommandQueue(context,device,queues[0]);
+    IntelFPGAOCLUtils::createKernel(program,"ComputeMeans",kernels[0]);
+    IntelFPGAOCLUtils::createCommandQueue(context,device,queues[1]);
+    IntelFPGAOCLUtils::createKernel(program,"SendCentroids",kernels[1]);
+    IntelFPGAOCLUtils::createCommandQueue(context,device,queues[2]);
+    IntelFPGAOCLUtils::createKernel(program,"ComputeDistance",kernels[2]);
+
     cl::Buffer points_device(context,CL_MEM_READ_WRITE,sizeof(float)*(points.size()));
     cl::Buffer centroids_device_read(context,CL_MEM_READ_ONLY,sizeof(float)*(centroids.size()));
     cl::Buffer centroids_device_write(context,CL_MEM_WRITE_ONLY,sizeof(float)*(centroids.size()));
 
 
-
-
-
-    kernels[12].setArg(0,sizeof(cl_mem),&centroids_device_write);
-    kernels[12].setArg(1,sizeof(int),&points_per_rank);
-    kernels[12].setArg(2,sizeof(int),&iterations);
-    kernels[12].setArg(3,sizeof(int),&mpi_rank);
-    kernels[12].setArg(4,sizeof(int),&mpi_size);
+    kernels[0].setArg(0,sizeof(cl_mem),&centroids_device_write);
+    kernels[0].setArg(1,sizeof(int),&points_per_rank);
+    kernels[0].setArg(2,sizeof(int),&iterations);
+    kernels[0].setArg(3,sizeof(SMI_Comm),&comm);
 
     //sen centroids
-    kernels[13].setArg(0,sizeof(cl_mem),&centroids_device_read);
-    kernels[13].setArg(1,sizeof(int),&iterations);
-    kernels[13].setArg(2,sizeof(int),&mpi_rank);
-    kernels[13].setArg(3,sizeof(int),&mpi_size);
+    kernels[1].setArg(0,sizeof(cl_mem),&centroids_device_read);
+    kernels[1].setArg(1,sizeof(int),&iterations);
+    kernels[1].setArg(2,sizeof(int),&mpi_rank);
+    kernels[1].setArg(3,sizeof(int),&mpi_size);
 
-    kernels[14].setArg(0,sizeof(cl_mem),&points_device);
-    kernels[14].setArg(1,sizeof(int),&points_per_rank);
-    kernels[14].setArg(2,sizeof(int),&iterations);
-    kernels[14].setArg(3,sizeof(int),&mpi_rank);
-    kernels[14].setArg(4,sizeof(int),&mpi_size);
+    kernels[2].setArg(0,sizeof(cl_mem),&points_device);
+    kernels[2].setArg(1,sizeof(int),&points_per_rank);
+    kernels[2].setArg(2,sizeof(int),&iterations);
+    kernels[2].setArg(3,sizeof(int),&mpi_rank);
+    kernels[2].setArg(4,sizeof(int),&mpi_size);
 
     std::vector<double> times;
-
+    if(rank==0)
+        printf("Start application\n");
     cl::Event events[3];
     // wait for other nodes
     for(int i=0;i<runs;i++)
     {
-        queues[12].enqueueWriteBuffer(points_device, CL_TRUE,0,sizeof(float)*(points.size()),points.data());
-        queues[12].enqueueWriteBuffer(centroids_device_read, CL_TRUE,0,sizeof(float)*(centroids.size()),centroids.data());
-        queues[12].enqueueWriteBuffer(centroids_device_write, CL_TRUE,0,sizeof(float)*(centroids.size()),centroids.data());
+        queues[0].enqueueWriteBuffer(points_device, CL_TRUE,0,sizeof(float)*(points.size()),points.data());
+        queues[0].enqueueWriteBuffer(centroids_device_read, CL_TRUE,0,sizeof(float)*(centroids.size()),centroids.data());
+        queues[0].enqueueWriteBuffer(centroids_device_write, CL_TRUE,0,sizeof(float)*(centroids.size()),centroids.data());
 
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
 
-        queues[12].enqueueTask(kernels[12],nullptr,&events[0]);
-        queues[13].enqueueTask(kernels[13],nullptr,&events[1]);
-        queues[14].enqueueTask(kernels[14],nullptr,&events[2]);
+        queues[0].enqueueTask(kernels[0],nullptr,&events[0]);
+        queues[1].enqueueTask(kernels[1],nullptr,&events[1]);
+        queues[2].enqueueTask(kernels[2],nullptr,&events[2]);
 
-        queues[12].finish();
-        queues[13].finish();
-        queues[14].finish();
+        queues[0].finish();
+        queues[1].finish();
+        queues[2].finish();
 
 
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
@@ -311,12 +246,13 @@ int main(int argc, char *argv[])
 
     if(rank==0)
     {
+        printf("Finished");
         //copy centroids back
-        queues[12].enqueueReadBuffer(points_device, CL_TRUE,0,sizeof(float)*(points.size()),points.data());
+        queues[0].enqueueReadBuffer(points_device, CL_TRUE,0,sizeof(float)*(points.size()),points.data());
 
 
         //get back the results
-        queues[12].enqueueReadBuffer(centroids_device_write,CL_TRUE,0,sizeof(float)*(centroids.size()),centroids.data());
+        queues[0].enqueueReadBuffer(centroids_device_write,CL_TRUE,0,sizeof(float)*(centroids.size()),centroids.data());
         // Final centroids
         std::cout << "Final centroids:\n";
         for (int k = 0; k < kK; ++k) {
@@ -434,6 +370,7 @@ int main(int argc, char *argv[])
 
         if(rank==0)
         {
+            /*
             std::cout << "Final centroids host:\n";
             for (int k = 0; k < kK; ++k) {
                 std::cout << "  {" << centroids_host[k * kDims];
@@ -441,7 +378,7 @@ int main(int argc, char *argv[])
                     std::cout << ", " << centroids_host[k * kDims + d];
                 }
                 std::cout << "}\n";
-            }
+            }*/
             std::cout << "CPU Computation time (usec): " << cpu_time <<std::endl;
 
             //compute difference with FPGA result

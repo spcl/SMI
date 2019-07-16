@@ -48,7 +48,7 @@ typedef struct __attribute__((packed)) __attribute__((aligned(32))){
   a given channel (CHAN)
 */
 #define COPY_DATA_TO_NET_MESSAGE(CHAN,NETM,SRC) {\
-    char *smi_macro_data_snd=CHAN->NETM.data;\
+    char *smi_macro_data_snd=(NETM).data;\
     switch(CHAN->data_type) /*copy the data*/\
     {\
         case SMI_CHAR:\
@@ -104,7 +104,7 @@ typedef struct __attribute__((packed)) __attribute__((aligned(32))){
     to a user target variable (DST)
 */
 #define COPY_DATA_FROM_NET_MESSAGE(CHAN,NETM,DST) { \
-    char *smi_macro_data_rcv=CHAN->NETM.data; \
+    char *smi_macro_data_rcv=(NETM).data; \
     switch(CHAN->data_type) \
     { \
         case SMI_CHAR: \
@@ -154,5 +154,7 @@ typedef struct __attribute__((packed)) __attribute__((aligned(32))){
             break; \
     } \
 }
+
+
 
 #endif //ifndef NETWORK_MESSAGE_H

@@ -8,6 +8,11 @@
   {
     "id": 1,
     "type": "reduce",
+    "args": {"data_type": "int", "op_type":"add"}
+  },
+  {
+    "id": 2,
+    "type": "reduce",
     "args": {"data_type": "int", "op_type":"max"}
   }],
   "fpgas": ["fpga-0001:acl0","fpga-0001:acl1","fpga-0002:acl0", "fpga-0002:acl1","fpga-0003:acl0", "fpga-0003:acl1","fpga-0004:acl0", "fpga-0004:acl1"]

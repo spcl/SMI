@@ -91,8 +91,8 @@ kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
                          const SMI_Comm comm) {
 
   for (int i = 0; i < iterations; ++i) {
-
-    // printf("[%i] ComputeMeans iteration %i\n", smi_rank, i);
+    int smi_rank=SMI_Comm_rank(comm);
+    printf("[%i] ComputeMeans iteration %i\n", smi_rank, i);
 
     // Compute mean for new centroids while iterating
     VTYPE means[DIMS / W][K];
@@ -146,6 +146,8 @@ kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
 #if !defined(SEQUENTIAL)
           SMI_Reduce(&reduce_mean_ch, &send_val, &recv_val);
           // It doesn't matter that we write junk on non-0 ranks
+          if(smi_rank==0)
+            printf("Root, reduced value float: %.3f\n",recv_val);
           means_reduced[w][d][k] = recv_val;
 #else
            means_reduced[w][d][k] = send_val;
@@ -189,6 +191,8 @@ kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
 #if !defined(SEQUENTIAL)
       SMI_Reduce(&reduce_count_ch, &send_val, &recv_val);
       // Doesn't matter that this is junk on non-root ranks
+       if(smi_rank==0)
+            printf("Root, reduced value int: %d\n",recv_val);
       count_reduced[k] = recv_val;
 #else
       count_reduced[k] = send_val;

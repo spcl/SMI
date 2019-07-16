@@ -170,6 +170,7 @@ __kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)
             if (send_to != GET_HEADER_DST(mess.header))
             {
                 SET_HEADER_OP(reduce.header, SMI_SYNCH);
+                SET_HEADER_NUM_ELEMS(reduce.header,1);
                 SET_HEADER_PORT(reduce.header, {{ op.logical_port }});
                 SET_HEADER_DST(reduce.header,send_to);
                 write_channel_intel({{ utils.channel_array("cks_control") }}[{{ cks_control.get_hw_port(op.logical_port) }}], reduce);

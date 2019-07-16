@@ -55,27 +55,27 @@ SMI_GatherChannel SMI_Open_gather_channel(int send_count,  int recv_count, SMI_D
     chan.root_rank=(char)root;
     chan.num_rank=(char)SMI_Comm_size(comm);
     chan.next_contrib=0;
-    switch(data_type)
+     switch(data_type)
     {
+        case (SMI_CHAR):
+            chan.size_of_type=SMI_CHAR_TYPE_SIZE;
+            chan.elements_per_packet=SMI_CHAR_ELEM_PER_PCKT;
+            break;
+        case(SMI_SHORT):
+            chan.size_of_type=SMI_SHORT_TYPE_SIZE;
+            chan.elements_per_packet=SMI_SHORT_ELEM_PER_PCKT;
+            break;
         case(SMI_INT):
-            chan.size_of_type=4;
-            chan.elements_per_packet=7;
+            chan.size_of_type=SMI_INT_TYPE_SIZE;
+            chan.elements_per_packet=SMI_INT_ELEM_PER_PCKT;
             break;
         case (SMI_FLOAT):
-            chan.size_of_type=4;
-            chan.elements_per_packet=7;
+            chan.size_of_type=SMI_FLOAT_TYPE_SIZE;
+            chan.elements_per_packet=SMI_FLOAT_ELEM_PER_PCKT;
             break;
         case (SMI_DOUBLE):
-            chan.size_of_type=8;
-            chan.elements_per_packet=3;
-            break;
-        case (SMI_CHAR):
-            chan.size_of_type=1;
-            chan.elements_per_packet=28;
-            break;
-        case (SMI_SHORT):
-            chan.size_of_type=2;
-            chan.elements_per_packet=14;
+            chan.size_of_type=SMI_DOUBLE_TYPE_SIZE;
+            chan.elements_per_packet=SMI_DOUBLE_ELEM_PER_PCKT;
             break;
     }
 
@@ -192,70 +192,7 @@ void SMI_Gather(SMI_GatherChannel *chan, void* send_data, void* rcv_data)
                 }
                 break;
         }
-/*
-        switch(chan->data_type)
-        {
-            case SMI_CHAR:
-                {
-                    if(chan->next_contrib!=chan->root_rank)
-                    {
-                        char * ptr=chan->net.data;
-                        *(char *)rcv_data= *(char*)(ptr);
-                    }
-                    else
-                        *(char *)rcv_data= *(char*)(send_data);
-                    break;
-                }
-            case SMI_INT:
-                {
-                    if(chan->next_contrib!=chan->root_rank)
-                    {
-                        char * ptr=chan->net.data+(chan->packet_element_id_rcv)*4;
-                        *(int *)rcv_data= *(int*)(ptr);
-                    }
-                    else
-                    {
-                        //  printf("copying data to root\n");
-                        *(int *)rcv_data= *(int*)(send_data);
-                    }
-                    break;
-                }
-            case SMI_FLOAT:
-                {
-                    if(chan->next_contrib!=chan->root_rank)
-                    {
-                        char * ptr=chan->net.data+(chan->packet_element_id_rcv)*4;
-                        *(float *)rcv_data= *(float*)(ptr);
-                    }
-                    else
-                        *(float *)rcv_data= *(float*)(send_data);
 
-                    break;
-                }
-            case SMI_SHORT:
-                {
-                    if(chan->next_contrib!=chan->root_rank)
-                    {
-                        char * ptr=chan->net.data+(chan->packet_element_id_rcv)*2;
-                        *(short *)rcv_data= *(short*)(ptr);
-                    }
-                    else
-                        *(short *)rcv_data= *(short*)(send_data);
-
-                    break;
-                }
-            case SMI_DOUBLE:
-                {
-                    if(chan->next_contrib!=chan->root_rank)
-                    {
-                        char * ptr=chan->net.data+(chan->packet_element_id_rcv)*8;
-                        *(double *)rcv_data= *(double*)(ptr);
-                    }
-                    else
-                        *(double *)rcv_data= *(double*)(send_data);
-                    break;
-                }
-        }*/
         chan->processed_elements_root++;
         chan->packet_element_id_rcv++;
         if( chan->packet_element_id_rcv==chan->elements_per_packet)
@@ -274,9 +211,9 @@ void SMI_Gather(SMI_GatherChannel *chan, void* send_data, void* rcv_data)
         char *conv=(char*)send_data;
         const int message_size=chan->send_count;
         chan->processed_elements++;
-        //copy the data
-        //COPY_DATA_TO_NET_MESSAGE(chan,net,conv);
-        char *data_snd=chan->net.data;
+        //copy the data (compiler fails with the macro)
+        //COPY_DATA_TO_NET_MESSAGE(chan,chan->net,conv);
+       char *data_snd=chan->net.data;
         switch(chan->data_type)
         {
             case SMI_CHAR:
@@ -284,19 +221,19 @@ void SMI_Gather(SMI_GatherChannel *chan, void* send_data, void* rcv_data)
                 break;
             case SMI_SHORT:
             #pragma unroll
-                for(char jj=0;jj<2;jj++)
-                    data_snd[chan->packet_element_id*2+jj]=conv[jj];
+                for(char jj=0;jj<SMI_SHORT_TYPE_SIZE;jj++)
+                    data_snd[chan->packet_element_id*SMI_SHORT_TYPE_SIZE+jj]=conv[jj];
                 break;
             case SMI_INT:
             case SMI_FLOAT:
             #pragma unroll
-                for(char jj=0;jj<4;jj++)
-                    data_snd[chan->packet_element_id*4+jj]=conv[jj];
+                for(char jj=0;jj<SMI_INT_TYPE_SIZE;jj++)
+                    data_snd[chan->packet_element_id*SMI_INT_TYPE_SIZE+jj]=conv[jj];
                 break;
             case SMI_DOUBLE:
             #pragma unroll
-                for(int jj=0;jj<8;jj++) //copy the data
-                    data_snd[chan->packet_element_id*8+jj]=conv[jj];
+                for(int jj=0;jj<SMI_DOUBLE_TYPE_SIZE;jj++) //copy the data
+                    data_snd[chan->packet_element_id*SMI_DOUBLE_TYPE_SIZE+jj]=conv[jj];
                 break;
         }
         chan->packet_element_id++;

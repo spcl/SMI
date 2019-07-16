@@ -58,27 +58,27 @@ SMI_ScatterChannel SMI_Open_scatter_channel(int send_count,  int recv_count,
     chan.num_ranks=(char)comm[1];
     chan.root_rank=(char)root;
     chan.next_rcv=0;
-    switch(data_type)
+     switch(data_type)
     {
-        case(SMI_INT):
-            chan.size_of_type=4;
-            chan.elements_per_packet=7;
+        case (SMI_CHAR):
+            chan.size_of_type=SMI_CHAR_TYPE_SIZE;
+            chan.elements_per_packet=SMI_CHAR_ELEM_PER_PCKT;
             break;
         case(SMI_SHORT):
-            chan.size_of_type=2;
-            chan.elements_per_packet=14;
+            chan.size_of_type=SMI_SHORT_TYPE_SIZE;
+            chan.elements_per_packet=SMI_SHORT_ELEM_PER_PCKT;
+            break;
+        case(SMI_INT):
+            chan.size_of_type=SMI_INT_TYPE_SIZE;
+            chan.elements_per_packet=SMI_INT_ELEM_PER_PCKT;
             break;
         case (SMI_FLOAT):
-            chan.size_of_type=4;
-            chan.elements_per_packet=7;
+            chan.size_of_type=SMI_FLOAT_TYPE_SIZE;
+            chan.elements_per_packet=SMI_FLOAT_ELEM_PER_PCKT;
             break;
         case (SMI_DOUBLE):
-            chan.size_of_type=8;
-            chan.elements_per_packet=3;
-            break;
-        case (SMI_CHAR):
-            chan.size_of_type=1;
-            chan.elements_per_packet=28;
+            chan.size_of_type=SMI_DOUBLE_TYPE_SIZE;
+            chan.elements_per_packet=SMI_DOUBLE_ELEM_PER_PCKT;
             break;
     }
 
@@ -219,7 +219,7 @@ void SMI_Scatter(SMI_ScatterChannel *chan, void* data_snd, void* data_rcv)
             const char chan_idx_data=ckr_data_table[chan->port];
             chan->net_2=read_channel_intel(ckr_data_channels[chan_idx_data]);
         }
-        COPY_DATA_FROM_NET_MESSAGE(chan,net_2,data_rcv);
+        COPY_DATA_FROM_NET_MESSAGE(chan,chan->net_2,data_rcv);
 
         chan->packet_element_id_rcv++;
         if( chan->packet_element_id_rcv==elem_per_packet)
