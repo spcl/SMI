@@ -61,6 +61,7 @@ void {{ utils.impl_name_port_type("SMI_Bcast", op) }}(SMI_BChannel* chan, void* 
 {
 {% set broadcast = program.create_group("broadcast") %}
 {% set ckr_data = program.create_group("ckr_data") %}
+{% set cks_control = program.create_group("cks_control") %}
     char* conv = (char*)data;
     if (chan->my_rank == chan->root_rank) // I'm the root
     {
@@ -83,6 +84,12 @@ void {{ utils.impl_name_port_type("SMI_Bcast", op) }}(SMI_BChannel* chan, void* 
     }
     else // I have to receive
     {
+        if(chan->init)  //send ready-to-receive to the root
+        {
+            write_channel_intel({{ utils.channel_array("cks_control") }}[{{ cks_control.get_hw_port(op.logical_port) }}], chan->net);
+            chan->init=false;
+        }
+
         if (chan->packet_element_id_rcv == 0)
         {
             chan->net_2 = read_channel_intel({{ utils.channel_array("ckr_data") }}[{{ ckr_data.get_hw_port(op.logical_port) }}]);

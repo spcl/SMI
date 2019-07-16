@@ -11,8 +11,8 @@
 #include <limits.h>
 #include <cmath>
 #include <utils/ocl_utils.hpp>
-#include "reduce_routing/smi-host-0.h"
-#define ROUTING_DIR "reduce_routing"
+#include "smi-generated-host.h"
+#define ROUTING_DIR "./"
 
 using namespace std;
 int main(int argc, char *argv[])

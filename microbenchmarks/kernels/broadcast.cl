@@ -4,8 +4,8 @@
 */
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
-#include "smi-generated-device.cl"
 #include <smi/bcast.h>
+#include "smi-generated-device.cl"
 
 __kernel void app(__global char* mem, const int N, char root,SMI_Comm comm)
 {

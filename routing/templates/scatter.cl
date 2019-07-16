@@ -9,6 +9,7 @@ __kernel void smi_kernel_scatter_{{ op.logical_port }}(char num_rank)
     SMI_Network_message mess;
     {% set ckr_control = program.create_group("ckr_control") %}
     {% set cks_data = program.create_group("cks_data") %}
+    {% set cks_control = program.create_group("cks_control") %}
     {% set scatter = program.create_group("scatter") %}
 
     while (true)
@@ -110,6 +111,11 @@ void {{ utils.impl_name_port_type("SMI_Scatter", op) }}(SMI_ScatterChannel* chan
     }
     else // non-root rank: receive and unpack
     {
+        if(chan->init)  //send ready-to-receive to the root
+        {
+            write_channel_intel({{ utils.channel_array("cks_control") }}[{{ cks_control.get_hw_port(op.logical_port) }}], chan->net);
+            chan->init=false;
+        }
         if (chan->packet_element_id_rcv == 0)
         {
             chan->net_2 = read_channel_intel({{ utils.channel_array("ckr_data") }}[{{ ckr_data.get_hw_port(op.logical_port) }}]);

@@ -2,7 +2,7 @@ import os
 import shutil
 import subprocess
 
-from ops import Push, Pop, Broadcast, Scatter
+from ops import Push, Pop, Broadcast, Scatter, Reduce, Gather
 
 
 def copy_files(src_dir, dest_dir, files):
@@ -25,7 +25,9 @@ def parse_op(line):
         "push": Push,
         "pop": Pop,
         "broadcast": Broadcast,
-        "scatter": Scatter
+        "scatter": Scatter,
+        "reduce": Reduce,
+        "gather": Gather
     }
     port = int(items[1])
     return mapping[items[0]](port, *items[2:])

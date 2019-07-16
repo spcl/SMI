@@ -28,6 +28,7 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     char size_of_type;                  //size of data type
     char elements_per_packet;           //number of data elements per packet
     char packet_element_id_rcv;         //used by the receivers
+    bool init;                          //true at the beginning, used by the receivers for synchronization
 }SMI_BChannel;
 
 /**
@@ -49,7 +50,8 @@ SMI_BChannel SMI_Open_bcast_channel(int count, SMI_Datatype data_type, int port,
     chan.my_rank=(char)SMI_Comm_rank(comm);
     chan.root_rank=(char)root;
     chan.num_rank=(char)SMI_Comm_size(comm);
-     switch(data_type)
+    chan.init=true;
+    switch(data_type)
     {
         case (SMI_CHAR):
             chan.size_of_type=SMI_CHAR_TYPE_SIZE;
@@ -81,8 +83,6 @@ SMI_BChannel SMI_Open_bcast_channel(int count, SMI_Datatype data_type, int port,
         SET_HEADER_DST(chan.net.header,chan.root_rank);
         SET_HEADER_SRC(chan.net.header,chan.my_rank);
         SET_HEADER_PORT(chan.net.header,chan.port);
-        const char chan_idx_control=cks_control_table[chan.port];
-        write_channel_intel(cks_control_channels[chan_idx_control],chan.net);
     }
     else
     {

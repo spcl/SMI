@@ -33,6 +33,7 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
     char elements_per_packet;           //number of data elements per packet
     char packet_element_id_rcv;         //used by the receivers
     char next_rcv;                      //the  rank of the next receiver
+    bool init;                          //true when the channel is opened, false when synchronization message has been sent
 }SMI_ScatterChannel;
 
 /**
@@ -58,7 +59,8 @@ SMI_ScatterChannel SMI_Open_scatter_channel(int send_count,  int recv_count,
     chan.num_ranks=(char)comm[1];
     chan.root_rank=(char)root;
     chan.next_rcv=0;
-     switch(data_type)
+    chan.init=true;
+    switch(data_type)
     {
         case (SMI_CHAR):
             chan.size_of_type=SMI_CHAR_TYPE_SIZE;
@@ -89,8 +91,7 @@ SMI_ScatterChannel SMI_Open_scatter_channel(int send_count,  int recv_count,
         SET_HEADER_OP(chan.net.header,SMI_SYNCH);
         SET_HEADER_DST(chan.net.header,chan.root_rank);
         SET_HEADER_PORT(chan.net.header,chan.port);
-        const char chan_idx_control=cks_control_table[chan.port];
-        write_channel_intel(cks_control_channels[chan_idx_control],chan.net); 
+        SET_HEADER_SRC(chan.net.header,chan.my_rank);
     }
     else
     {
