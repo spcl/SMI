@@ -101,3 +101,11 @@ public:
     std::string RenameCall(std::string callName, const OperationMetadata& metadata) override;
     std::string CreateDeclaration(std::string callName, const OperationMetadata& metadata) override;
 };
+
+class ReduceExtractor: public OperationExtractor
+{
+public:
+    OperationMetadata GetOperationMetadata(clang::VarDecl* channelDecl) override;
+    std::string RenameCall(std::string callName, const OperationMetadata& metadata) override;
+    std::string CreateDeclaration(std::string callName, const OperationMetadata& metadata) override;
+};

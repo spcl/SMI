@@ -176,3 +176,17 @@ std::string GatherExtractor::CreateDeclaration(std::string callName, const Opera
 {
     return "void " + this->RenameCall(callName, metadata) + "(SMI_GatherChannel* chan, void* send_data, void* rcv_data);";
 }
+
+// Reduce
+OperationMetadata ReduceExtractor::GetOperationMetadata(clang::VarDecl* channelDecl)
+{
+    return OperationMetadata("reduce", extractIntArg(channelDecl, 3), extractDataType(channelDecl, 1));
+}
+std::string ReduceExtractor::RenameCall(std::string callName, const OperationMetadata& metadata)
+{
+    return renamePortDataType(callName, metadata);
+}
+std::string ReduceExtractor::CreateDeclaration(std::string callName, const OperationMetadata& metadata)
+{
+    return "void " + this->RenameCall(callName, metadata) + "(SMI_RChannel* chan,  void* data_snd, void* data_rcv);";
+}

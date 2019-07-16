@@ -5,7 +5,6 @@
 
 __kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)
 {
-
     __constant int SHIFT_REG = {{ op.shift_reg() }};
 
     SMI_Network_message mess;
@@ -19,9 +18,8 @@ __kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)
     char credits = credits_flow_control; // the number of credits that I have
     char send_to = 0;
     char add_to[MAX_RANKS];   // for each rank tells to what element in the buffer we should add the received item
-    unsigned int sent_credits=0;    //number of sent credits so far
+    unsigned int sent_credits = 0;    //number of sent credits so far
     unsigned int message_size;
-
 
 {% set reduce_send = program.create_group("reduce_send") %}
 {% set reduce_recv = program.create_group("reduce_recv") %}
@@ -69,7 +67,7 @@ __kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)
                     // apply reduce
                     char* ptr = mess.data;
                     {{ op.data_type }} data= *({{ op.data_type }}*) (ptr);
-                    reduce_result[add_to_root][SHIFT_REG] = {{ op.reduce_op() }}(data, reduce_result[add_to_root][0]); //apply reduce
+                    reduce_result[add_to_root][SHIFT_REG] = {{ op.reduce_op() }}(data, reduce_result[add_to_root][0]); // apply reduce
                     #pragma unroll
                     for (int j = 0; j < SHIFT_REG; j++)
                     {
@@ -78,15 +76,15 @@ __kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)
 
                     data_recvd[add_to_root]++;
                     a = add_to_root;
-                    if(GET_HEADER_OP(mess.header)==SMI_SYNCH) //first element of a new reduce
+                    if (GET_HEADER_OP(mess.header) == SMI_SYNCH) // first element of a new reduce
                     {
-                        sent_credits=0;
-                        send_to=0;
-                        //since data elements are not packed we exploit the data buffer
-                        //to indicate to the support kernel the lenght of the message
-                        message_size=*(unsigned int *)(&(mess.data[24]));
-                        send_credits=true;
-                        credits=MIN((unsigned int)credits_flow_control,message_size);
+                        sent_credits = 0;
+                        send_to = 0;
+                        // since data elements are not packed we exploit the data buffer
+                        // to indicate to the support kernel the lenght of the message
+                        message_size = *(unsigned int *)(&(mess.data[24]));
+                        send_credits = true;
+                        credits = MIN((unsigned int)credits_flow_control, message_size);
                     }
                     add_to_root++;
                     if (add_to_root == credits_flow_control)
@@ -104,7 +102,7 @@ __kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)
                     char addto = add_to[rank];
                     data_recvd[addto]++;
                     a = addto;
-                    reduce_result[addto][SHIFT_REG] = {{ op.reduce_op() }}(data,reduce_result[addto][0]);        // apply reduce
+                    reduce_result[addto][SHIFT_REG] = {{ op.reduce_op() }}(data, reduce_result[addto][0]);        // apply reduce
                     #pragma unroll
                     for (int j = 0; j < SHIFT_REG; j++)
                     {
@@ -137,7 +135,7 @@ __kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)
                         data_snd[jj] = conv[jj];
                     }
                     write_channel_intel({{ utils.channel_array("reduce_recv") }}[{{ reduce_recv.get_hw_port(op.logical_port)}}], reduce);
-                    send_credits = sent_credits<message_size;               //send additional tokes if there are other elements to reduce
+                    send_credits = sent_credits<message_size;               // send additional tokes if there are other elements to reduce
                     credits++;
                     data_recvd[current_buffer_element] = 0;
 
@@ -172,7 +170,7 @@ __kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)
                 SET_HEADER_OP(reduce.header, SMI_SYNCH);
                 SET_HEADER_NUM_ELEMS(reduce.header,1);
                 SET_HEADER_PORT(reduce.header, {{ op.logical_port }});
-                SET_HEADER_DST(reduce.header,send_to);
+                SET_HEADER_DST(reduce.header, send_to);
                 write_channel_intel({{ utils.channel_array("cks_control") }}[{{ cks_control.get_hw_port(op.logical_port) }}], reduce);
             }
             send_to++;
@@ -184,6 +182,58 @@ __kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)
                 sent_credits++;
             }
         }
+    }
+}
+{%- endmacro %}
+
+
+{% macro smi_reduce_impl(program, op) -%}
+/**
+ * @brief SMI_Reduce
+ * @param chan pointer to the reduce channel descriptor
+ * @param data_snd pointer to the data element that must be reduced
+ * @param data_rcv pointer to the receiving data element  (root only)
+ */
+void {{ utils.impl_name_port_type("SMI_Reduce", op) }}(SMI_RChannel* chan,  void* data_snd, void* data_rcv)
+{
+{% set reduce_send = program.create_group("reduce_send") %}
+{% set reduce_recv = program.create_group("reduce_recv") %}
+{% set ckr_control = program.create_group("ckr_control") %}
+{% set cks_data = program.create_group("cks_data") %}
+
+    char* conv = (char*) data_snd;
+    // copy data to the network message
+    COPY_DATA_TO_NET_MESSAGE(chan, chan->net,conv);
+
+    // In this case we disabled network packetization: so we can just send the data as soon as we have it
+    SET_HEADER_NUM_ELEMS(chan->net.header, 1);
+
+    if (chan->my_rank == chan->root_rank) // root
+    {
+        write_channel_intel({{ utils.channel_array("reduce_send") }}[{{ reduce_send.get_hw_port(op.logical_port) }}], chan->net);
+        SET_HEADER_OP(chan->net.header, SMI_REDUCE);          // after sending the first element of this reduce
+        mem_fence(CLK_CHANNEL_MEM_FENCE);
+        chan->net_2 = read_channel_intel({{ utils.channel_array("reduce_recv") }}[{{ reduce_recv.get_hw_port(op.logical_port) }}]);
+        // copy data from the network message to user variable
+        COPY_DATA_FROM_NET_MESSAGE(chan, chan->net_2, data_rcv);
+    }
+    else
+    {
+        // wait for credits
+        SMI_Network_message send_message;
+        SET_HEADER_NUM_ELEMS(send_message.header, 1);
+        SET_HEADER_DST(send_message.header, chan->root_rank);
+        SET_HEADER_SRC(send_message.header, chan->my_rank);
+        SET_HEADER_PORT(send_message.header, {{ op.logical_port }});         // used by destination
+        SET_HEADER_OP(send_message.header, SMI_REDUCE);
+        COPY_DATA_TO_NET_MESSAGE(chan, send_message, conv);
+        SMI_Network_message req = read_channel_intel({{ utils.channel_array("ckr_control") }}[{{ ckr_control.get_hw_port(op.logical_port) }}]);
+        // this is a neat trick: in order to force the dependency of the following write
+        // we set the number of messages using the received messages (in both cases this is one)
+        SET_HEADER_NUM_ELEMS(send_message.header, MAX(GET_HEADER_NUM_ELEMS(send_message.header), GET_HEADER_NUM_ELEMS(req.header)));
+        // mem_fence(CLK_CHANNEL_MEM_FENCE);
+        // then send the data
+        write_channel_intel({{ utils.channel_array("cks_data") }}[{{ cks_data.get_hw_port(op.logical_port) }}], send_message);
     }
 }
 {%- endmacro %}
