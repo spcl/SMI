@@ -106,6 +106,8 @@ bool RewriteKernelsVisitor::VisitFunctionDecl(clang::FunctionDecl* f)
     bool isKernel = isKernelFunction(f);
     if (isKernel)
     {
+        std::cerr << "SMI: rewriting function " << f->getName().str() << std::endl;
+
         RewriteOpsVisitor visitor(this->rewriter);
         visitor.TraverseFunctionDecl(f);
 
@@ -114,6 +116,8 @@ bool RewriteKernelsVisitor::VisitFunctionDecl(clang::FunctionDecl* f)
             rewrite.metadata.output(std::cout);
             this->rewriter.InsertTextBefore(f->getBeginLoc(), rewrite.extractor->CreateDeclaration(rewrite.callName,
                     rewrite.metadata) + "\n");
+            std::cerr << "SMI: rewrote ";
+            rewrite.metadata.output(std::cerr);
         }
     }
 

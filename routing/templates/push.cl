@@ -46,6 +46,6 @@ void {{ utils.impl_name_port_type("SMI_Push_flush", op) }}(SMI_Channel *chan, vo
  */
 void {{ utils.impl_name_port_type("SMI_Push", op) }}(SMI_Channel *chan, void* data)
 {
-    SMI_Push_flush_{{ op.logical_port }}_{{ op.data_type }}(chan, data, 0);
+    {{ utils.impl_name_port_type("SMI_Push_flush", op) }}(chan, data, 0);
 }
 {% endmacro %}
