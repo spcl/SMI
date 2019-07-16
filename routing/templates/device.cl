@@ -113,3 +113,4 @@ channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __att
 {{ generate_op_impl("broadcast", smi_bcast.smi_bcast_impl) }}
 {{ generate_op_impl("scatter", smi_scatter.smi_scatter_impl) }}
 {{ generate_op_impl("gather", smi_gather.smi_gather_impl) }}
+{{ generate_op_impl("reduce", smi_reduce.smi_reduce_impl) }}
