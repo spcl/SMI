@@ -135,8 +135,8 @@ function(add_smi_microbenchmarks KERNEL_PATH NUM_RANKS MPMD)
     # user kernel file, modified by codegen in the build directory
     set(SMI_DEVICE_KERNEL ${CMAKE_CURRENT_BINARY_DIR}/${KERNEL_FILE})
 
-    set(AOC_SRC_FILES "${SMI_DEVICE_KERNEL}" "${SMI_GENERATED_DEVICE}")
-
+    #set(AOC_SRC_FILES "${SMI_DEVICE_KERNEL}" "${SMI_GENERATED_DEVICE}")
+    set(AOC_SRC_FILES "${SMI_DEVICE_KERNEL}")
     add_custom_target(generate_${KERNEL_NAME}_routing ALL
         COMMAND python
         ${CMAKE_SOURCE_DIR}/routing/main.py build

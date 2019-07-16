@@ -4,13 +4,14 @@
 */
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
-
+#include "smi-generated-device.cl"
+#include <smi/bcast.h>
 
 __kernel void app(__global char* mem, const int N, char root,SMI_Comm comm)
 {
     char check=1;
-    //SMI_BChannel  __attribute__((register)) chan= SMI_Open_bcast_channel(N, SMI_FLOAT,0, root,comm);
-    SMI_BChannel  chan= SMI_Open_bcast_channel(N, SMI_FLOAT,0, root,comm);
+    SMI_BChannel  __attribute__((register)) chan= SMI_Open_bcast_channel(N, SMI_FLOAT,0, root,comm);
+    //SMI_BChannel  chan= SMI_Open_bcast_channel(N, SMI_FLOAT,0, root,comm);
     for(int i=0;i<N;i++)
     {
 
