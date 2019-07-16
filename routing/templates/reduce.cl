@@ -220,20 +220,12 @@ void {{ utils.impl_name_port_type("SMI_Reduce", op) }}(SMI_RChannel* chan,  void
     else
     {
         // wait for credits
-        SMI_Network_message send_message;
-        SET_HEADER_NUM_ELEMS(send_message.header, 1);
-        SET_HEADER_DST(send_message.header, chan->root_rank);
-        SET_HEADER_SRC(send_message.header, chan->my_rank);
-        SET_HEADER_PORT(send_message.header, {{ op.logical_port }});         // used by destination
-        SET_HEADER_OP(send_message.header, SMI_REDUCE);
-        COPY_DATA_TO_NET_MESSAGE(chan, send_message, conv);
+
         SMI_Network_message req = read_channel_intel({{ utils.channel_array("ckr_control") }}[{{ ckr_control.get_hw_port(op.logical_port) }}]);
-        // this is a neat trick: in order to force the dependency of the following write
-        // we set the number of messages using the received messages (in both cases this is one)
-        SET_HEADER_NUM_ELEMS(send_message.header, MAX(GET_HEADER_NUM_ELEMS(send_message.header), GET_HEADER_NUM_ELEMS(req.header)));
-        // mem_fence(CLK_CHANNEL_MEM_FENCE);
+        mem_fence(CLK_CHANNEL_MEM_FENCE);
+        SET_HEADER_OP(chan->net.header,SMI_REDUCE);
         // then send the data
-        write_channel_intel({{ utils.channel_array("cks_data") }}[{{ cks_data.get_hw_port(op.logical_port) }}], send_message);
+        write_channel_intel({{ utils.channel_array("cks_data") }}[{{ cks_data.get_hw_port(op.logical_port) }}], chan->net);
     }
 }
 {%- endmacro %}
