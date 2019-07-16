@@ -11,9 +11,28 @@ KEY_SCATTER = "scatter"
 KEY_GATHER = "gather"
 
 
+DATA_TYPE_SIZE = {
+    "char":     1,
+    "short":    2,
+    "int":      4,
+    "float":    4,
+    "double":   8
+}
+
+PACKET_PAYLOAD_SIZE = 28
+
+
 class SmiOperation:
-    def __init__(self, logical_port):
+    def __init__(self, logical_port: int, data_type: str = "int"):
         self.logical_port = logical_port
+        self.data_type = data_type
+
+    def data_size(self):
+        return DATA_TYPE_SIZE[self.data_type]
+
+    def data_elements_per_packet(self):
+        size = self.data_size()
+        return PACKET_PAYLOAD_SIZE // size
 
     def hw_port_usage(self) -> Set[str]:
         return set()
@@ -60,13 +79,6 @@ class Reduce(SmiOperation):
         "short": 1,
         "char": 1
     }
-    DATA_SIZE = {
-        "double": 8,
-        "float": 4,
-        "int": 4,
-        "short": 2,
-        "char": 1
-    }
 
     OP_TYPE = {
         "add": "SMI_OP_ADD",
@@ -94,11 +106,10 @@ class Reduce(SmiOperation):
     }
 
     def __init__(self, logical_port, data_type, op_type):
-        super().__init__(logical_port)
+        super().__init__(logical_port, data_type)
 
         assert data_type in Reduce.SHIFT_REG
         assert op_type in Reduce.OP_TYPE
-        self.data_type = data_type
         self.op_type = op_type
 
     def hw_port_usage(self) -> Set[str]:
@@ -115,7 +126,7 @@ class Reduce(SmiOperation):
         return Reduce.SHIFT_REG[self.data_type]
 
     def data_size(self) -> int:
-        return Reduce.DATA_SIZE[self.data_type]
+        return DATA_TYPE_SIZE[self.data_type]
 
     def reduce_op(self) -> str:
         return Reduce.OP_TYPE[self.op_type]

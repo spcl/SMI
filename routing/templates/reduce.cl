@@ -1,6 +1,6 @@
 {% import 'utils.cl' as utils %}
 
-{% macro smi_reduce(program, op) -%}
+{% macro smi_reduce_kernel(program, op) -%}
 #include "smi/reduce_operations.h"
 
 __kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)

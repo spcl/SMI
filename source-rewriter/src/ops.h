@@ -10,27 +10,29 @@
 
 #include <clang/AST/AST.h>
 
+enum class DataType {
+    Char,
+    Short,
+    Int,
+    Float,
+    Double
+};
+
 class OperationMetadata
 {
 public:
-    OperationMetadata(std::string operation, size_t port, std::vector<std::string> args = {})
-    : operation(std::move(operation)), port(port), args(std::move(args))
+    OperationMetadata(std::string operation, size_t port, DataType dataType = DataType::Int,
+            std::vector<std::string> args = {})
+    : operation(std::move(operation)), port(port), dataType(dataType), args(std::move(args))
     {
 
     }
 
-    void output(std::ostream& os) const
-    {
-        os << this->operation << " " << this->port;
-        for (auto& arg : this->args)
-        {
-            os << " " << arg;
-        }
-        os << std::endl;
-    }
+    void output(std::ostream& os) const;
 
     std::string operation;
     size_t port;
+    DataType dataType;
     std::vector<std::string> args;
 };
 
@@ -77,6 +79,22 @@ public:
 };
 
 class BroadcastExtractor: public OperationExtractor
+{
+public:
+    OperationMetadata GetOperationMetadata(clang::VarDecl* channelDecl) override;
+    std::string RenameCall(std::string callName, const OperationMetadata& metadata) override;
+    std::string CreateDeclaration(std::string callName, const OperationMetadata& metadata) override;
+};
+
+class ScatterExtractor: public OperationExtractor
+{
+public:
+    OperationMetadata GetOperationMetadata(clang::VarDecl* channelDecl) override;
+    std::string RenameCall(std::string callName, const OperationMetadata& metadata) override;
+    std::string CreateDeclaration(std::string callName, const OperationMetadata& metadata) override;
+};
+
+class GatherExtractor: public OperationExtractor
 {
 public:
     OperationMetadata GetOperationMetadata(clang::VarDecl* channelDecl) override;

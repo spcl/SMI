@@ -6,7 +6,7 @@
  * @param chan pointer to the transient channel descriptor
  * @param data pointer to the target variable that, on return, will contain the data element
  */
-void SMI_Pop_{{ op.logical_port }}(SMI_Channel *chan, void *data)
+void {{ utils.impl_name_port_type("SMI_Pop", op) }}(SMI_Channel *chan, void *data)
 {
     {% set ckr_data = program.create_group("ckr_data") %}
     {% set cks_control = program.create_group("cks_control") %}
@@ -20,54 +20,19 @@ void SMI_Pop_{{ op.logical_port }}(SMI_Channel *chan, void *data)
     chan->processed_elements++;
     char *data_recvd = chan->net.data;
 
-    switch (chan->data_type)
+    #pragma unroll
+    for (int ee = 0; ee < {{ op.data_elements_per_packet() }}; ee++)
     {
-        case SMI_CHAR:
-#pragma unroll
-            for (int ee = 0; ee < SMI_CHAR_ELEM_PER_PCKT; ee++) {
-                if (ee == chan->packet_element_id) {
-#pragma unroll
-                    for (int jj = 0; jj < SMI_CHAR_TYPE_SIZE; jj++) {
-                        ((char *)data)[jj] = data_recvd[(ee * SMI_CHAR_TYPE_SIZE) + jj];
-                    }
-                }
+        if (ee == chan->packet_element_id)
+        {
+            #pragma unroll
+            for (int jj = 0; jj < {{ op.data_size() }}; jj++)
+            {
+                ((char *)data)[jj] = data_recvd[(ee * {{ op.data_size() }}) + jj];
             }
-            break;
-        case SMI_SHORT:
-#pragma unroll
-            for (int ee = 0; ee < SMI_SHORT_ELEM_PER_PCKT; ee++) {
-                if (ee == chan->packet_element_id) {
-#pragma unroll
-                    for (int jj = 0; jj < SMI_SHORT_TYPE_SIZE; jj++) {
-                        ((char *)data)[jj] = data_recvd[(ee * SMI_SHORT_TYPE_SIZE) + jj];
-                    }
-                }
-            }
-            break;
-        case SMI_INT:
-        case SMI_FLOAT:
-#pragma unroll
-            for (int ee = 0; ee < SMI_INT_ELEM_PER_PCKT; ee++) {
-                if (ee == chan->packet_element_id) {
-#pragma unroll
-                    for (int jj = 0; jj < SMI_INT_TYPE_SIZE; jj++) {
-                        ((char *)data)[jj] = data_recvd[(ee * SMI_INT_TYPE_SIZE) + jj];
-                    }
-                }
-            }
-            break;
-        case SMI_DOUBLE:
-#pragma unroll
-            for (int ee = 0; ee < SMI_DOUBLE_ELEM_PER_PCKT; ee++) {
-                if (ee == chan->packet_element_id) {
-#pragma unroll
-                    for (int jj = 0; jj < SMI_DOUBLE_TYPE_SIZE; jj++) {
-                        ((char *)data)[jj] = data_recvd[(ee * SMI_DOUBLE_TYPE_SIZE) + jj];
-                    }
-                }
-            }
-            break;
+        }
     }
+
     chan->packet_element_id++;
     if (chan->packet_element_id == GET_HEADER_NUM_ELEMS(chan->net.header))
     {

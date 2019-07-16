@@ -1,15 +1,13 @@
 import os
-import shutil
-import subprocess
 from typing import List
 
 import click
 
 from codegen import generate_program_device, generate_program_host
 from common import write_nodefile
-from ops import Push, Pop, Broadcast, Reduce
 from parser import parse_fpga_connections
 from program import Channel, CHANNELS_PER_FPGA, Program, ProgramMapping
+from rewrite import copy_files, rewrite
 from routing import create_routing_context
 from routing_table import serialize_to_array, cks_routing_table, ckr_routing_table
 
@@ -25,48 +23,6 @@ def write_table(channel: Channel, prefix: str, table: List[int], output_folder):
 
     with open(os.path.join(output_folder, filename), "wb") as f:
         f.write(bytes)
-
-
-def copy_files(src_dir, dest_dir, files):
-    """
-    Copies device source files from the source directory to the output directory.
-    Returns a list of tuples (src, dest) path.
-    """
-    for file in files:
-        src_path = os.path.join(src_dir, file)
-        dest_path = os.path.join(dest_dir, file)
-        dest_dir = os.path.dirname(dest_path)
-        os.makedirs(dest_dir, exist_ok=True)
-        shutil.copyfile(src_path, dest_path, follow_symlinks=True)
-        yield (src_path, dest_path)
-
-
-def parse_op(line):
-    items = line.split(" ")
-    mapping = {
-        "push": Push,
-        "pop": Pop,
-        "broadcast": Broadcast,
-        "reduce": Reduce
-    }
-    port = int(items[1])
-    return mapping[items[0]](port, *items[2:])
-
-
-def rewrite(rewriter, file, include_dirs):
-    args = [rewriter, file]
-    for dir in include_dirs:
-        args += ["-extra-arg=-I{}".format(dir)]
-
-    process = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    output = process.stdout.decode()
-
-    ops = []
-    for line in output.splitlines():
-        if line:
-            ops.append(parse_op(line.strip()))
-
-    return ops
 
 
 @click.command()

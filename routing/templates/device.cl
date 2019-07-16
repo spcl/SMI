@@ -103,8 +103,13 @@ channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __att
 {{ generate_op_impl("push", smi_push.smi_push) }}
 {{ generate_op_impl("pop", smi_pop.smi_pop) }}
 
-// collectives
-{{ generate_op_impl("broadcast", smi_bcast.smi_bcast) }}
-{{ generate_op_impl("reduce", smi_reduce.smi_reduce) }}
-{{ generate_op_impl("scatter", smi_scatter.smi_scatter) }}
-{{ generate_op_impl("gather", smi_gather.smi_gather) }}
+// collectives - kernels
+{{ generate_op_impl("broadcast", smi_bcast.smi_bcast_kernel) }}
+{{ generate_op_impl("scatter", smi_scatter.smi_scatter_kernel) }}
+{{ generate_op_impl("gather", smi_gather.smi_gather_kernel) }}
+{{ generate_op_impl("reduce", smi_reduce.smi_reduce_kernel) }}
+
+// collectives - implementations
+{{ generate_op_impl("broadcast", smi_bcast.smi_bcast_impl) }}
+{{ generate_op_impl("scatter", smi_scatter.smi_scatter_impl) }}
+{{ generate_op_impl("gather", smi_gather.smi_gather_impl) }}

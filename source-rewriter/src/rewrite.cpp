@@ -58,6 +58,9 @@ public:
         this->callMap["SMI_Push"] = std::make_unique<PushExtractor>();
         this->callMap["SMI_Push_flush"] = std::make_unique<PushExtractor>();
         this->callMap["SMI_Pop"] = std::make_unique<PopExtractor>();
+        this->callMap["SMI_Bcast"] = std::make_unique<BroadcastExtractor>();
+        this->callMap["SMI_Scatter"] = std::make_unique<ScatterExtractor>();
+        this->callMap["SMI_Gather"] = std::make_unique<GatherExtractor>();
     }
 
     bool VisitCallExpr(clang::CallExpr* expr)

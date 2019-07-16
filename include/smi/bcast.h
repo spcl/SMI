@@ -106,40 +106,6 @@ SMI_BChannel SMI_Open_bcast_channel(int count, SMI_Datatype data_type, int port,
  */
 void SMI_Bcast(SMI_BChannel *chan, void* data)
 {
-    char *conv=(char*)data;
-    if(chan->my_rank==chan->root_rank)//I'm the root
-    {
-        const unsigned int message_size=chan->message_size;
-        chan->processed_elements++;
-        COPY_DATA_TO_NET_MESSAGE(chan,chan->net,conv);
-
-        chan->packet_element_id++;
-        //send the network packet if it is full or we reached the message size
-        if(chan->packet_element_id==chan->elements_per_packet || chan->processed_elements==message_size)
-        {
-            SET_HEADER_NUM_ELEMS(chan->net.header,chan->packet_element_id);
-            SET_HEADER_PORT(chan->net.header,chan->port);
-            chan->packet_element_id=0;
-            //offload to support kernel
-            const char chan_bcast_idx=broadcast_table[chan->port];
-            write_channel_intel(broadcast_channels[chan_bcast_idx],chan->net);
-            SET_HEADER_OP(chan->net.header,SMI_BROADCAST);  //for the subsequent network packets
-        }
-
-    }
-    else //I have to receive
-    {
-        if(chan->packet_element_id_rcv==0 )
-        {
-            const char chan_idx_data=ckr_data_table[chan->port]; //TODO: problematic for const prop. Seems to be completely wrong, no matter the port id claimed in the open channel
-            chan->net_2=read_channel_intel(ckr_data_channels[chan_idx_data]);
-        }
-
-        COPY_DATA_TO_NET_MESSAGE(chan,chan->net_2,conv);
-
-        chan->packet_element_id_rcv++;
-        if( chan->packet_element_id_rcv==chan->elements_per_packet)
-            chan->packet_element_id_rcv=0;
-    }
+    // implemented in codegen
 }
 #endif // BCAST_H

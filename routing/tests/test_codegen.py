@@ -15,8 +15,8 @@ def test_codegen_device(file_tester):
         Broadcast(4),
         Push(5),
         Reduce(6, "float", "add"),
-        Scatter(7),
-        Gather(8)
+        Scatter(7, "double"),
+        Gather(8, "char")
     ])
 
     mapping = ProgramMapping([program], {
