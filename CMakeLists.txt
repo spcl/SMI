@@ -125,7 +125,7 @@ endfunction()
 # MPMD used for the benchmarks described as MPMD programs
 function(add_smi_microbenchmarks KERNEL_PATH NUM_RANKS MPMD)
     get_filename_component(KERNEL_NAME ${KERNEL_PATH} NAME_WE)
-    get_filename_component(KERNEL_FILE ${KERNEL_PATH} NAME)
+    file(RELATIVE_PATH KERNEL_FILE ${CMAKE_CURRENT_SOURCE_DIR} ${KERNEL_PATH})
 
     #code-gen
 
@@ -137,8 +137,8 @@ function(add_smi_microbenchmarks KERNEL_PATH NUM_RANKS MPMD)
 
     set(AOC_SRC_FILES "${SMI_DEVICE_KERNEL} ${SMI_GENERATED_DEVICE}")
 
-    add_custom_target(generate_${KERNEL_NAME}_routing
-        COMMAND ${PYTHON_EXECUTABLE}
+    add_custom_target(generate_${KERNEL_NAME}_routing ALL
+        COMMAND python
         ${CMAKE_SOURCE_DIR}/routing/main.py build
             --include '${CMAKE_SOURCE_DIR}/include'
             ${SMI_ROUTING_FILE}
@@ -147,7 +147,7 @@ function(add_smi_microbenchmarks KERNEL_PATH NUM_RANKS MPMD)
             ${CMAKE_CURRENT_BINARY_DIR}
             ${SMI_GENERATED_HOST}
             ${SMI_GENERATED_DEVICE}
-            ${KERNEL_PATH})
+            ${KERNEL_FILE})
     add_dependencies(generate_${KERNEL_NAME}_routing rewriter)
     #add_dependencies(generate_${KERNEL_NAME} generate_${KERNEL_NAME}_routing)
     set(AOC_COMMAND
