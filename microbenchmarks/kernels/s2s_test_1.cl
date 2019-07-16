@@ -57,7 +57,7 @@ channel VTYPE send_bottom[B] __attribute__((depth((Y/(W*B))/PY)));
 channel HTYPE send_left __attribute__((depth(X/PX)));
 channel HTYPE send_right __attribute__((depth(X/PX)));
 
-kernel void Read(__global volatile const VTYPE *restrict bank0,
+__kernel void Read(__global volatile const VTYPE *restrict bank0,
                  __global volatile const VTYPE *restrict bank1,
                  __global volatile const VTYPE *restrict bank2,
                  __global volatile const VTYPE *restrict bank3, const int i_px,
@@ -154,7 +154,7 @@ kernel void Read(__global volatile const VTYPE *restrict bank0,
   }
 }
 
-kernel void Stencil(const int i_px, const int i_py, const int timesteps) {
+__kernel void Stencil(const int i_px, const int i_py, const int timesteps) {
   for (int t = 0; t < timesteps + 1; ++t) {
     DTYPE buffer[(2 * HALO_X) * (Y_LOCAL + 2 * B * W) + B * W];
     for (int i = 0; i < X_LOCAL + 2 * HALO_X; ++i) {
@@ -204,7 +204,7 @@ kernel void Stencil(const int i_px, const int i_py, const int timesteps) {
   }
 }
 
-kernel void Write(__global volatile VTYPE *restrict bank0,
+__kernel void Write(__global volatile VTYPE *restrict bank0,
                   __global volatile VTYPE *restrict bank1,
                   __global volatile VTYPE *restrict bank2,
                   __global volatile VTYPE *restrict bank3, const int i_px,
@@ -273,7 +273,7 @@ kernel void Write(__global volatile VTYPE *restrict bank0,
   }
 }
 
-kernel void ConvertReceiveLeft(const int i_px, const int i_py,SMI_Comm comm) {
+__kernel void ConvertReceiveLeft(const int i_px, const int i_py,SMI_Comm comm) {
   while (1) {
 #if HALO_Y > 1
     #error "NYI"
@@ -288,7 +288,7 @@ kernel void ConvertReceiveLeft(const int i_px, const int i_py,SMI_Comm comm) {
   }
 }
 
-kernel void ConvertReceiveRight(const int i_px, const int i_py, SMI_Comm comm) {
+__kernel void ConvertReceiveRight(const int i_px, const int i_py, SMI_Comm comm) {
   while (1) {
 #if HALO_Y > 1
     #error "NYI"
@@ -303,7 +303,7 @@ kernel void ConvertReceiveRight(const int i_px, const int i_py, SMI_Comm comm) {
   }
 }
 
-kernel void ConvertReceiveTop(const int i_px, const int i_py, SMI_Comm comm) {
+__kernel void ConvertReceiveTop(const int i_px, const int i_py, SMI_Comm comm) {
   while (1) {
     SMI_Channel from_network =
         SMI_Open_receive_channel(Y_LOCAL, SMI_TYPE, (i_px - 1) * PY + i_py, 2, comm);
@@ -327,7 +327,7 @@ kernel void ConvertReceiveTop(const int i_px, const int i_py, SMI_Comm comm) {
   }
 }
 
-kernel void ConvertReceiveBottom(const int i_px, const int i_py, SMI_Comm comm) {
+__kernel void ConvertReceiveBottom(const int i_px, const int i_py, SMI_Comm comm) {
   while (1) {
     SMI_Channel from_network =
         SMI_Open_receive_channel(Y_LOCAL, SMI_TYPE, (i_px + 1) * PY + i_py, 0,comm);
@@ -351,7 +351,7 @@ kernel void ConvertReceiveBottom(const int i_px, const int i_py, SMI_Comm comm) 
   }
 }
 
-kernel void ConvertSendLeft(const int i_px, const int i_py, SMI_Comm comm) {
+__kernel void ConvertSendLeft(const int i_px, const int i_py, SMI_Comm comm) {
   while (1) {
 #if HALO_Y > 1
     #error "NYI"
@@ -365,7 +365,7 @@ kernel void ConvertSendLeft(const int i_px, const int i_py, SMI_Comm comm) {
   }
 }
 
-kernel void ConvertSendRight(const int i_px, const int i_py, SMI_Comm comm) {
+__kernel void ConvertSendRight(const int i_px, const int i_py, SMI_Comm comm) {
   while (1) {
 #if HALO_Y > 1
     #error "NYI"
@@ -379,7 +379,7 @@ kernel void ConvertSendRight(const int i_px, const int i_py, SMI_Comm comm) {
   }
 }
 
-kernel void ConvertSendTop(const int i_px, const int i_py, SMI_Comm comm) {
+__kernel void ConvertSendTop(const int i_px, const int i_py, SMI_Comm comm) {
   while (1) {
     SMI_Channel to_network =
         SMI_Open_send_channel(Y_LOCAL, SMI_TYPE, (i_px - 1) * PY + i_py, 0, comm);
@@ -402,7 +402,7 @@ kernel void ConvertSendTop(const int i_px, const int i_py, SMI_Comm comm) {
   }
 }
 
-kernel void ConvertSendBottom(const int i_px, const int i_py, SMI_Comm comm) {
+__kernel void ConvertSendBottom(const int i_px, const int i_py, SMI_Comm comm) {
   while (1) {
     SMI_Channel to_network =
         SMI_Open_send_channel(Y_LOCAL, SMI_TYPE, (i_px + 1) * PY + i_py, 2,comm);
