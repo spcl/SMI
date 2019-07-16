@@ -31,13 +31,18 @@ def parse_op(line):
     return mapping[items[0]](port, *items[2:])
 
 
-def rewrite(rewriter, file, include_dirs):
+def rewrite(rewriter, file, include_dirs, log):
+    log.write("Rewriting {}".format(file))
+
     args = [rewriter, file]
     for dir in include_dirs:
         args += ["-extra-arg=-I{}".format(dir)]
 
     process = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output = process.stdout.decode()
+
+    log.write("STDOUT\n{}".format(output))
+    log.write("STDERR\n{}".format(process.stderr.decode()))
 
     ops = []
     for line in output.splitlines():
