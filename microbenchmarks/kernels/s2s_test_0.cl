@@ -2,6 +2,7 @@
 
 //For this benchmark we need two different programs,
 //but both of them use the same number/type of ports
+#define BUFFER_SIZE 256
 #include <smi/push.h>
 #include <smi/pop.h>
 

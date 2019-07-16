@@ -46,7 +46,7 @@ void {{ utils.impl_name_port_type("SMI_Pop", op) }}(SMI_Channel *chan, void *dat
     {
         // At this point, the sender has still max_tokens*7/8 tokens: we have to consider this while we send
         // the new tokens to it
-        unsigned int sender = ((int) ((int) chan->message_size - (int) chan->processed_elements - (int) chan->max_tokens * 7 / 8)) < 0 ? 0: chan->message_size - chan->processed_elements - chan > max_tokens * 7 / 8;
+        unsigned int sender = ((int) ((int) chan->message_size - (int) chan->processed_elements - (int) chan->max_tokens * 7 / 8)) < 0 ? 0: chan->message_size - chan->processed_elements - chan -> max_tokens * 7 / 8;
         chan->tokens = (unsigned int) (MIN(chan->max_tokens / 8, sender)); // b/2
         SMI_Network_message mess;
         *(unsigned int*) mess.data = chan->tokens;

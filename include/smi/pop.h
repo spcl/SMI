@@ -52,7 +52,7 @@ SMI_Channel SMI_Open_receive_channel(int count, SMI_Datatype data_type, int sour
 #if defined P2P_RENDEZVOUS
     chan.tokens=MIN(chan.max_tokens/((unsigned int)8),count); //needed to prevent the compiler to optimize-away channel connections
 #else
-    chan.tokens=count+1;
+    chan.tokens=count; //in this way, the last rendezvous is done at the end of the message. This is needed to prevent the compiler to cut-away internal FIFO buffer connections
 #endif
     //The receiver sends tokens to the sender once every chan.max_tokens/8 received data elements
     //chan.tokens=chan.max_tokens/((unsigned int)8);

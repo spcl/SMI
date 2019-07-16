@@ -57,7 +57,7 @@ SMI_Channel SMI_Open_send_channel(int count, SMI_Datatype data_type, int destina
 #if defined P2P_RENDEZVOUS
     chan.tokens=MIN(chan.max_tokens,count);//needed to prevent the compiler to optimize-away channel connections
 #else //eager transmission protocol
-    chan.tokens=count+1;
+    chan.tokens=count;  //in this way, the last rendezvous is done at the end of the message. This is needed to prevent the compiler to cut-away internal FIFO buffer connections
 #endif
     chan.receiver_rank=destination;
     chan.processed_elements=0;

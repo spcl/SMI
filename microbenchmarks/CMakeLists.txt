@@ -29,5 +29,9 @@ if(PythonInterp_FOUND)
     #others
     add_smi_executable("multi_collectives_benchmark")
     add_smi_microbenchmarks("${CMAKE_CURRENT_SOURCE_DIR}/kernels/multi_collectives.cl" 8 OFF)
+
+    add_smi_microbenchmarks("${CMAKE_CURRENT_SOURCE_DIR}/kernels/s2s_test_0.cl" 8 OFF)
+    add_smi_microbenchmarks("${CMAKE_CURRENT_SOURCE_DIR}/kernels/s2s_test_1.cl" 8 OFF)
+
 endif()
 
