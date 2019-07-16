@@ -18,6 +18,18 @@ static std::string formatDataType(DataType dataType)
     assert(false);
     return "";
 }
+static std::string formatReduceOp(int op)
+{
+    switch (op)
+    {
+        case 0: return "add";
+        case 1: return "max";
+        case 2: return "min";
+    }
+
+    assert(false);
+    return "";
+}
 
 static std::string renamePortDataType(const std::string& callName, const OperationMetadata& metadata)
 {
@@ -180,7 +192,12 @@ std::string GatherExtractor::CreateDeclaration(std::string callName, const Opera
 // Reduce
 OperationMetadata ReduceExtractor::GetOperationMetadata(clang::VarDecl* channelDecl)
 {
-    return OperationMetadata("reduce", extractIntArg(channelDecl, 3), extractDataType(channelDecl, 1));
+    auto reduceOp = extractIntArg(channelDecl, 2);
+    return OperationMetadata("reduce",
+            extractIntArg(channelDecl, 3),
+            extractDataType(channelDecl, 1),
+            { formatReduceOp(reduceOp) }
+    );
 }
 std::string ReduceExtractor::RenameCall(std::string callName, const OperationMetadata& metadata)
 {
