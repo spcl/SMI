@@ -48,10 +48,11 @@ def build(connections, rewriter, src_dir, dest_dir, host_src, device_src, device
     """
     paths = list(copy_files(src_dir, dest_dir, device_input))
 
-    ops = []
-    include_dirs = set(include.split(" "))
-    for (src, dest) in paths:
-        ops += rewrite(rewriter, dest, include_dirs)
+    with open("rewrite.log", "w") as f:
+        ops = []
+        include_dirs = set(include.split(" "))
+        for (src, dest) in paths:
+            ops += rewrite(rewriter, dest, include_dirs, f)
 
     ops = sorted(ops, key=lambda op: op.logical_port)
     program = Program(ops)
