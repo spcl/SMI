@@ -72,7 +72,7 @@ SMI_Channel SMI_Open_send_channel(int count, SMI_Datatype data_type, int destina
  * @param chan
  * @param data
  * @param immediate: if true the data is immediately sent, without waiting for the completion of the network packet.
- *          In general, the user should use the athore Push definition
+ *          In general, the user should use the other Push definition
  */
 void SMI_Push_flush(SMI_Channel *chan, void* data, int immediate)
 {

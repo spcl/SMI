@@ -1,5 +1,7 @@
+#define BUFFER_SIZE 256 //provisional
+#include <smi.h>
+#include "smi-generated-device.cl"
 #include "stencil.h"
-#include "smi-device-0.h"
 
 #if PX * PY != 8
 #error "Incompatible number of stencil processes and number of communication ranks."
@@ -240,7 +242,7 @@ kernel void ConvertReceiveLeft(const int i_px, const int i_py,SMI_Comm comm) {
     SMI_Channel from_network =
         SMI_Open_receive_channel(X_LOCAL, SMI_TYPE, i_px * PY + (i_py - 1), 1, comm);
     for (int i = 0; i < X_LOCAL; ++i) {
-      DTYPE val; 
+      DTYPE val;
       SMI_Pop(&from_network, &val);
       write_channel_intel(receive_left, val);
     }
@@ -255,7 +257,7 @@ kernel void ConvertReceiveRight(const int i_px, const int i_py, SMI_Comm comm) {
     SMI_Channel from_network =
         SMI_Open_receive_channel(X_LOCAL, SMI_TYPE, i_px * PY + (i_py + 1), 3, comm);
     for (int i = 0; i < X_LOCAL; ++i) {
-      DTYPE val; 
+      DTYPE val;
       SMI_Pop(&from_network, &val);
       write_channel_intel(receive_right, val);
     }
