@@ -8,11 +8,11 @@ import pytest
 from networkx import Graph
 
 from common import RoutingContext
-from parser import parse_fpga_connections, parse_programs
+from serialization import parse_routing_file
 
 sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 
-from program import Channel
+from program import Channel, ProgramMapping
 from routing import create_routing_context
 
 PYTEST_DIR = os.path.dirname(__file__)
@@ -42,10 +42,9 @@ def prepare():
     os.chdir(WORK_DIR)
 
 
-def get_routing_ctx(programs: str, connections: str) -> RoutingContext:
-    connections = parse_fpga_connections(connections)
-    programs = parse_programs(programs)
-    return create_routing_context(connections, programs)
+def get_routing_ctx(mapping: ProgramMapping, connections: str) -> RoutingContext:
+    (connections, _) = parse_routing_file(connections)
+    return create_routing_context(connections, mapping)
 
 
 def get_channel(graph: Graph, key: str, index: int) -> Union[Channel, None]:

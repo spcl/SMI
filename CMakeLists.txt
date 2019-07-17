@@ -3,7 +3,7 @@ project(smi)
 
 # Configuration
 set(SMI_TARGET_BOARD "p520_max_sg280l" CACHE STRING "aoc target board.")
-set(SMI_ROUTING_FILE "${CMAKE_SOURCE_DIR}/routing/fpga-06-07-08-09.routing" CACHE STRING "File describing routing setup.")
+set(SMI_ROUTING_FILE "${CMAKE_SOURCE_DIR}/routing/fpga-06-07-08-09.json" CACHE STRING "File describing routing setup.")
 set(TEST_ROUTING_FILE "${CMAKE_SOURCE_DIR}/test/network_topologies/8FPGAs-2D-torus.routing" CACHE STRING "File describing routing setup for testing.")
 
 set(SMI_REWRITER "${CMAKE_BINARY_DIR}/source-rewriter/rewriter")
@@ -139,9 +139,9 @@ function(add_smi_microbenchmarks KERNEL_PATH NUM_RANKS MPMD)
 
     #set(AOC_SRC_FILES "${SMI_DEVICE_KERNEL}" "${SMI_GENERATED_DEVICE}")
     set(AOC_SRC_FILES "${SMI_DEVICE_KERNEL}")
-    add_custom_target(generate_${KERNEL_NAME}_routing ALL
+    add_custom_target(generate_${KERNEL_NAME}_codegen ALL
         COMMAND python
-        ${CMAKE_SOURCE_DIR}/routing/main.py build
+        ${CMAKE_SOURCE_DIR}/routing/main.py codegen
             --include '${CMAKE_SOURCE_DIR}/include'
             ${SMI_ROUTING_FILE}
             ${SMI_REWRITER}
@@ -149,8 +149,17 @@ function(add_smi_microbenchmarks KERNEL_PATH NUM_RANKS MPMD)
             ${CMAKE_CURRENT_BINARY_DIR}
             ${SMI_GENERATED_HOST}
             ${SMI_GENERATED_DEVICE}
+            ${CMAKE_CURRENT_BINARY_DIR}/pg1.json
             ${KERNEL_FILE})
-    add_dependencies(generate_${KERNEL_NAME}_routing rewriter)
+    add_dependencies(generate_${KERNEL_NAME}_codegen rewriter)
+
+    add_custom_target(generate_${KERNEL_NAME}_routing ALL
+            COMMAND python
+            ${CMAKE_SOURCE_DIR}/routing/main.py route
+            ${SMI_ROUTING_FILE}
+            ${CMAKE_CURRENT_BINARY_DIR})
+    add_dependencies(generate_${KERNEL_NAME}_routing generate_${KERNEL_NAME}_codegen)
+
     #add_dependencies(generate_${KERNEL_NAME} generate_${KERNEL_NAME}_routing)
     set(AOC_COMMAND
         -I${CMAKE_SOURCE_DIR}/include
@@ -306,10 +315,11 @@ function(add_smi_test KERNEL_PATH NUM_RANKS MPMD)
 endfunction()
 
 add_subdirectory(source-rewriter)
-add_subdirectory(examples)
+#add_subdirectory(examples)
 add_subdirectory(microbenchmarks)
 if (ENABLE_TESTS)
     enable_testing()
     add_subdirectory(test)
 endif (ENABLE_TESTS)
 
+#add_subdirectory(rodinia)

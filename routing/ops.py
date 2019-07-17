@@ -37,6 +37,9 @@ class SmiOperation:
     def hw_port_usage(self) -> Set[str]:
         return set()
 
+    def serialize_args(self):
+        return {}
+
 
 class Push(SmiOperation):
     def hw_port_usage(self) -> Set[str]:
@@ -133,6 +136,11 @@ class Reduce(SmiOperation):
 
     def shift_reg_init(self) -> str:
         return Reduce.SHIFT_REG_INIT[(self.data_type, self.op_type)]
+
+    def serialize_args(self):
+        return {
+            "op_type": self.op_type
+        }
 
     def __repr__(self):
         return "Broadcast({})".format(self.logical_port)
