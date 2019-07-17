@@ -1,6 +1,6 @@
 {% import 'utils.cl' as utils %}
 
-{% macro smi_ckr(program, channel, channel_count, target_index) -%}
+{%- macro smi_ckr(program, channel, channel_count, target_index) -%}
 __kernel void smi_kernel_ckr_{{ channel.index }}(__global volatile char *restrict rt, const char rank)
 {
     // rt contains intertwined (dp0, cp0, dp1, cp1, ...)

@@ -2,7 +2,7 @@ import os
 import shutil
 import subprocess
 
-from ops import Push, Pop, Broadcast, Scatter, Reduce, Gather
+from serialization import parse_smi_operation
 
 
 def copy_files(src_dir, dest_dir, files):
@@ -17,20 +17,6 @@ def copy_files(src_dir, dest_dir, files):
         os.makedirs(dest_dir, exist_ok=True)
         shutil.copyfile(src_path, dest_path, follow_symlinks=True)
         yield (src_path, dest_path)
-
-
-def parse_op(line):
-    items = line.split(" ")
-    mapping = {
-        "push": Push,
-        "pop": Pop,
-        "broadcast": Broadcast,
-        "scatter": Scatter,
-        "reduce": Reduce,
-        "gather": Gather
-    }
-    port = int(items[1])
-    return mapping[items[0]](port, *items[2:])
 
 
 def rewrite(rewriter, file, include_dirs, log):
@@ -49,6 +35,6 @@ def rewrite(rewriter, file, include_dirs, log):
     ops = []
     for line in output.splitlines():
         if line:
-            ops.append(parse_op(line.strip()))
+            ops.append(parse_smi_operation(line.strip()))
 
     return ops

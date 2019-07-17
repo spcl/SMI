@@ -1,13 +1,6 @@
 {% import 'utils.cl' as utils %}
 
-{% macro smi_push(program, op) -%}
-/**
- * @brief private function SMI_Push push a data elements in the transient channel. Data transferring can be delayed
- * @param chan
- * @param data
- * @param immediate: if true the data is immediately sent, without waiting for the completion of the network packet.
- *          In general, the user should use the athore Push definition
- */
+{%- macro smi_push_impl(program, op) -%}
 void {{ utils.impl_name_port_type("SMI_Push_flush", op) }}(SMI_Channel *chan, void* data, int immediate)
 {
     char* conv = (char*) data;
@@ -38,14 +31,41 @@ void {{ utils.impl_name_port_type("SMI_Push_flush", op) }}(SMI_Channel *chan, vo
         chan->tokens += tokens; // tokens
     }
 }
-
-/**
- * @brief SMI_Push push a data elements in the transient channel. The actual ata transferring can be delayed
- * @param chan pointer to the channel descriptor of the transient channel
- * @param data pointer to the data that can be sent
- */
 void {{ utils.impl_name_port_type("SMI_Push", op) }}(SMI_Channel *chan, void* data)
 {
     {{ utils.impl_name_port_type("SMI_Push_flush", op) }}(chan, data, 0);
 }
-{% endmacro %}
+{%- endmacro %}
+
+{%- macro smi_push_channel(program, op) -%}
+SMI_Channel {{ utils.impl_name_port_type("SMI_Open_send_channel", op) }}(int count, SMI_Datatype data_type, int destination, int port, SMI_Comm comm)
+{
+    SMI_Channel chan;
+    // setup channel descriptor
+    chan.port = (char) port;
+    chan.message_size = (unsigned int) count;
+    chan.data_type = data_type;
+    chan.op_type = SMI_SEND;
+    chan.receiver_rank = (char) destination;
+    // At the beginning, the sender can sends as many data items as the buffer size
+    // in the receiver allows
+    chan.elements_per_packet = {{ op.data_elements_per_packet() }};
+    chan.max_tokens = {{ op.buffer_size * op.data_elements_per_packet() }};
+
+    // setup header for the message
+    SET_HEADER_DST(chan.net.header, chan.receiver_rank);
+    SET_HEADER_PORT(chan.net.header, chan.port);
+    SET_HEADER_OP(chan.net.header, SMI_SEND);
+#if defined P2P_RENDEZVOUS
+    chan.tokens = MIN(chan.max_tokens, count); // needed to prevent the compiler to optimize-away channel connections
+#else // eager transmission protocol
+    chan.tokens = count;  // in this way, the last rendezvous is done at the end of the message. This is needed to prevent the compiler to cut-away internal FIFO buffer connections
+#endif
+    chan.receiver_rank = destination;
+    chan.processed_elements = 0;
+    chan.packet_element_id = 0;
+    chan.sender_rank = comm[0];
+    // chan.comm=comm; // comm is not used in this first implemenation
+    return chan;
+}
+{%- endmacro -%}

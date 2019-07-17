@@ -1,6 +1,6 @@
 {% import 'utils.cl' as utils %}
 
-{% macro smi_scatter_kernel(program, op) -%}
+{%- macro smi_scatter_kernel(program, op) -%}
 __kernel void smi_kernel_scatter_{{ op.logical_port }}(char num_rank)
 {
     bool external = true;
@@ -41,13 +41,7 @@ __kernel void smi_kernel_scatter_{{ op.logical_port }}(char num_rank)
 }
 {%- endmacro %}
 
-{% macro smi_scatter_impl(program, op) -%}
-/**
- * @brief SMI_Scatter
- * @param chan pointer to the scatter channel descriptor
- * @param data_snd pointer to the data element that must be sent (root only)
- * @param data_rcv pointer to the receiving data element
- */
+{%- macro smi_scatter_impl(program, op) -%}
 void {{ utils.impl_name_port_type("SMI_Scatter", op) }}(SMI_ScatterChannel* chan, void* data_snd, void* data_rcv)
 {
     // take here the pointers to send/recv data to avoid fake dependencies
@@ -81,6 +75,7 @@ void {{ utils.impl_name_port_type("SMI_Scatter", op) }}(SMI_ScatterChannel* chan
         }
 
 {% set scatter = program.create_group("scatter") %}
+{% set cks_control = program.create_group("cks_control") %}
 {% set ckr_data = program.create_group("ckr_data") %}
 {% set cks_control = program.create_group("cks_control") %}
 
@@ -130,3 +125,45 @@ void {{ utils.impl_name_port_type("SMI_Scatter", op) }}(SMI_ScatterChannel* chan
     }
 }
 {%- endmacro %}
+
+{%- macro smi_scatter_channel(program, op) -%}
+SMI_ScatterChannel {{ utils.impl_name_port_type("SMI_Open_scatter_channel", op) }}(int send_count, int recv_count,
+        SMI_Datatype data_type, int port, int root, SMI_Comm comm)
+{
+    SMI_ScatterChannel chan;
+    // setup channel descriptor
+    chan.send_count = (unsigned int) send_count;
+    chan.recv_count = (unsigned int) recv_count;
+    chan.data_type = data_type;
+    chan.port = (char) port;
+    chan.my_rank = (char) comm[0];
+    chan.num_ranks = (char) comm[1];
+    chan.root_rank = (char) root;
+    chan.next_rcv = 0;
+    chan.init = true;
+    chan.size_of_type = {{ op.data_size() }};
+    chan.elements_per_packet = {{ op.data_elements_per_packet() }};
+
+    // setup header for the message
+    if (chan.my_rank != chan.root_rank)
+    {
+        // this is set up to send a "ready to receive" to the root
+        SET_HEADER_OP(chan.net.header, SMI_SYNCH);
+        SET_HEADER_DST(chan.net.header, chan.root_rank);
+        SET_HEADER_PORT(chan.net.header, chan.port);
+        SET_HEADER_SRC(chan.net.header, chan.my_rank);
+    }
+    else
+    {
+        SET_HEADER_SRC(chan.net.header, chan.root_rank);
+        SET_HEADER_PORT(chan.net.header, chan.port);         // used by destination
+        SET_HEADER_NUM_ELEMS(chan.net.header, 0);            // at the beginning no data
+        SET_HEADER_OP(chan.net.header, SMI_SYNCH);
+    }
+
+    chan.processed_elements = 0;
+    chan.packet_element_id = 0;
+    chan.packet_element_id_rcv = 0;
+    return chan;
+}
+{%- endmacro -%}

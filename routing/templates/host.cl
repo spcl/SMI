@@ -24,13 +24,13 @@ SMI_Comm SmiInit(
     kernel_names.push_back("smi_kernel_cks_{{ channel }}");
     kernel_names.push_back("smi_kernel_ckr_{{ channel }}");
     {% endfor %}
-    {% macro generate_collective_kernels(key, kernel_name) %}
+    {%- macro generate_collective_kernels(key, kernel_name) %}
     {% set ops = program.get_ops_by_type(key) %}
     // {{ key }} kernels
     {% for op in ops %}
     kernel_names.push_back("{{ kernel_name }}_{{ op.logical_port }}");
     {% endfor %}
-    {% endmacro %}
+    {%- endmacro %}
 
 {{ generate_collective_kernels("broadcast", "smi_kernel_bcast") }}
 {{ generate_collective_kernels("reduce", "smi_kernel_reduce") }}
@@ -80,14 +80,14 @@ SMI_Comm SmiInit(
     {% set ctx.kernel = ctx.kernel + 1 %}
     {% endfor %}
 
-    {% macro setup_collective_kernels(key) %}
+    {%- macro setup_collective_kernels(key) %}
 {% set ops = program.get_ops_by_type(key) %}
 {% for op in ops %}
     // {{ key }} {{ op.logical_port }}
     kernels[{{ ctx.kernel }}].setArg(0, sizeof(char), &char_ranks_count);
 {% set ctx.kernel = ctx.kernel + 1 %}
 {% endfor %}
-    {% endmacro %}
+    {%- endmacro %}
 {{ setup_collective_kernels("broadcast") }}
 {{ setup_collective_kernels("reduce") }}
 {{ setup_collective_kernels("scatter") }}

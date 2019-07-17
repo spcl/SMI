@@ -1,11 +1,6 @@
 {% import 'utils.cl' as utils %}
 
-{% macro smi_pop(program, op) -%}
-/**
- * @brief SMI_Pop: receive a data element. Returns only when data arrives
- * @param chan pointer to the transient channel descriptor
- * @param data pointer to the target variable that, on return, will contain the data element
- */
+{%- macro smi_pop_impl(program, op) -%}
 void {{ utils.impl_name_port_type("SMI_Pop", op) }}(SMI_Channel *chan, void *data)
 {
     {% set ckr_data = program.create_group("ckr_data") %}
@@ -56,4 +51,34 @@ void {{ utils.impl_name_port_type("SMI_Pop", op) }}(SMI_Channel *chan, void *dat
         write_channel_intel({{ utils.channel_array("cks_control")}}[{{ cks_control.get_hw_port(op.logical_port) }}], mess);
     }
 }
-{% endmacro %}
+{%- endmacro %}
+
+{%- macro smi_pop_channel(program, op) -%}
+SMI_Channel {{ utils.impl_name_port_type("SMI_Open_receive_channel", op) }}(int count, SMI_Datatype data_type, int source, int port, SMI_Comm comm)
+{
+    SMI_Channel chan;
+    // setup channel descriptor
+    chan.port = (char) port;
+    chan.sender_rank = (char) source;
+    chan.message_size = (unsigned int) count;
+    chan.data_type = data_type;
+    chan.op_type = SMI_RECEIVE;
+    chan.elements_per_packet = {{ op.data_elements_per_packet() }};
+    chan.max_tokens = {{ op.buffer_size * op.data_elements_per_packet() }};
+
+#if defined P2P_RENDEZVOUS
+    chan.tokens = MIN(chan.max_tokens / ((unsigned int) 8), count); // needed to prevent the compiler to optimize-away channel connections
+#else
+    chan.tokens = count; // in this way, the last rendezvous is done at the end of the message. This is needed to prevent the compiler to cut-away internal FIFO buffer connections
+#endif
+    // The receiver sends tokens to the sender once every chan.max_tokens/8 received data elements
+    // chan.tokens = chan.max_tokens / ((unsigned int) 8);
+    SET_HEADER_NUM_ELEMS(chan.net.header, 0);    // at the beginning no data
+    chan.packet_element_id = 0; // data per packet
+    chan.processed_elements = 0;
+    chan.sender_rank = chan.sender_rank;
+    chan.receiver_rank = comm[0];
+    // comm is not directly used in this first implementation
+    return chan;
+}
+{%- endmacro -%}

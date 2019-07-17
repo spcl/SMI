@@ -1,40 +1,17 @@
-#include <utility>
-
 #include "rewrite.h"
 #include "utils.h"
+
+#include "ops/ops.h"
+#include "ops/push.h"
+#include "ops/pop.h"
+#include "ops/broadcast.h"
+#include "ops/scatter.h"
+#include "ops/gather.h"
+#include "ops/reduce.h"
 
 #include <iostream>
 
 using namespace clang;
-
-class FindVarDecl: public clang::RecursiveASTVisitor<FindVarDecl>
-{
-public:
-    bool VisitVarDecl(VarDecl* decl)
-    {
-        assert(!this->decl);
-        this->decl = decl;
-
-        return false;
-    }
-    bool VisitDeclRefExpr(DeclRefExpr* expr)
-    {
-        this->TraverseDecl(expr->getDecl());
-        return true;
-    }
-
-    VarDecl* decl = nullptr;
-};
-
-static VarDecl* extractChannelDecl(CallExpr* expr)
-{
-    assert(expr->getNumArgs() > 0);
-    auto& arg = expr->getArgs()[0];
-    FindVarDecl visitor;
-    visitor.TraverseStmt(arg);
-    assert(visitor.decl);
-    return visitor.decl;
-}
 
 struct Rewrite
 {
@@ -50,21 +27,34 @@ public:
     OperationExtractor* extractor;
 };
 
-class RewriteOpsVisitor: public clang::RecursiveASTVisitor<RewriteOpsVisitor>
+class RewriteOpsVisitor: public RecursiveASTVisitor<RewriteOpsVisitor>
 {
 public:
-    explicit RewriteOpsVisitor(clang::Rewriter& rewriter) : rewriter(rewriter)
+    explicit RewriteOpsVisitor(Rewriter& rewriter) : rewriter(rewriter)
     {
-        this->callMap["SMI_Push"] = std::make_unique<PushExtractor>();
-        this->callMap["SMI_Push_flush"] = std::make_unique<PushExtractor>();
-        this->callMap["SMI_Pop"] = std::make_unique<PopExtractor>();
-        this->callMap["SMI_Bcast"] = std::make_unique<BroadcastExtractor>();
-        this->callMap["SMI_Scatter"] = std::make_unique<ScatterExtractor>();
-        this->callMap["SMI_Gather"] = std::make_unique<GatherExtractor>();
-        this->callMap["SMI_Reduce"] = std::make_unique<ReduceExtractor>();
+        this->extractors.push_back(std::make_unique<PushExtractor>());
+        this->extractors.push_back(std::make_unique<PushChannelExtractor>());
+        this->extractors.push_back(std::make_unique<PopExtractor>());
+        this->extractors.push_back(std::make_unique<PopChannelExtractor>());
+        this->extractors.push_back(std::make_unique<BroadcastExtractor>());
+        this->extractors.push_back(std::make_unique<BroadcastChannelExtractor>());
+        this->extractors.push_back(std::make_unique<ReduceExtractor>());
+        this->extractors.push_back(std::make_unique<ReduceChannelExtractor>());
+        this->extractors.push_back(std::make_unique<GatherExtractor>());
+        this->extractors.push_back(std::make_unique<GatherChannelExtractor>());
+        this->extractors.push_back(std::make_unique<ScatterExtractor>());
+        this->extractors.push_back(std::make_unique<ScatterChannelExtractor>());
+
+        for (auto& extractor: this->extractors)
+        {
+            for (auto& fn: extractor->GetFunctionNames())
+            {
+                this->callMap[fn] = extractor.get();
+            }
+        }
     }
 
-    bool VisitCallExpr(clang::CallExpr* expr)
+    bool VisitCallExpr(CallExpr* expr)
     {
         auto callee = expr->getDirectCallee();
         if (callee)
@@ -74,9 +64,9 @@ public:
             if (it != this->callMap.end())
             {
                 auto& extractor = it->second;
-                auto metadata = extractor->GetOperationMetadata(extractChannelDecl(expr));
+                auto metadata = extractor->GetOperationMetadata(expr);
 
-                this->rewrites.emplace_back(metadata, name, extractor.get());
+                this->rewrites.emplace_back(metadata, name, extractor);
 
                 auto renamed = extractor->RenameCall(name, metadata);
                 this->rewriter.ReplaceText(expr->getBeginLoc(), renamed);
@@ -92,16 +82,17 @@ public:
     }
 
 private:
-    clang::Rewriter& rewriter;
+    Rewriter& rewriter;
 
-    std::unordered_map<std::string, std::unique_ptr<OperationExtractor>> callMap;
+    std::vector<std::unique_ptr<OperationExtractor>> extractors;
+    std::unordered_map<std::string, OperationExtractor*> callMap;
     std::vector<Rewrite> rewrites;
 };
 
 /**
  * Only visit functions that are marked as user device kernels.
  */
-bool RewriteKernelsVisitor::VisitFunctionDecl(clang::FunctionDecl* f)
+bool RewriteKernelsVisitor::VisitFunctionDecl(FunctionDecl* f)
 {
     bool isKernel = isKernelFunction(f);
     if (isKernel)
@@ -113,11 +104,11 @@ bool RewriteKernelsVisitor::VisitFunctionDecl(clang::FunctionDecl* f)
 
         for (auto& rewrite: visitor.getRewrites())
         {
-            rewrite.metadata.output(std::cout);
+            rewrite.extractor->OutputMetadata(rewrite.metadata, std::cout);
+            std::cerr << "SMI: rewrote ";
+            rewrite.extractor->OutputMetadata(rewrite.metadata, std::cerr);
             this->rewriter.InsertTextBefore(f->getBeginLoc(), rewrite.extractor->CreateDeclaration(rewrite.callName,
                     rewrite.metadata) + "\n");
-            std::cerr << "SMI: rewrote ";
-            rewrite.metadata.output(std::cerr);
         }
     }
 

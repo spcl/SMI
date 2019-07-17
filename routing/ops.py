@@ -23,9 +23,10 @@ PACKET_PAYLOAD_SIZE = 28
 
 
 class SmiOperation:
-    def __init__(self, logical_port: int, data_type: str = "int"):
+    def __init__(self, logical_port: int, data_type: str = "int", buffer_size: int = 16):
         self.logical_port = logical_port
         self.data_type = data_type
+        self.buffer_size = buffer_size
 
     def data_size(self):
         return DATA_TYPE_SIZE[self.data_type]
@@ -108,8 +109,8 @@ class Reduce(SmiOperation):
 
     }
 
-    def __init__(self, logical_port, data_type, op_type):
-        super().__init__(logical_port, data_type)
+    def __init__(self, logical_port, data_type, buffer_size, op_type):
+        super().__init__(logical_port, data_type, buffer_size)
 
         assert data_type in Reduce.SHIFT_REG
         assert op_type in Reduce.OP_TYPE

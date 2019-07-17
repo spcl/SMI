@@ -1,6 +1,6 @@
 {% import 'utils.cl' as utils %}
 
-{% macro smi_bcast_kernel(program, op) -%}
+{%- macro smi_bcast_kernel(program, op) -%}
 __kernel void smi_kernel_bcast_{{ op.logical_port }}(char num_rank)
 {
     bool external = true;
@@ -50,13 +50,7 @@ __kernel void smi_kernel_bcast_{{ op.logical_port }}(char num_rank)
 }
 {%- endmacro %}
 
-{% macro smi_bcast_impl(program, op) -%}
-/**
- * @brief SMI_Bcast
- * @param chan pointer to the broadcast channel descriptor
- * @param data pointer to the data element: on the root rank is the element that will be transmitted,
-    on the non-root rank will be the received element
- */
+{%- macro smi_bcast_impl(program, op) -%}
 void {{ utils.impl_name_port_type("SMI_Bcast", op) }}(SMI_BChannel* chan, void* data)
 {
 {% set broadcast = program.create_group("broadcast") %}
@@ -105,3 +99,40 @@ void {{ utils.impl_name_port_type("SMI_Bcast", op) }}(SMI_BChannel* chan, void* 
     }
 }
 {%- endmacro %}
+
+{%- macro smi_bcast_channel(program, op) -%}
+SMI_BChannel {{ utils.impl_name_port_type("SMI_Open_bcast_channel", op) }}(int count, SMI_Datatype data_type, int port, int root, SMI_Comm comm)
+{
+    SMI_BChannel chan;
+    // setup channel descriptor
+    chan.message_size = count;
+    chan.data_type = data_type;
+    chan.port = (char) port;
+    chan.my_rank = (char) SMI_Comm_rank(comm);
+    chan.root_rank = (char) root;
+    chan.num_rank = (char) SMI_Comm_size(comm);
+    chan.init = true;
+    chan.size_of_type = {{ op.data_size() }};
+    chan.elements_per_packet = {{ op.data_elements_per_packet() }};
+
+    if (chan.my_rank != chan.root_rank)
+    {
+        // At the beginning, send a "ready to receive" to the root
+        // This is needed to not inter-mix subsequent collectives
+        SET_HEADER_OP(chan.net.header, SMI_SYNCH);
+        SET_HEADER_DST(chan.net.header, chan.root_rank);
+        SET_HEADER_SRC(chan.net.header, chan.my_rank);
+        SET_HEADER_PORT(chan.net.header, chan.port);
+    }
+    else
+    {
+        SET_HEADER_OP(chan.net.header, SMI_SYNCH);           // used to signal to the support kernel that a new broadcast has begun
+        SET_HEADER_SRC(chan.net.header, chan.root_rank);
+        SET_HEADER_PORT(chan.net.header, chan.port);         // used by destination
+        SET_HEADER_NUM_ELEMS(chan.net.header, 0);            // at the beginning no data
+    }
+    chan.processed_elements = 0;
+    chan.packet_element_id = 0;
+    chan.packet_element_id_rcv = 0;
+    return chan;
+{%- endmacro -%}

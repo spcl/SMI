@@ -46,12 +46,12 @@ channel SMI_Network_message io_in_{{ channel }} __attribute__((depth(16))) __att
   to send the actual communication data, while the control is used by push (and collective) to receive
   control information (e.g. rendezvous data) from the pairs. There are also otehr channels for collective operations.
 */
-{% macro create_channels(group_key, depth) %}
+{%- macro create_channels(group_key, depth) %}
 {% set group = program.create_group(group_key) %}
 // {{ group_key }}: logical port -> index in {{ utils.table_array(group_key) }} -> index in {{ utils.channel_array(group_key) }}
 __constant char {{ utils.table_array(group_key) }}[{{ program.logical_port_count }}] = { {{ group.hw_mapping()|join(", ") }} };
 channel SMI_Network_message {{ utils.channel_array(group_key) }}[{{ group.hw_port_count }}] __attribute__((depth({{ depth }})));
-{% endmacro %}
+{%- endmacro %}
 
 {{ create_channels("cks_data", "16")}}
 {{ create_channels("cks_control", "16")}}
@@ -93,24 +93,31 @@ channel SMI_Network_message channels_interconnect_ck_r_to_ck_s[QSFP_COUNT] __att
 {{ smi_ckr.smi_ckr(program, channel, channels|length, target_index) }}
 {% endfor %}
 
-{% macro generate_op_impl(key, fn) %}
+{%- macro generate_op_impl(key, fn) %}
 {% for op in program.get_ops_by_type(key) %}
 {{ fn(program, op) }}
 {% endfor %}
-{% endmacro %}
+{%- endmacro %}
 
-// P2P
-{{ generate_op_impl("push", smi_push.smi_push) }}
-{{ generate_op_impl("pop", smi_pop.smi_pop) }}
-
-// collectives - kernels
+// Push
+{{ generate_op_impl("push", smi_push.smi_push_channel) }}
+{{ generate_op_impl("push", smi_push.smi_push_impl) }}
+// Pop
+{{ generate_op_impl("pop", smi_pop.smi_pop_channel) }}
+{{ generate_op_impl("pop", smi_pop.smi_pop_impl) }}
+// Broadcast
 {{ generate_op_impl("broadcast", smi_bcast.smi_bcast_kernel) }}
-{{ generate_op_impl("scatter", smi_scatter.smi_scatter_kernel) }}
-{{ generate_op_impl("gather", smi_gather.smi_gather_kernel) }}
-{{ generate_op_impl("reduce", smi_reduce.smi_reduce_kernel) }}
-
-// collectives - implementations
+{{ generate_op_impl("broadcast", smi_bcast.smi_bcast_channel) }}
 {{ generate_op_impl("broadcast", smi_bcast.smi_bcast_impl) }}
+// Scatter
+{{ generate_op_impl("scatter", smi_scatter.smi_scatter_kernel) }}
+{{ generate_op_impl("scatter", smi_scatter.smi_scatter_channel) }}
 {{ generate_op_impl("scatter", smi_scatter.smi_scatter_impl) }}
+// Gather
+{{ generate_op_impl("gather", smi_gather.smi_gather_kernel) }}
+{{ generate_op_impl("gather", smi_gather.smi_gather_channel) }}
 {{ generate_op_impl("gather", smi_gather.smi_gather_impl) }}
+// Reduce
+{{ generate_op_impl("reduce", smi_reduce.smi_reduce_kernel) }}
+{{ generate_op_impl("reduce", smi_reduce.smi_reduce_channel) }}
 {{ generate_op_impl("reduce", smi_reduce.smi_reduce_impl) }}

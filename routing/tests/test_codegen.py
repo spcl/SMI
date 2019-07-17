@@ -7,14 +7,14 @@ from routing import create_routing_context
 
 def test_codegen_device(file_tester):
     program = Program([
-        Push(0),
+        Push(0, "short", 4),
         Pop(0),
         Push(1),
-        Pop(2),
-        Broadcast(3),
-        Broadcast(4),
-        Push(5),
-        Reduce(6, "float", "add"),
+        Pop(2, "char", 8),
+        Broadcast(3, "float", 64),
+        Broadcast(4, "int"),
+        Push(5, "double", 32),
+        Reduce(6, "float", 16, "add"),
         Scatter(7, "double"),
         Gather(8, "char")
     ])
@@ -26,12 +26,17 @@ def test_codegen_device(file_tester):
         "n3:f1": program
     })
 
-    connections = parse_routing_file("""
-n1:f1:ch0 <-> n1:f2:ch0
-n1:f2:ch1 <-> n2:f1:ch1
-n1:f2:ch2 <-> n3:f1:ch1
-n2:f1:ch0 <-> n1:f1:ch1
-""")
+    (connections, _) = parse_routing_file("""
+{
+    "fpgas": {},
+    "connections": {
+        "n1:f1:ch0": "n1:f2:ch0",
+        "n1:f2:ch1": "n2:f1:ch1",
+        "n1:f2:ch2": "n3:f1:ch1",
+        "n2:f1:ch0": "n1:f1:ch1"
+    }
+}
+""", True)
 
     ctx = create_routing_context(connections, mapping)
 
@@ -57,7 +62,7 @@ def test_codegen_host(file_tester):
         "n3:f1": program
     })
 
-    connections = parse_fpga_connections("""
+    connections = parse_routing_file("""
 n1:f1:ch0 <-> n1:f2:ch0
 n1:f2:ch1 <-> n2:f1:ch1
 n1:f2:ch2 <-> n3:f1:ch1

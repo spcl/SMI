@@ -46,64 +46,18 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
  * @param comm communicator
  * @return the channel descriptor
  */
-SMI_ScatterChannel SMI_Open_scatter_channel(int send_count,  int recv_count,
- SMI_Datatype data_type, int port, int root, SMI_Comm comm)
+SMI_ScatterChannel SMI_Open_scatter_channel(int send_count, int recv_count,
+        SMI_Datatype data_type, int port, int root, SMI_Comm comm)
 {
+    // implemented in codegen
     SMI_ScatterChannel chan;
-    //setup channel descriptor
-    chan.send_count=(unsigned int)send_count;
-    chan.recv_count=(unsigned int)recv_count;
-    chan.data_type=data_type;
-    chan.port=(char)port;
-    chan.my_rank=(char)comm[0];
-    chan.num_ranks=(char)comm[1];
-    chan.root_rank=(char)root;
-    chan.next_rcv=0;
-    chan.init=true;
-    switch(data_type)
-    {
-        case (SMI_CHAR):
-            chan.size_of_type=SMI_CHAR_TYPE_SIZE;
-            chan.elements_per_packet=SMI_CHAR_ELEM_PER_PCKT;
-            break;
-        case(SMI_SHORT):
-            chan.size_of_type=SMI_SHORT_TYPE_SIZE;
-            chan.elements_per_packet=SMI_SHORT_ELEM_PER_PCKT;
-            break;
-        case(SMI_INT):
-            chan.size_of_type=SMI_INT_TYPE_SIZE;
-            chan.elements_per_packet=SMI_INT_ELEM_PER_PCKT;
-            break;
-        case (SMI_FLOAT):
-            chan.size_of_type=SMI_FLOAT_TYPE_SIZE;
-            chan.elements_per_packet=SMI_FLOAT_ELEM_PER_PCKT;
-            break;
-        case (SMI_DOUBLE):
-            chan.size_of_type=SMI_DOUBLE_TYPE_SIZE;
-            chan.elements_per_packet=SMI_DOUBLE_ELEM_PER_PCKT;
-            break;
-    }
-
-    //setup header for the message
-    if(chan.my_rank!=chan.root_rank)
-    {
-        //this is set up to send a "ready to receive" to the root
-        SET_HEADER_OP(chan.net.header,SMI_SYNCH);
-        SET_HEADER_DST(chan.net.header,chan.root_rank);
-        SET_HEADER_PORT(chan.net.header,chan.port);
-        SET_HEADER_SRC(chan.net.header,chan.my_rank);
-    }
-    else
-    {
-        SET_HEADER_SRC(chan.net.header,chan.root_rank);
-        SET_HEADER_PORT(chan.net.header,chan.port);         //used by destination
-        SET_HEADER_NUM_ELEMS(chan.net.header,0);            //at the beginning no data
-        SET_HEADER_OP(chan.net.header,SMI_SYNCH);
-    }
-
-    chan.processed_elements=0;
-    chan.packet_element_id=0;
-    chan.packet_element_id_rcv=0;
+    return chan;
+}
+SMI_ScatterChannel SMI_Open_scatter_channel_ad(int send_count, int recv_count,
+        SMI_Datatype data_type, int port, int root, SMI_Comm comm, int buffer_size)
+{
+    // fake function
+    SMI_ScatterChannel chan;
     return chan;
 }
 

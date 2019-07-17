@@ -1,6 +1,6 @@
 {% import 'utils.cl' as utils %}
 
-{% macro smi_gather_kernel(program, op) -%}
+{%- macro smi_gather_kernel(program, op) -%}
 __kernel void smi_kernel_gather_{{ op.logical_port }}(char num_rank)
 {
     // receives the data from the application and
@@ -29,7 +29,7 @@ __kernel void smi_kernel_gather_{{ op.logical_port }}(char num_rank)
 }
 {%- endmacro %}
 
-{% macro smi_gather_impl(program, op) -%}
+{%- macro smi_gather_impl(program, op) -%}
 /**
  * @brief SMI_Gather
  * @param chan pointer to the gather channel descriptor
@@ -134,3 +134,35 @@ void {{ utils.impl_name_port_type("SMI_Gather", op) }}(SMI_GatherChannel* chan, 
     }
 }
 {%- endmacro %}
+
+{%- macro smi_gather_channel(program, op) -%}
+SMI_GatherChannel {{ utils.impl_name_port_type("SMI_Open_gather_channel", op) }}(int send_count, int recv_count, SMI_Datatype data_type, int port, int root, SMI_Comm comm)
+{
+    SMI_GatherChannel chan;
+    chan.port = (char) port;
+    chan.send_count = send_count;
+    chan.recv_count = recv_count;
+    chan.data_type = data_type;
+    chan.my_rank = (char) SMI_Comm_rank(comm);
+    chan.root_rank = (char) root;
+    chan.num_rank = (char) SMI_Comm_size(comm);
+    chan.next_contrib = 0;
+    chan.size_of_type = {{ op.data_size() }};
+    chan.elements_per_packet = {{ op.data_elements_per_packet() }};
+
+    // setup header for the message
+    SET_HEADER_SRC(chan.net.header, chan.my_rank);
+    SET_HEADER_PORT(chan.net.header, chan.port);
+    SET_HEADER_NUM_ELEMS(chan.net.header, 0);
+    SET_HEADER_OP(chan.net.header, SMI_SYNCH);
+    // net_2 is used by the non-root ranks
+    SET_HEADER_OP(chan.net_2.header, SMI_SYNCH);
+    SET_HEADER_PORT(chan.net_2.header, chan.port);
+    SET_HEADER_DST(chan.net_2.header, chan.root_rank);
+    chan.processed_elements = 0;
+    chan.processed_elements_root = 0;
+    chan.packet_element_id = 0;
+    chan.packet_element_id_rcv = 0;
+    return chan;
+}
+{%- endmacro -%}

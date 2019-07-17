@@ -19,10 +19,11 @@ def parse_smi_operation(obj) -> SmiOperation:
     type = obj["type"]
     port = obj["port"]
     data_type = obj["data_type"]
+    buffer_size = obj["buffer_size"]
     args = obj.get("args", {})
 
     assert type in SMI_OP_KEYS
-    return SMI_OP_KEYS[type](port, data_type, **args)
+    return SMI_OP_KEYS[type](port, data_type, buffer_size, **args)
 
 
 def serialize_smi_operation(op: SmiOperation):
@@ -32,22 +33,22 @@ def serialize_smi_operation(op: SmiOperation):
         "type": inv_map[op.__class__],
         "port": op.logical_port,
         "data_type": op.data_type,
+        "buffer_size": op.buffer_size,
         "args": op.serialize_args()
     }
 
 
-def parse_ports(ports) -> List[SmiOperation]:
-    return [parse_smi_operation(p) for p in ports]
+def parse_operations(operations) -> List[SmiOperation]:
+    return [parse_smi_operation(p) for p in operations]
 
 
 def parse_program(input: str) -> Program:
     prog = json.loads(input)
     return Program(
-        parse_ports(prog["operations"]),
-        prog.get("buffer_size"),
-        prog.get("consecutive_reads"),
+        parse_operations(prog["operations"]),
+        """prog.get("consecutive_reads"),
         prog.get("max_ranks"),
-        prog.get("p2p_rendezvous")
+        prog.get("p2p_rendezvous") TODO: fix"""
     )
 
 
