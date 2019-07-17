@@ -154,7 +154,8 @@ function(add_smi_microbenchmarks KERNEL_PATH NUM_RANKS MPMD)
     add_custom_target(generate_${KERNEL_NAME}_routing ALL
             COMMAND python
             ${CMAKE_SOURCE_DIR}/routing/main.py route
-            ${SMI_ROUTING_FILE})
+            ${SMI_ROUTING_FILE}
+            ${CMAKE_CURRENT_BINARY_DIR})
     add_dependencies(generate_${KERNEL_NAME}_routing generate_${KERNEL_NAME}_codegen)
 
     #add_dependencies(generate_${KERNEL_NAME} generate_${KERNEL_NAME}_routing)
@@ -312,7 +313,7 @@ function(add_smi_test KERNEL_PATH NUM_RANKS MPMD)
 endfunction()
 
 add_subdirectory(source-rewriter)
-add_subdirectory(examples)
+#add_subdirectory(examples)
 add_subdirectory(microbenchmarks)
-add_subdirectory(test)
+#add_subdirectory(test)
 #add_subdirectory(rodinia)

@@ -57,13 +57,17 @@ def serialize_program(program: Program) -> str:
     })
 
 
-def parse_routing_file(input: str) -> Tuple[Dict[Tuple[str, int], Tuple[str, int]], ProgramMapping]:
-    data = json.loads(input)
+def parse_routing_file(data: str, ignore_programs=False) -> Tuple[Dict[Tuple[str, int], Tuple[str, int]], ProgramMapping]:
+    data = json.loads(data)
     program_cache = {}
     fpga_map = {}
     for (fpga, program_path) in data["fpgas"].items():
         if program_path not in program_cache:
-            program_cache[program_path] = parse_program(program_path)
+            if ignore_programs:
+                program_cache[program_path] = None
+            else:
+                with open(program_path) as pf:
+                    program_cache[program_path] = parse_program(pf.read())
 
         fpga_map[fpga] = program_cache[program_path]
 
@@ -82,6 +86,7 @@ def parse_routing_file(input: str) -> Tuple[Dict[Tuple[str, int], Tuple[str, int
         return int(match.group(1))
 
     for (src, dst) in data["connections"].items():
+        src, dst = [item.split(":") for item in (src, dst)]
         src, dst = [(parse_key(d), parse_channel(d)) for d in (src, dst)]
         assert src not in connections
         assert dst not in connections

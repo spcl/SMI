@@ -60,7 +60,7 @@ def codegen(routing_file, rewriter, src_dir, dest_dir, host_src, device_src, out
     program = Program(ops)
 
     with open(routing_file) as rf:
-        (connections, mapping) = parse_routing_file(rf.read())
+        (connections, mapping) = parse_routing_file(rf.read(), ignore_programs=True)
         program_mapping = ProgramMapping([program], {
             fpga: program for fpga in set(fpga for (fpga, _) in connections.keys())
         })
