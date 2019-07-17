@@ -1,6 +1,6 @@
 from codegen import generate_program_device, generate_program_host
 from ops import Push, Pop, Broadcast, Reduce, Scatter, Gather
-from parser import parse_fpga_connections
+from serialization import parse_routing_file
 from program import Program, ProgramMapping
 from routing import create_routing_context
 
@@ -26,7 +26,7 @@ def test_codegen_device(file_tester):
         "n3:f1": program
     })
 
-    connections = parse_fpga_connections("""
+    connections = parse_routing_file("""
 n1:f1:ch0 <-> n1:f2:ch0
 n1:f2:ch1 <-> n2:f1:ch1
 n1:f2:ch2 <-> n3:f1:ch1

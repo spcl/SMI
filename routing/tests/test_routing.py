@@ -1,6 +1,6 @@
 import networkx
 
-from parser import parse_fpga_connections
+from serialization import parse_routing_file
 from program import ProgramMapping, Program
 from routing import load_inter_fpga_connections, create_routing_context
 
@@ -13,7 +13,7 @@ def test_load_inter_fpga_connections():
         "n2:f1": program
     })
 
-    connections = parse_fpga_connections("""
+    connections = parse_routing_file("""
 n1:f1:ch0 <-> n1:f2:ch0
 n1:f2:ch1 <-> n2:f1:ch1
 n2:f1:ch0 <-> n1:f1:ch1
