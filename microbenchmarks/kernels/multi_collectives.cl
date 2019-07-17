@@ -12,8 +12,9 @@
 */
 
 
-
-#include "multi_collectives_routing/smi-device-0.h"
+#define BUFFER_SIZE 256 //provisional
+#include <smi.h>
+#include "smi-generated-device.cl"
 
 __kernel void sequential_collectives(const int N, char root, __global volatile char *mem, SMI_Comm comm)
 {

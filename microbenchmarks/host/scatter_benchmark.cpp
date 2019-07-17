@@ -14,8 +14,8 @@
 #include <cmath>
 #include <utils/ocl_utils.hpp>
 #include <utils/utils.hpp>
-#include "scatter_routing/smi-host-0.h"
-#define ROUTING_DIR "scatter_routing/"
+#include "smi-generated-host.c"
+#define ROUTING_DIR "./"
 
 using namespace std;
 int main(int argc, char *argv[])

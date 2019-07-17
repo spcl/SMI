@@ -11,6 +11,8 @@ set(SMI_REWRITER "${CMAKE_BINARY_DIR}/source-rewriter/rewriter")
 set(SMI_FMAX "300" CACHE STRING "Target Fmax when compiling for hardware.")
 set(SMI_DEVICES_PER_NODE 2 CACHE STRING "Number of FPGA devices per node.")
 
+option (ENABLE_TESTS "Enables testing" OFF)
+
 # Dependencies
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/hlslib/cmake)
 find_package(Threads REQUIRED)
@@ -306,5 +308,8 @@ endfunction()
 add_subdirectory(source-rewriter)
 add_subdirectory(examples)
 add_subdirectory(microbenchmarks)
-add_subdirectory(test)
-#add_subdirectory(rodinia)
+if (ENABLE_TESTS)
+    enable_testing()
+    add_subdirectory(test)
+endif (ENABLE_TESTS)
+

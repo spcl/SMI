@@ -4,7 +4,9 @@
 */
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 
-#include "scatter_routing/smi-device-0.h"
+#define BUFFER_SIZE 256 //provisional
+#include <smi.h>
+#include "smi-generated-device.cl"
 
 
 

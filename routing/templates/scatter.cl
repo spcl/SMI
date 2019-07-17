@@ -9,7 +9,6 @@ __kernel void smi_kernel_scatter_{{ op.logical_port }}(char num_rank)
     SMI_Network_message mess;
     {% set ckr_control = program.create_group("ckr_control") %}
     {% set cks_data = program.create_group("cks_data") %}
-    {% set cks_control = program.create_group("cks_control") %}
     {% set scatter = program.create_group("scatter") %}
 
     while (true)
@@ -83,6 +82,7 @@ void {{ utils.impl_name_port_type("SMI_Scatter", op) }}(SMI_ScatterChannel* chan
 
 {% set scatter = program.create_group("scatter") %}
 {% set ckr_data = program.create_group("ckr_data") %}
+{% set cks_control = program.create_group("cks_control") %}
 
         chan->packet_element_id++;
         // split this in packets holding send_count elements
