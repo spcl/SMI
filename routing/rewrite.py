@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import subprocess
@@ -35,6 +36,6 @@ def rewrite(rewriter, file, include_dirs, log):
     ops = []
     for line in output.splitlines():
         if line:
-            ops.append(parse_smi_operation(line.strip()))
+            ops.append(parse_smi_operation(json.loads(line)))
 
     return ops

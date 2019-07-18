@@ -23,10 +23,10 @@ PACKET_PAYLOAD_SIZE = 28
 
 
 class SmiOperation:
-    def __init__(self, logical_port: int, data_type: str = "int", buffer_size: int = 16):
+    def __init__(self, logical_port: int, data_type: str = "int", buffer_size: int = None):
         self.logical_port = logical_port
         self.data_type = data_type
-        self.buffer_size = buffer_size
+        self.buffer_size = buffer_size or 16
 
     def data_size(self):
         return DATA_TYPE_SIZE[self.data_type]
