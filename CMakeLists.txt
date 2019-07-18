@@ -300,7 +300,7 @@ function(smi_target TARGET_NAME CONNECTION_FILE HOST_SOURCE KERNELS NUM_RANKS)
             COMMAND ${IntelFPGAOpenCL_AOC} ${AOC_COMMAND} ${FPGA_SRC_FILES} -o ${KERNEL_NAME}_hardware.aocx
             WORKING_DIRECTORY ${KERNEL_BIN_DIR}
         )
-        add_dependencies(${FPGA_BUILD_TARGET} ${FPGA_REPORT_TARGET})
+        add_dependencies(${FPGA_BUILD_TARGET} ${KERNEL_TARGET})
     endforeach()
 
     # generate routing
