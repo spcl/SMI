@@ -9,7 +9,7 @@ from program import Channel, CHANNELS_PER_FPGA, Program, ProgramMapping
 from rewrite import copy_files, rewrite
 from routing import create_routing_context
 from routing_table import serialize_to_array, cks_routing_table, ckr_routing_table
-from serialization import serialize_program, parse_routing_file
+from serialization import serialize_program, parse_routing_file, parse_program
 
 
 def prepare_directory(path):
@@ -30,19 +30,17 @@ def write_table(channel: Channel, prefix: str, table: List[int], output_folder):
 @click.argument("rewriter")
 @click.argument("src-dir")
 @click.argument("dest-dir")
-@click.argument("host-src")
 @click.argument("device-src")
 @click.argument("output-program")
 @click.argument("device-input", nargs=-1)
 @click.option("--include")
-def codegen(routing_file, rewriter, src_dir, dest_dir, host_src, device_src, output_program, device_input, include):
+def codegen_device(routing_file, rewriter, src_dir, dest_dir, device_src, output_program, device_input, include):
     """
     Transpiles device code and generates device kernels and host initialization code.
     :param routing_file: path to a file with FPGA connections and FPGA-to-program mapping
     :param rewriter: path to the rewriter
     :param src_dir: root directory of device source files
     :param dest_dir: root directory of generated device source files
-    :param host_src: path to generated host source file
     :param device_src: path to generated device source file
     :param output_program: path to generated JSON program description
     :param device_input: list of device sources
@@ -70,11 +68,27 @@ def codegen(routing_file, rewriter, src_dir, dest_dir, host_src, device_src, out
     if fpgas:
         with open(device_src, "w") as f:
             f.write(generate_program_device(fpgas[0], fpgas, ctx.graph, CHANNELS_PER_FPGA))
-        with open(host_src, "w") as f:
-            f.write(generate_program_host(program))
 
     with open(output_program, "w") as f:
         f.write(serialize_program(program))
+
+
+@click.command()
+@click.argument("host-src")
+@click.argument("program-metadata", nargs=-1)
+def codegen_host(host_src, program_metadata):
+    """
+    Creates routing tables and hostfile.
+    :param host_src: path to a file with generated host code
+    :param program_metadata: list of program metadata files
+    """
+    programs = []
+    for program in program_metadata:
+        with open(program) as pf:
+            programs.append(parse_program(pf.read()))
+
+    with open(host_src, "w") as f:
+        f.write(generate_program_host(programs))
 
 
 @click.command()
@@ -107,6 +121,7 @@ def cli():
 
 
 if __name__ == "__main__":
-    cli.add_command(codegen)
+    cli.add_command(codegen_device)
+    cli.add_command(codegen_host)
     cli.add_command(route)
     cli()

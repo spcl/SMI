@@ -49,4 +49,4 @@ def test_codegen_host(file_tester):
         Reduce(6, "float", 16, "min")
     ])
 
-    file_tester.check("smi-host-1.h", generate_program_host(program))
+    file_tester.check("smi-host-1.h", generate_program_host([program]))

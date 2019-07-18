@@ -1,17 +1,15 @@
 #define __HOST_PROGRAM__
 #include <utils/smi_utils.hpp>
 #include <vector>
-#include <smi/communicator.h>
-
-SMI_Comm SmiInit(
+#include <smi/communicator.h>SMI_Comm SmiInit_0(
         int rank,
         int ranks_count,
         const char* program_path,
         const char* routing_dir,
-        cl::Platform &platform, 
-        cl::Device &device, 
-        cl::Context &context, 
-        cl::Program &program, 
+        cl::Platform &platform,
+        cl::Device &device,
+        cl::Context &context,
+        cl::Program &program,
         int fpga,
         std::vector<cl::Buffer> &buffers)
 {
@@ -29,16 +27,16 @@ SMI_Comm SmiInit(
     kernel_names.push_back("smi_kernel_cks_3");
     kernel_names.push_back("smi_kernel_ckr_3");
 
-    // broadcast kernels
+        // broadcast kernels
     kernel_names.push_back("smi_kernel_bcast_3");
     kernel_names.push_back("smi_kernel_bcast_4");
 
-    // reduce kernels
+        // reduce kernels
     kernel_names.push_back("smi_kernel_reduce_6");
 
-    // scatter kernels
+        // scatter kernels
 
-    // gather kernels
+        // gather kernels
 
 
     IntelFPGAOCLUtils::initEnvironment(
@@ -107,18 +105,18 @@ SMI_Comm SmiInit(
     // ckr_3
     kernels[7].setArg(0, sizeof(cl_mem), &routing_table_ck_r_3);
     kernels[7].setArg(1, sizeof(char), &char_rank);
-    // broadcast 3
+        // broadcast 3
     kernels[8].setArg(0, sizeof(char), &char_ranks_count);
     // broadcast 4
     kernels[9].setArg(0, sizeof(char), &char_ranks_count);
 
-    // reduce 6
+        // reduce 6
     kernels[10].setArg(0, sizeof(char), &char_ranks_count);
 
+    
+    
 
-
-
-    //move buffers
+    // move buffers
     buffers.push_back(std::move( routing_table_ck_s_0));
     buffers.push_back(std::move( routing_table_ck_r_0));
     buffers.push_back(std::move( routing_table_ck_s_1));
@@ -130,14 +128,14 @@ SMI_Comm SmiInit(
 
     // start the kernels
     const int num_kernels = kernel_names.size();
-    for(int i = num_kernels - 1; i >= 0; i--)
+    for (int i = num_kernels - 1; i >= 0; i--)
     {
         queues[i].enqueueTask(kernels[i]);
         queues[i].flush();
     }
 
-    //returns the communicator
-    SMI_Comm comm{char_rank,char_ranks_count};
+    // return the communicator
+    SMI_Comm comm{ char_rank, char_ranks_count };
     return comm;
 
 }

@@ -3,15 +3,16 @@
 #include <vector>
 #include <smi/communicator.h>
 
-SMI_Comm SmiInit(
+{%- for program in programs -%}
+SMI_Comm SmiInit_{{ loop.index0 }}(
         int rank,
         int ranks_count,
         const char* program_path,
         const char* routing_dir,
-        cl::Platform &platform, 
-        cl::Device &device, 
-        cl::Context &context, 
-        cl::Program &program, 
+        cl::Platform &platform,
+        cl::Device &device,
+        cl::Context &context,
+        cl::Program &program,
         int fpga,
         std::vector<cl::Buffer> &buffers)
 {
@@ -32,10 +33,10 @@ SMI_Comm SmiInit(
     {% endfor %}
     {%- endmacro %}
 
-{{ generate_collective_kernels("broadcast", "smi_kernel_bcast") }}
-{{ generate_collective_kernels("reduce", "smi_kernel_reduce") }}
-{{ generate_collective_kernels("scatter", "smi_kernel_scatter") }}
-{{ generate_collective_kernels("gather", "smi_kernel_gather") }}
+    {{ generate_collective_kernels("broadcast", "smi_kernel_bcast") }}
+    {{ generate_collective_kernels("reduce", "smi_kernel_reduce") }}
+    {{ generate_collective_kernels("scatter", "smi_kernel_scatter") }}
+    {{ generate_collective_kernels("gather", "smi_kernel_gather") }}
 
     IntelFPGAOCLUtils::initEnvironment(
             platform, device, fpga, context,
@@ -81,19 +82,19 @@ SMI_Comm SmiInit(
     {% endfor %}
 
     {%- macro setup_collective_kernels(key) %}
-{% set ops = program.get_ops_by_type(key) %}
-{% for op in ops %}
+    {% set ops = program.get_ops_by_type(key) %}
+    {% for op in ops %}
     // {{ key }} {{ op.logical_port }}
     kernels[{{ ctx.kernel }}].setArg(0, sizeof(char), &char_ranks_count);
-{% set ctx.kernel = ctx.kernel + 1 %}
-{% endfor %}
+    {% set ctx.kernel = ctx.kernel + 1 %}
+    {% endfor %}
     {%- endmacro %}
-{{ setup_collective_kernels("broadcast") }}
-{{ setup_collective_kernels("reduce") }}
-{{ setup_collective_kernels("scatter") }}
-{{ setup_collective_kernels("gather") }}
+    {{ setup_collective_kernels("broadcast") }}
+    {{ setup_collective_kernels("reduce") }}
+    {{ setup_collective_kernels("scatter") }}
+    {{ setup_collective_kernels("gather") }}
 
-    //move buffers
+    // move buffers
     {% for channel in range(program.channel_count) %}
     buffers.push_back(std::move( routing_table_ck_s_{{ channel }}));
     buffers.push_back(std::move( routing_table_ck_r_{{ channel }}));
@@ -101,14 +102,15 @@ SMI_Comm SmiInit(
 
     // start the kernels
     const int num_kernels = kernel_names.size();
-    for(int i = num_kernels - 1; i >= 0; i--)
+    for (int i = num_kernels - 1; i >= 0; i--)
     {
         queues[i].enqueueTask(kernels[i]);
         queues[i].flush();
     }
 
-    //returns the communicator
-    SMI_Comm comm{char_rank,char_ranks_count};
+    // return the communicator
+    SMI_Comm comm{ char_rank, char_ranks_count };
     return comm;
 
 }
+{%- endfor -%}
