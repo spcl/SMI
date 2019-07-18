@@ -40,31 +40,12 @@ channel SMI_Network_message io_in_{{ channel }} __attribute__((depth(16))) __att
 {% endfor %}
 #endif
 
-/**
-  These tables, defined at compile time, maps application endpoints (Port) to channels and are
-  used by the compiler to lay down the circuitry. The data routing table is used by push (and collectives)
-  to send the actual communication data, while the control is used by push (and collective) to receive
-  control information (e.g. rendezvous data) from the pairs. There are also otehr channels for collective operations.
-*/
-{%- macro create_channels(group_key, depth) %}
-{% set group = program.create_group(group_key) %}
-// {{ group_key }}: logical port -> index in {{ utils.table_array(group_key) }} -> index in {{ utils.channel_array(group_key) }}
-__constant char {{ utils.table_array(group_key) }}[{{ program.logical_port_count }}] = { {{ group.hw_mapping()|join(", ") }} };
-channel SMI_Network_message {{ utils.channel_array(group_key) }}[{{ group.hw_port_count }}] __attribute__((depth({{ depth }})));
-{%- endmacro %}
-
-{{ create_channels("cks_data", "16")}}
-{{ create_channels("cks_control", "16")}}
-{{ create_channels("ckr_data", "BUFFER_SIZE")}}
-{{ create_channels("ckr_control", "BUFFER_SIZE")}}
-
-{{ create_channels("broadcast", "2")}}
-
-{{ create_channels("reduce_send", "1")}}
-{{ create_channels("reduce_recv", "1")}}
-
-{{ create_channels("scatter", "2")}}
-{{ create_channels("gather", "2")}}
+{% for op in program.operations %}
+// {{ op }}
+{% for (channel, depth) in op.get_channel_defs() %}
+channel SMI_Network_message {{ channel }} __attribute__((depth({{ depth }})));
+{% endfor %}
+{% endfor %}
 
 __constant char QSFP_COUNT = {{ channels_per_fpga }};
 

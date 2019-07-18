@@ -107,7 +107,6 @@ SMI_Comm SmiInit(
     // ckr_3
     kernels[7].setArg(0, sizeof(cl_mem), &routing_table_ck_r_3);
     kernels[7].setArg(1, sizeof(char), &char_rank);
-
     // broadcast 3
     kernels[8].setArg(0, sizeof(char), &char_ranks_count);
     // broadcast 4

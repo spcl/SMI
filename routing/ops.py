@@ -10,7 +10,6 @@ KEY_REDUCE_RECV = "reduce_recv"
 KEY_SCATTER = "scatter"
 KEY_GATHER = "gather"
 
-
 DATA_TYPE_SIZE = {
     "char":     1,
     "short":    2,
@@ -27,6 +26,31 @@ class SmiOperation:
         self.logical_port = logical_port
         self.data_type = data_type
         self.buffer_size = buffer_size or 16
+        assert self.buffer_size > 0 and self.buffer_size % 8 == 0
+
+    def get_channel(self, key: str) -> str:
+        inv_map = {v: k for k, v in OP_MAPPING.items()}
+        type = inv_map[self.__class__]
+        keys = self.channel_usage()
+        assert key in keys
+        return "{}_{}_{}".format(type, self.logical_port, key)
+
+    def get_channel_defs(self):
+        return [(self.get_channel(ch), self.get_channel_depth(ch)) for ch in sorted(self.channel_usage())]
+
+    def get_channel_depth(self, channel):
+        mapping = {
+            "cks_data": 16,
+            "cks_control": 16,
+            "ckr_data": self.buffer_size,
+            "ckr_control": self.buffer_size,
+            "broadcast": 1,
+            "reduce_send": 1,
+            "reduce_recv": 1,
+            "scatter": 1,
+            "gather": 1
+        }
+        return mapping[channel]
 
     def data_size(self):
         return DATA_TYPE_SIZE[self.data_type]
@@ -35,7 +59,7 @@ class SmiOperation:
         size = self.data_size()
         return PACKET_PAYLOAD_SIZE // size
 
-    def hw_port_usage(self) -> Set[str]:
+    def channel_usage(self) -> Set[str]:
         return set()
 
     def serialize_args(self):
@@ -43,7 +67,7 @@ class SmiOperation:
 
 
 class Push(SmiOperation):
-    def hw_port_usage(self) -> Set[str]:
+    def channel_usage(self) -> Set[str]:
         return {KEY_CKS_DATA, KEY_CKR_CONTROL}
 
     def __repr__(self):
@@ -51,7 +75,7 @@ class Push(SmiOperation):
 
 
 class Pop(SmiOperation):
-    def hw_port_usage(self) -> Set[str]:
+    def channel_usage(self) -> Set[str]:
         return {KEY_CKR_DATA, KEY_CKS_CONTROL}
 
     def __repr__(self):
@@ -59,7 +83,7 @@ class Pop(SmiOperation):
 
 
 class Broadcast(SmiOperation):
-    def hw_port_usage(self) -> Set[str]:
+    def channel_usage(self) -> Set[str]:
         return {
             KEY_CKS_DATA,
             KEY_CKS_CONTROL,
@@ -116,7 +140,7 @@ class Reduce(SmiOperation):
         assert op_type in Reduce.OP_TYPE
         self.op_type = op_type
 
-    def hw_port_usage(self) -> Set[str]:
+    def channel_usage(self) -> Set[str]:
         return {
             KEY_CKS_DATA,
             KEY_CKS_CONTROL,
@@ -148,7 +172,7 @@ class Reduce(SmiOperation):
 
 
 class Scatter(SmiOperation):
-    def hw_port_usage(self) -> Set[str]:
+    def channel_usage(self) -> Set[str]:
         return {
             KEY_CKS_DATA,
             KEY_CKS_CONTROL,
@@ -162,7 +186,7 @@ class Scatter(SmiOperation):
 
 
 class Gather(SmiOperation):
-    def hw_port_usage(self) -> Set[str]:
+    def channel_usage(self) -> Set[str]:
         return {
             KEY_CKS_DATA,
             KEY_CKS_CONTROL,
@@ -173,3 +197,13 @@ class Gather(SmiOperation):
 
     def __repr__(self):
         return "Gather({})".format(self.logical_port)
+
+
+OP_MAPPING = {
+    "push": Push,
+    "pop": Pop,
+    "broadcast": Broadcast,
+    "reduce": Reduce,
+    "scatter": Scatter,
+    "gather": Gather
+}

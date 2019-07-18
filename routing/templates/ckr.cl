@@ -63,15 +63,10 @@ __kernel void smi_kernel_ckr_{{ channel.index }}(__global volatile char *restric
                     write_channel_intel(channels_interconnect_ck_r[{{ (channel_count - 1) * ck_r + target_index(ck_r, channel.index) }}], message);
                     break;
                 {% endfor %}
-                {% set allocations = program.get_channel_allocations(channel.index)["ckr"] %}
-                {% for (method, logical_port, hw_port) in allocations %}
+                {% for (op, key) in program.get_channel_allocations_with_prefix(channel.index, "ckr") %}
                 case {{ channel_count + loop.index0 }}:
-                    // send to app channel with logical port {{ logical_port }}, hardware port {{ hw_port }}, method {{ method }}
-                {% if method == "data" %}
-                    write_channel_intel({{ utils.channel_array("ckr_data") }}[{{ hw_port }}], message);
-                {% else %}
-                    write_channel_intel({{ utils.channel_array("ckr_control") }}[{{ hw_port }}], message);
-                {% endif %}
+                    // send to {{ op }}
+                    write_channel_intel({{ op.get_channel(key) }}, message);
                     break;
                 {% endfor %}
             }

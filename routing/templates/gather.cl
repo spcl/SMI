@@ -8,15 +8,13 @@ __kernel void smi_kernel_gather_{{ op.logical_port }}(char num_rank)
     SMI_Network_message mess;
     SMI_Network_message req;
 
-    {% set ckr_control = program.create_group("ckr_control") %}
-    {% set cks_data = program.create_group("cks_data") %}
-    {% set gather = program.create_group("gather") %}
-
     while (true)
     {
-        mess = read_channel_intel({{ utils.channel_array("gather") }}[{{ gather.get_hw_port(op.logical_port) }}]);
+        mess = read_channel_intel({{ op.get_channel("gather") }});
         if (GET_HEADER_OP(mess.header) == SMI_SYNCH)
-             req = read_channel_intel({{ utils.channel_array("ckr_control") }}[{{ ckr_control.get_hw_port(op.logical_port) }}]);
+        {
+            req = read_channel_intel({{ op.get_channel("ckr_control") }});
+        }
 
         // we introduce a dependency on the received synchronization message to
         // force the ordering of the two channel operations
@@ -24,7 +22,7 @@ __kernel void smi_kernel_gather_{{ op.logical_port }}(char num_rank)
         SET_HEADER_NUM_ELEMS(mess.header, MAX(GET_HEADER_NUM_ELEMS(mess.header), GET_HEADER_NUM_ELEMS(req.header)));
 
         SET_HEADER_OP(mess.header, SMI_GATHER);
-        write_channel_intel({{ utils.channel_array("cks_data") }}[{{ cks_data.get_hw_port(op.logical_port) }}], mess);
+        write_channel_intel({{ op.get_channel("cks_data") }}, mess);
     }
 }
 {%- endmacro %}
@@ -38,10 +36,6 @@ __kernel void smi_kernel_gather_{{ op.logical_port }}(char num_rank)
  */
 void {{ utils.impl_name_port_type("SMI_Gather", op) }}(SMI_GatherChannel* chan, void* send_data, void* rcv_data)
 {
-{% set gather = program.create_group("gather") %}
-{% set cks_control = program.create_group("cks_control") %}
-{% set ckr_data = program.create_group("ckr_data") %}
-
     if (chan->my_rank == chan->root_rank) // I'm the root
     {
         // we can't offload this part to the kernel, by passing a network message
@@ -57,7 +51,7 @@ void {{ utils.impl_name_port_type("SMI_Gather", op) }}(SMI_GatherChannel* chan, 
             SET_HEADER_NUM_ELEMS(chan->net_2.header, 1); // this is used in the support kernel
             SET_HEADER_DST(chan->net_2.header, chan->next_contrib);
             SET_HEADER_PORT(chan->net_2.header, {{ op.logical_port }});
-            write_channel_intel({{ utils.channel_array("cks_control") }}[{{ cks_control.get_hw_port(op.logical_port) }}], chan->net_2);
+            write_channel_intel({{ op.get_channel("cks_control") }}, chan->net_2);
         }
         // This fence is not necessary, the two channel operation are independent
         // and we don't need any ordering between them
@@ -66,7 +60,7 @@ void {{ utils.impl_name_port_type("SMI_Gather", op) }}(SMI_GatherChannel* chan, 
         // receive the data
         if (chan->packet_element_id_rcv == 0 && chan->next_contrib != chan->my_rank)
         {
-            chan->net = read_channel_intel({{ utils.channel_array("ckr_data") }}[{{ ckr_data.get_hw_port(op.logical_port) }}]);
+            chan->net = read_channel_intel({{ op.get_channel("ckr_data") }});
         }
 
         char* data_recvd = chan->net.data;
@@ -126,7 +120,7 @@ void {{ utils.impl_name_port_type("SMI_Gather", op) }}(SMI_GatherChannel* chan, 
             SET_HEADER_NUM_ELEMS(chan->net.header, chan->packet_element_id);
             SET_HEADER_DST(chan->net.header, chan->root_rank);
 
-            write_channel_intel({{ utils.channel_array("gather") }}[{{ gather.get_hw_port(op.logical_port) }}], chan->net);
+            write_channel_intel({{ op.get_channel("gather") }}, chan->net);
             // first one is a SMI_SYNCH, used to communicate to the support kernel that it has to wait for a "ready to receive" from the root
             SET_HEADER_OP(chan->net.header, SMI_GATHER);
             chan->packet_element_id = 0;

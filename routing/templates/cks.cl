@@ -35,14 +35,10 @@ __kernel void smi_kernel_cks_{{ channel.index }}(__global volatile char *restric
                 // receive from CK_R_{{ channel.index }}
                 message = read_channel_nb_intel(channels_interconnect_ck_r_to_ck_s[{{ channel.index }}], &valid);
                 break;
-            {% for (method, logical_port, hw_port) in allocations %}
+            {% for (op, key) in program.get_channel_allocations_with_prefix(channel.index, "cks") %}
             case {{ channel_count + loop.index0 }}:
-                // receive from app channel with logical port {{ logical_port }}, hardware port {{ hw_port }}, method {{ method }}
-            {% if method == "data" %}
-                message = read_channel_nb_intel({{ utils.channel_array("cks_data") }}[{{ hw_port }}], &valid);
-            {% else %}
-                message = read_channel_nb_intel({{ utils.channel_array("cks_control") }}[{{ hw_port }}], &valid);
-            {% endif %}
+                // receive from {{ op }}
+                message = read_channel_nb_intel({{ op.get_channel(key) }}, &valid);
                 break;
             {% endfor %}
         }

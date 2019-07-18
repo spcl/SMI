@@ -9,14 +9,12 @@ void {{ utils.impl_name_port_type("SMI_Push_flush", op) }}(SMI_Channel *chan, vo
     chan->packet_element_id++;
     chan->tokens--;
 
-    {% set cks_data = program.create_group("cks_data") %}
-    {% set ckr_control = program.create_group("ckr_control") %}
     // send the network packet if it full or we reached the message size
     if (chan->packet_element_id == chan->elements_per_packet || immediate || chan->processed_elements == chan->message_size)
     {
         SET_HEADER_NUM_ELEMS(chan->net.header, chan->packet_element_id);
         chan->packet_element_id = 0;
-        write_channel_intel({{ utils.channel_array("cks_data") }}[{{ cks_data.get_hw_port(op.logical_port) }}], chan->net);
+        write_channel_intel({{ op.get_channel("cks_data") }}, chan->net);
     }
     // This fence is not mandatory, the two channel operations can be
     // performed independently
@@ -26,7 +24,7 @@ void {{ utils.impl_name_port_type("SMI_Push_flush", op) }}(SMI_Channel *chan, vo
     {
         // receives also with tokens=0
         // wait until the message arrives
-        SMI_Network_message mess = read_channel_intel({{ utils.channel_array("ckr_control") }}[{{ ckr_control.get_hw_port(op.logical_port) }}]);
+        SMI_Network_message mess = read_channel_intel({{ op.get_channel("ckr_control") }});
         unsigned int tokens = *(unsigned int *) mess.data;
         chan->tokens += tokens; // tokens
     }
@@ -65,7 +63,7 @@ SMI_Channel {{ utils.impl_name_port_type("SMI_Open_send_channel", op) }}(int cou
     chan.processed_elements = 0;
     chan.packet_element_id = 0;
     chan.sender_rank = comm[0];
-    // chan.comm=comm; // comm is not used in this first implemenation
+    // chan.comm = comm; // comm is not used in this first implemenation
     return chan;
 }
 {%- endmacro -%}

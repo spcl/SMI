@@ -12,7 +12,7 @@ from serialization import parse_routing_file
 
 sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 
-from program import Channel, ProgramMapping
+from program import Channel, ProgramMapping, Program
 from routing import create_routing_context
 
 PYTEST_DIR = os.path.dirname(__file__)
@@ -42,8 +42,15 @@ def prepare():
     os.chdir(WORK_DIR)
 
 
-def get_routing_ctx(mapping: ProgramMapping, connections: str) -> RoutingContext:
-    (connections, _) = parse_routing_file(connections)
+def get_routing_ctx(program: Program, connections) -> RoutingContext:
+    fpgas = tuple(fpga for (fpga, _) in connections.keys()) + tuple(fpga for (fpga, _) in connections.values())
+    fpga_map = {
+        fpga: program for fpga in fpgas
+    }
+    for (k, v) in dict(connections).items():
+        connections[v] = k
+
+    mapping = ProgramMapping([program], fpga_map)
     return create_routing_context(connections, mapping)
 
 

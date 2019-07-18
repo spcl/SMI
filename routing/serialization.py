@@ -18,8 +18,8 @@ SMI_OP_KEYS = {
 def parse_smi_operation(obj) -> SmiOperation:
     type = obj["type"]
     port = obj["port"]
-    data_type = obj["data_type"]
-    buffer_size = obj["buffer_size"]
+    data_type = obj.get("data_type", "int")
+    buffer_size = obj.get("buffer_size")
     args = obj.get("args", {})
 
     assert type in SMI_OP_KEYS
@@ -46,9 +46,9 @@ def parse_program(input: str) -> Program:
     prog = json.loads(input)
     return Program(
         parse_operations(prog["operations"]),
-        """prog.get("consecutive_reads"),
+        prog.get("consecutive_reads"),
         prog.get("max_ranks"),
-        prog.get("p2p_rendezvous") TODO: fix"""
+        """prog.get("p2p_rendezvous") TODO: fix"""
     )
 
 

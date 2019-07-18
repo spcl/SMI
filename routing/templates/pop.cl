@@ -3,14 +3,11 @@
 {%- macro smi_pop_impl(program, op) -%}
 void {{ utils.impl_name_port_type("SMI_Pop", op) }}(SMI_Channel *chan, void *data)
 {
-    {% set ckr_data = program.create_group("ckr_data") %}
-    {% set cks_control = program.create_group("cks_control") %}
-
     // in this case we have to copy the data into the target variable
     if (chan->packet_element_id == 0)
     {
         // no data to be unpacked...receive from the network
-        chan->net = read_channel_intel({{ utils.channel_array("ckr_data")}}[{{ ckr_data.get_hw_port(op.logical_port) }}]);
+        chan->net = read_channel_intel({{ op.get_channel("ckr_data") }});
     }
     chan->processed_elements++;
     char *data_recvd = chan->net.data;
@@ -48,7 +45,7 @@ void {{ utils.impl_name_port_type("SMI_Pop", op) }}(SMI_Channel *chan, void *dat
         SET_HEADER_DST(mess.header, chan->sender_rank);
         SET_HEADER_PORT(mess.header, chan->port);
         SET_HEADER_OP(mess.header, SMI_SYNCH);
-        write_channel_intel({{ utils.channel_array("cks_control")}}[{{ cks_control.get_hw_port(op.logical_port) }}], mess);
+        write_channel_intel({{ op.get_channel("cks_control") }}, mess);
     }
 }
 {%- endmacro %}

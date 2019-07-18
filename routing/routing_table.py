@@ -3,7 +3,7 @@ from typing import List
 import bitstring
 
 from ops import KEY_CKR_DATA, KEY_CKR_CONTROL
-from program import Channel, FPGA, Program, INVALID_HARDWARE_PORT, split_kernel_method
+from program import Channel, FPGA, Program
 
 CKS_TARGET_QSFP = 0
 CKS_TARGET_CKR = 1
@@ -62,19 +62,15 @@ def get_input_target(channel: Channel, logical_port: int, program: Program,
     N -> first hardware port assigned to the given channel
     N + 1 -> second hardware port assigned to the given channel
     """
-    group = program.create_group(key)
-    hw_mapping = group.hw_mapping()
 
-    hw_port = hw_mapping[logical_port]
-    if hw_port == INVALID_HARDWARE_PORT:
+    target_channel_index = program.get_channel_for_port_key(logical_port, key)
+    if target_channel_index is None:
         return 0
-
-    target_channel_index = program.get_channel_for_logical_port(logical_port, key)
     if target_channel_index != channel.index:
         return 1 + channel.target_index(target_channel_index)
 
-    kernel, method = split_kernel_method(key)
-    return channels_per_fpga + program.get_channel_allocations(channel.index)[kernel].index((method, logical_port, hw_port))
+    allocations = tuple((op.logical_port, key) for (op, key) in program.get_channel_allocations(channel.index))
+    return channels_per_fpga + allocations.index((logical_port, key))
 
 
 def ckr_routing_table(channel: Channel, channels_per_fpga: int, program: Program) -> List[int]:

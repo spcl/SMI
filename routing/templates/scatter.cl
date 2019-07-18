@@ -7,15 +7,12 @@ __kernel void smi_kernel_scatter_{{ op.logical_port }}(char num_rank)
     char to_be_received_requests = 0; // how many ranks have still to communicate that they are ready to receive
     const char num_requests = num_rank - 1;
     SMI_Network_message mess;
-    {% set ckr_control = program.create_group("ckr_control") %}
-    {% set cks_data = program.create_group("cks_data") %}
-    {% set scatter = program.create_group("scatter") %}
 
     while (true)
     {
         if (external) // read from the application
         {
-            mess = read_channel_intel({{ utils.channel_array("scatter") }}[{{ scatter.get_hw_port(op.logical_port) }}]);
+            mess = read_channel_intel({{ op.get_channel("scatter") }});
             if (GET_HEADER_OP(mess.header) == SMI_SYNCH)
             {
                 to_be_received_requests = num_requests;
@@ -27,13 +24,13 @@ __kernel void smi_kernel_scatter_{{ op.logical_port }}(char num_rank)
         {
             if (to_be_received_requests != 0)
             {
-                SMI_Network_message req = read_channel_intel({{ utils.channel_array("ckr_control") }}[{{ ckr_control.get_hw_port(op.logical_port) }}]);
+                SMI_Network_message req = read_channel_intel({{ op.get_channel("ckr_control") }});
                 to_be_received_requests--;
             }
             else
             {
-                //just push it to the network
-                write_channel_intel({{ utils.channel_array("cks_data") }}[{{ cks_data.get_hw_port(op.logical_port) }}], mess);
+                // just push it to the network
+                write_channel_intel({{ op.get_channel("cks_data") }}, mess);
                 external = true;
             }
         }
@@ -74,11 +71,6 @@ void {{ utils.impl_name_port_type("SMI_Scatter", op) }}(SMI_ScatterChannel* chan
             }
         }
 
-{% set scatter = program.create_group("scatter") %}
-{% set cks_control = program.create_group("cks_control") %}
-{% set ckr_data = program.create_group("ckr_data") %}
-{% set cks_control = program.create_group("cks_control") %}
-
         chan->packet_element_id++;
         // split this in packets holding send_count elements
         if (chan->packet_element_id == elem_per_packet ||
@@ -91,7 +83,7 @@ void {{ utils.impl_name_port_type("SMI_Scatter", op) }}(SMI_ScatterChannel* chan
 
             if (chan->next_rcv != chan->my_rank)
             {
-                write_channel_intel({{ utils.channel_array("scatter") }}[{{ scatter.get_hw_port(op.logical_port) }}], chan->net);
+                write_channel_intel({{ op.get_channel("scatter") }}, chan->net);
                 SET_HEADER_OP(chan->net.header, SMI_SCATTER);
             }
 
@@ -108,12 +100,12 @@ void {{ utils.impl_name_port_type("SMI_Scatter", op) }}(SMI_ScatterChannel* chan
     {
         if(chan->init)  //send ready-to-receive to the root
         {
-            write_channel_intel({{ utils.channel_array("cks_control") }}[{{ cks_control.get_hw_port(op.logical_port) }}], chan->net);
+            write_channel_intel({{ op.get_channel("cks_control") }}, chan->net);
             chan->init=false;
         }
         if (chan->packet_element_id_rcv == 0)
         {
-            chan->net_2 = read_channel_intel({{ utils.channel_array("ckr_data") }}[{{ ckr_data.get_hw_port(op.logical_port) }}]);
+            chan->net_2 = read_channel_intel({{ op.get_channel("ckr_data") }});
         }
         COPY_DATA_FROM_NET_MESSAGE(chan, chan->net_2, data_rcv);
 
