@@ -32,5 +32,5 @@ if(PythonInterp_FOUND)
     #add_smi_microbenchmarks("${CMAKE_CURRENT_SOURCE_DIR}/kernels/s2s_test_0.cl" 8 OFF)
     #add_smi_microbenchmarks("${CMAKE_CURRENT_SOURCE_DIR}/kernels/s2s_test_1.cl" 8 OFF)
 
-    smi_target(s2s "${CMAKE_CURRENT_SOURCE_DIR}/kernels/s2s_test.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/broadcast.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/s2s_test_0.cl;${CMAKE_CURRENT_SOURCE_DIR}/kernels/s2s_test_1.cl" 8)
+    smi_target(s2s "${CMAKE_CURRENT_SOURCE_DIR}/kernels/s2s_test.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/bandwidth_benchmark.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/s2s_test_0.cl;${CMAKE_CURRENT_SOURCE_DIR}/kernels/s2s_test_1.cl" 8)
 endif()

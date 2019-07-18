@@ -78,17 +78,18 @@ def codegen_device(routing_file, rewriter, src_dir, dest_dir, device_src, output
 
 @click.command()
 @click.argument("host-src")
-@click.argument("program-metadata", nargs=-1)
-def codegen_host(host_src, program_metadata):
+@click.argument("metadata", nargs=-1)
+def codegen_host(host_src, metadata):
     """
     Creates routing tables and hostfile.
     :param host_src: path to a file with generated host code
-    :param program_metadata: list of program metadata files
+    :param metadata: list of program metadata files
     """
     programs = []
-    for program in program_metadata:
+    for program in metadata:
         with open(program) as pf:
-            programs.append(parse_program(pf.read()))
+            basename = os.path.splitext(os.path.basename(program))[0]
+            programs.append((basename, parse_program(pf.read())))
 
     write_file(host_src, generate_program_host(programs))
 
@@ -96,18 +97,18 @@ def codegen_host(host_src, program_metadata):
 @click.command()
 @click.argument("routing_file")
 @click.argument("dest_dir")
-@click.argument("metadata")
+@click.argument("metadata", nargs=-1)
 def route(routing_file, dest_dir, metadata):
     """
     Creates routing tables and hostfile.
     :param routing_file: path to a file with FPGA connections and FPGA-to-program mapping
     :param dest_dir: path to a directory where routing tables and the hostfile will be generated
-    :param metadata: space separated list of metadata files
+    :param metadata: list of program metadata files
     """
     prepare_directory(os.path.abspath(dest_dir))
 
     with open(routing_file) as rf:
-        (connections, mapping) = parse_routing_file(rf.read(), metadata.split(" "))
+        (connections, mapping) = parse_routing_file(rf.read(), metadata)
         ctx = create_routing_context(connections, mapping)
 
     for fpga in ctx.fpgas:

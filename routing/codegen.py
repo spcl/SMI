@@ -42,7 +42,7 @@ def channel_name(src: Channel, out: bool, graph: Graph) -> str:
     return "{}_{}".format(local_channel, remote_channel)
 
 
-def generate_program_host(programs: List[Program]) -> str:
+def generate_program_host(programs) -> str:
     template = read_template_file("host.cl")
     return template.render(programs=programs)
 

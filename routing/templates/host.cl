@@ -3,8 +3,8 @@
 #include <vector>
 #include <smi/communicator.h>
 
-{%- for program in programs -%}
-SMI_Comm SmiInit_{{ loop.index0 }}(
+{% for (name, program) in programs -%}
+SMI_Comm SmiInit_{{ name }}(
         int rank,
         int ranks_count,
         const char* program_path,
@@ -113,4 +113,4 @@ SMI_Comm SmiInit_{{ loop.index0 }}(
     return comm;
 
 }
-{%- endfor -%}
+{% endfor %}
