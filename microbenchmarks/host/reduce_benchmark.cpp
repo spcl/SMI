@@ -12,7 +12,7 @@
 #include <cmath>
 #include <utils/ocl_utils.hpp>
 #include "smi-generated-host.c"
-#define ROUTING_DIR "./"
+#define ROUTING_DIR "smi-routes/"
 
 using namespace std;
 int main(int argc, char *argv[])
@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
     cl::Context context;
     cl::Program program;
     std::vector<cl::Buffer> buffers;
-    SMI_Comm comm=SmiInit(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga,buffers);
+    SMI_Comm comm=SmiInit_reduce(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga,buffers);
 
     cl::Kernel kernel;
     cl::CommandQueue queue;

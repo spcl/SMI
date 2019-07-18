@@ -1,6 +1,4 @@
 # Configuration 
-set(SMI_STENCIL_SIZE_X 8192 CACHE STRING "Vertical size of domain.")
-set(SMI_STENCIL_SIZE_Y 8192 CACHE STRING "Horizontal size of domain.")
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
@@ -35,5 +33,8 @@ if(PythonInterp_FOUND)
 
     smi_target(broadcast "${CMAKE_CURRENT_SOURCE_DIR}/kernels/broadcast.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/broadcast_benchmark.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/broadcast.cl" 8)
     smi_target(s2s "${CMAKE_CURRENT_SOURCE_DIR}/kernels/s2s_test.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/bandwidth_benchmark.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/s2s_test_0.cl;${CMAKE_CURRENT_SOURCE_DIR}/kernels/s2s_test_1.cl" 8)
+    smi_target(reduce "${CMAKE_CURRENT_SOURCE_DIR}/kernels/reduce.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/reduce_benchmark.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/reduce.cl" 8)
+
+    smi_target(scatter "${CMAKE_CURRENT_SOURCE_DIR}/kernels/scatter.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/scatter_benchmark.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/scatter.cl" 8)
 
 endif()

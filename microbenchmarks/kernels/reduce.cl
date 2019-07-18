@@ -4,9 +4,7 @@
 */
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
-#define BUFFER_SIZE 256
 #include <smi.h>
-#include "smi-generated-device.cl"
 
 __kernel void app(const int N, char root, __global volatile char *mem, SMI_Comm comm)
 {
