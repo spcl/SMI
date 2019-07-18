@@ -69,7 +69,8 @@ def get_input_target(channel: Channel, logical_port: int, program: Program,
     if target_channel_index != channel.index:
         return 1 + channel.target_index(target_channel_index)
 
-    allocations = tuple((op.logical_port, key) for (op, key) in program.get_channel_allocations(channel.index))
+    allocations = tuple((op.logical_port, key) for (op, key)
+                        in program.get_channel_allocations_with_prefix(channel.index, "ckr"))
     return channels_per_fpga + allocations.index((logical_port, key))
 
 

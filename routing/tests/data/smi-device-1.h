@@ -1,5 +1,3 @@
-#define BUFFER_SIZE 
-
 #include "smi/network_message.h"
 
 
@@ -90,7 +88,7 @@ channel SMI_Network_message broadcast_4_cks_data __attribute__((depth(16)));
 // Push(5)
 channel SMI_Network_message push_5_ckr_control __attribute__((depth(32)));
 channel SMI_Network_message push_5_cks_data __attribute__((depth(16)));
-// Broadcast(6)
+// Reduce(6)
 channel SMI_Network_message reduce_6_ckr_control __attribute__((depth(16)));
 channel SMI_Network_message reduce_6_ckr_data __attribute__((depth(16)));
 channel SMI_Network_message reduce_6_cks_control __attribute__((depth(16)));
@@ -143,8 +141,8 @@ __kernel void smi_kernel_cks_0(__global volatile char *restrict rt, const char n
         }
     }
 
-    // number of CK_S - 1 + CK_R + 0 CKS hardware ports
-    const char num_sender = 4;
+    // number of CK_S - 1 + CK_R + 4 CKS hardware ports
+    const char num_sender = 8;
     char sender_id = 0;
     SMI_Network_message message;
 
@@ -176,16 +174,16 @@ __kernel void smi_kernel_cks_0(__global volatile char *restrict rt, const char n
                 message = read_channel_nb_intel(push_0_cks_data, &valid);
                 break;
             case 5:
-                // receive from Broadcast(3)
-                message = read_channel_nb_intel(broadcast_3_cks_control, &valid);
-                break;
-            case 6:
                 // receive from Push(5)
                 message = read_channel_nb_intel(push_5_cks_data, &valid);
                 break;
+            case 6:
+                // receive from Pop(0)
+                message = read_channel_nb_intel(pop_0_cks_control, &valid);
+                break;
             case 7:
-                // receive from Scatter(7)
-                message = read_channel_nb_intel(scatter_7_cks_data, &valid);
+                // receive from Reduce(6)
+                message = read_channel_nb_intel(reduce_6_cks_control, &valid);
                 break;
         }
 
@@ -302,20 +300,20 @@ __kernel void smi_kernel_ckr_0(__global volatile char *restrict rt, const char r
                     write_channel_intel(channels_interconnect_ck_r[9], message);
                     break;
                 case 4:
-                    // send to Push(0)
-                    write_channel_intel(push_0_ckr_control, message);
+                    // send to Pop(0)
+                    write_channel_intel(pop_0_ckr_data, message);
                     break;
                 case 5:
-                    // send to Broadcast(3)
-                    write_channel_intel(broadcast_3_ckr_control, message);
+                    // send to Reduce(6)
+                    write_channel_intel(reduce_6_ckr_data, message);
                     break;
                 case 6:
-                    // send to Push(5)
-                    write_channel_intel(push_5_ckr_control, message);
+                    // send to Push(1)
+                    write_channel_intel(push_1_ckr_control, message);
                     break;
                 case 7:
-                    // send to Scatter(7)
-                    write_channel_intel(scatter_7_ckr_data, message);
+                    // send to Reduce(6)
+                    write_channel_intel(reduce_6_ckr_control, message);
                     break;
             }
         }
@@ -342,8 +340,8 @@ __kernel void smi_kernel_cks_1(__global volatile char *restrict rt, const char n
         }
     }
 
-    // number of CK_S - 1 + CK_R + 0 CKS hardware ports
-    const char num_sender = 4;
+    // number of CK_S - 1 + CK_R + 4 CKS hardware ports
+    const char num_sender = 8;
     char sender_id = 0;
     SMI_Network_message message;
 
@@ -371,20 +369,20 @@ __kernel void smi_kernel_cks_1(__global volatile char *restrict rt, const char n
                 message = read_channel_nb_intel(channels_interconnect_ck_r_to_ck_s[1], &valid);
                 break;
             case 4:
-                // receive from Pop(0)
-                message = read_channel_nb_intel(pop_0_cks_control, &valid);
+                // receive from Push(1)
+                message = read_channel_nb_intel(push_1_cks_data, &valid);
                 break;
             case 5:
-                // receive from Broadcast(3)
-                message = read_channel_nb_intel(broadcast_3_cks_data, &valid);
+                // receive from Reduce(6)
+                message = read_channel_nb_intel(reduce_6_cks_data, &valid);
                 break;
             case 6:
-                // receive from Broadcast(6)
-                message = read_channel_nb_intel(reduce_6_cks_control, &valid);
+                // receive from Pop(2)
+                message = read_channel_nb_intel(pop_2_cks_control, &valid);
                 break;
             case 7:
-                // receive from Gather(8)
-                message = read_channel_nb_intel(gather_8_cks_control, &valid);
+                // receive from Scatter(7)
+                message = read_channel_nb_intel(scatter_7_cks_control, &valid);
                 break;
         }
 
@@ -501,20 +499,20 @@ __kernel void smi_kernel_ckr_1(__global volatile char *restrict rt, const char r
                     write_channel_intel(channels_interconnect_ck_r[10], message);
                     break;
                 case 4:
-                    // send to Pop(0)
-                    write_channel_intel(pop_0_ckr_data, message);
+                    // send to Pop(2)
+                    write_channel_intel(pop_2_ckr_data, message);
                     break;
                 case 5:
-                    // send to Broadcast(3)
-                    write_channel_intel(broadcast_3_ckr_data, message);
+                    // send to Scatter(7)
+                    write_channel_intel(scatter_7_ckr_data, message);
                     break;
                 case 6:
-                    // send to Broadcast(6)
-                    write_channel_intel(reduce_6_ckr_control, message);
+                    // send to Broadcast(3)
+                    write_channel_intel(broadcast_3_ckr_control, message);
                     break;
                 case 7:
-                    // send to Gather(8)
-                    write_channel_intel(gather_8_ckr_control, message);
+                    // send to Scatter(7)
+                    write_channel_intel(scatter_7_ckr_control, message);
                     break;
             }
         }
@@ -541,8 +539,8 @@ __kernel void smi_kernel_cks_2(__global volatile char *restrict rt, const char n
         }
     }
 
-    // number of CK_S - 1 + CK_R + 0 CKS hardware ports
-    const char num_sender = 4;
+    // number of CK_S - 1 + CK_R + 4 CKS hardware ports
+    const char num_sender = 8;
     char sender_id = 0;
     SMI_Network_message message;
 
@@ -570,20 +568,20 @@ __kernel void smi_kernel_cks_2(__global volatile char *restrict rt, const char n
                 message = read_channel_nb_intel(channels_interconnect_ck_r_to_ck_s[2], &valid);
                 break;
             case 4:
-                // receive from Push(1)
-                message = read_channel_nb_intel(push_1_cks_data, &valid);
+                // receive from Broadcast(3)
+                message = read_channel_nb_intel(broadcast_3_cks_data, &valid);
                 break;
             case 5:
-                // receive from Broadcast(4)
-                message = read_channel_nb_intel(broadcast_4_cks_control, &valid);
+                // receive from Scatter(7)
+                message = read_channel_nb_intel(scatter_7_cks_data, &valid);
                 break;
             case 6:
-                // receive from Broadcast(6)
-                message = read_channel_nb_intel(reduce_6_cks_data, &valid);
+                // receive from Broadcast(3)
+                message = read_channel_nb_intel(broadcast_3_cks_control, &valid);
                 break;
             case 7:
                 // receive from Gather(8)
-                message = read_channel_nb_intel(gather_8_cks_data, &valid);
+                message = read_channel_nb_intel(gather_8_cks_control, &valid);
                 break;
         }
 
@@ -700,20 +698,20 @@ __kernel void smi_kernel_ckr_2(__global volatile char *restrict rt, const char r
                     write_channel_intel(channels_interconnect_ck_r[11], message);
                     break;
                 case 4:
-                    // send to Push(1)
-                    write_channel_intel(push_1_ckr_control, message);
+                    // send to Broadcast(3)
+                    write_channel_intel(broadcast_3_ckr_data, message);
                     break;
                 case 5:
+                    // send to Gather(8)
+                    write_channel_intel(gather_8_ckr_data, message);
+                    break;
+                case 6:
                     // send to Broadcast(4)
                     write_channel_intel(broadcast_4_ckr_control, message);
                     break;
-                case 6:
-                    // send to Broadcast(6)
-                    write_channel_intel(reduce_6_ckr_data, message);
-                    break;
                 case 7:
                     // send to Gather(8)
-                    write_channel_intel(gather_8_ckr_data, message);
+                    write_channel_intel(gather_8_ckr_control, message);
                     break;
             }
         }
@@ -740,8 +738,8 @@ __kernel void smi_kernel_cks_3(__global volatile char *restrict rt, const char n
         }
     }
 
-    // number of CK_S - 1 + CK_R + 0 CKS hardware ports
-    const char num_sender = 4;
+    // number of CK_S - 1 + CK_R + 3 CKS hardware ports
+    const char num_sender = 7;
     char sender_id = 0;
     SMI_Network_message message;
 
@@ -769,16 +767,16 @@ __kernel void smi_kernel_cks_3(__global volatile char *restrict rt, const char n
                 message = read_channel_nb_intel(channels_interconnect_ck_r_to_ck_s[3], &valid);
                 break;
             case 4:
-                // receive from Pop(2)
-                message = read_channel_nb_intel(pop_2_cks_control, &valid);
-                break;
-            case 5:
                 // receive from Broadcast(4)
                 message = read_channel_nb_intel(broadcast_4_cks_data, &valid);
                 break;
+            case 5:
+                // receive from Gather(8)
+                message = read_channel_nb_intel(gather_8_cks_data, &valid);
+                break;
             case 6:
-                // receive from Scatter(7)
-                message = read_channel_nb_intel(scatter_7_cks_control, &valid);
+                // receive from Broadcast(4)
+                message = read_channel_nb_intel(broadcast_4_cks_control, &valid);
                 break;
         }
 
@@ -895,16 +893,16 @@ __kernel void smi_kernel_ckr_3(__global volatile char *restrict rt, const char r
                     write_channel_intel(channels_interconnect_ck_r[8], message);
                     break;
                 case 4:
-                    // send to Pop(2)
-                    write_channel_intel(pop_2_ckr_data, message);
-                    break;
-                case 5:
                     // send to Broadcast(4)
                     write_channel_intel(broadcast_4_ckr_data, message);
                     break;
+                case 5:
+                    // send to Push(0)
+                    write_channel_intel(push_0_ckr_control, message);
+                    break;
                 case 6:
-                    // send to Scatter(7)
-                    write_channel_intel(scatter_7_ckr_control, message);
+                    // send to Push(5)
+                    write_channel_intel(push_5_ckr_control, message);
                     break;
             }
         }
@@ -1385,6 +1383,7 @@ SMI_BChannel SMI_Open_bcast_channel_3_float(int count, SMI_Datatype data_type, i
     chan.packet_element_id = 0;
     chan.packet_element_id_rcv = 0;
     return chan;
+}
 SMI_BChannel SMI_Open_bcast_channel_4_int(int count, SMI_Datatype data_type, int port, int root, SMI_Comm comm)
 {
     SMI_BChannel chan;
@@ -1419,6 +1418,7 @@ SMI_BChannel SMI_Open_bcast_channel_4_int(int count, SMI_Datatype data_type, int
     chan.packet_element_id = 0;
     chan.packet_element_id_rcv = 0;
     return chan;
+}
 
 void SMI_Bcast_3_float(SMI_BChannel* chan, void* data)
 {

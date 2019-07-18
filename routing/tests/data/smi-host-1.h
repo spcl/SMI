@@ -1,7 +1,9 @@
 #define __HOST_PROGRAM__
 #include <utils/smi_utils.hpp>
 #include <vector>
-#include <smi/communicator.h>SMI_Comm SmiInit_0(
+#include <smi/communicator.h>
+
+SMI_Comm SmiInit_program(
         int rank,
         int ranks_count,
         const char* program_path,

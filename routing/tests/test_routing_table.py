@@ -41,10 +41,10 @@ def test_ckr_table():
     ])
     fpga = FPGA("n", "f", program)
 
-    assert ckr_routing_table(fpga.channels[0], CHANNELS_PER_FPGA, program) == [0, 6, 1, 0, 0, 2, 3, 0, 7, 0]
-    assert ckr_routing_table(fpga.channels[1], CHANNELS_PER_FPGA, program) == [0, 1, 5, 0, 0, 2, 3, 0, 1, 0]
-    assert ckr_routing_table(fpga.channels[2], CHANNELS_PER_FPGA, program) == [0, 1, 2, 0, 0, 5, 3, 0, 1, 0]
-    assert ckr_routing_table(fpga.channels[3], CHANNELS_PER_FPGA, program) == [0, 1, 2, 0, 0, 3, 5, 0, 1, 0]
+    assert ckr_routing_table(fpga.channels[0], CHANNELS_PER_FPGA, program) == [0, 3, 4, 0, 0, 5, 1, 0, 2, 0]
+    assert ckr_routing_table(fpga.channels[1], CHANNELS_PER_FPGA, program) == [0, 3, 1, 0, 0, 1, 4, 0, 2, 0]
+    assert ckr_routing_table(fpga.channels[2], CHANNELS_PER_FPGA, program) == [0, 3, 1, 0, 0, 1, 2, 0, 4, 0]
+    assert ckr_routing_table(fpga.channels[3], CHANNELS_PER_FPGA, program) == [0, 4, 1, 0, 0, 1, 2, 0, 3, 0]
 
 
 def test_ckr_no_route():

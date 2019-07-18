@@ -168,7 +168,7 @@ class Reduce(SmiOperation):
         }
 
     def __repr__(self):
-        return "Broadcast({})".format(self.logical_port)
+        return "Reduce({})".format(self.logical_port)
 
 
 class Scatter(SmiOperation):

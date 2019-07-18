@@ -12,7 +12,7 @@ __kernel void smi_kernel_cks_{{ channel.index }}(__global volatile char *restric
         }
     }
 
-{% set allocations = program.get_channel_allocations(channel.index)["cks"] %}
+{% set allocations = program.get_channel_allocations_with_prefix(channel.index, "cks") %}
     // number of CK_S - 1 + CK_R + {{ allocations|length }} CKS hardware ports
     const char num_sender = {{ channel_count + allocations|length }};
     char sender_id = 0;
@@ -35,7 +35,7 @@ __kernel void smi_kernel_cks_{{ channel.index }}(__global volatile char *restric
                 // receive from CK_R_{{ channel.index }}
                 message = read_channel_nb_intel(channels_interconnect_ck_r_to_ck_s[{{ channel.index }}], &valid);
                 break;
-            {% for (op, key) in program.get_channel_allocations_with_prefix(channel.index, "cks") %}
+            {% for (op, key) in allocations %}
             case {{ channel_count + loop.index0 }}:
                 // receive from {{ op }}
                 message = read_channel_nb_intel({{ op.get_channel(key) }}, &valid);

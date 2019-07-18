@@ -57,16 +57,18 @@ def allocate_channels(operations: List[SmiOperation], count: int):
         KEY_CKR_CONTROL
     )
 
-    op_channels = []
-    for op in operations:
-        for ch in sorted(op.channel_usage()):
-            if ch in required_channels:
-                op_channels.append((op, ch))
+    op_channels = {
+        "cks": [],
+        "ckr": []
+    }
 
-    prefixes = ("cks", "ckr")
+    for chan in required_channels:
+        for op in operations:
+            usage = op.channel_usage()
+            if chan in usage:
+                op_channels[chan.split("_")[0]].append((op, chan))
 
-    for prefix in prefixes:
-        ops = [(op, ch) for (op, ch) in op_channels if ch.startswith(prefix)]
+    for (key, ops) in op_channels.items():
         for channel in range(count):
             channel_allocations[channel] += round_robin(ops, channel, count)
     return channel_allocations
