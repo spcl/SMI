@@ -333,6 +333,7 @@ function(smi_target TARGET_NAME CONNECTION_FILE HOST_SOURCE KERNELS NUM_RANKS)
     set(HOST_TARGET ${TARGET_NAME}_host)
     add_executable(${HOST_TARGET} ${HOST_SOURCE})
     target_include_directories(${HOST_TARGET} PRIVATE ${WORKDIR})
+    set_target_properties(${HOST_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${WORKDIR})
     target_link_libraries(${HOST_TARGET} ${SMI_LIBS})
     add_dependencies(${HOST_TARGET} ${HOST_GENERATED_TARGET})
 
