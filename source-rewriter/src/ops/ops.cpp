@@ -15,7 +15,7 @@ void ChannelExtractor::OutputMetadata(const OperationMetadata& metadata, std::os
     json obj;
     obj["type"] = metadata.operation;
     obj["port"] = metadata.port;
-    obj["data_type"] = metadata.dataType;
+    obj["data_type"] = formatDataType(metadata.dataType);
 
     if (metadata.isBufferSizeSet())
     {
