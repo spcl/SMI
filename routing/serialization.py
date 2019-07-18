@@ -1,5 +1,6 @@
 import json
 import re
+import os
 from typing import List, Tuple, Dict
 
 from ops import Broadcast, Push, Pop, Reduce, Scatter, Gather
@@ -58,7 +59,14 @@ def serialize_program(program: Program) -> str:
     })
 
 
-def parse_routing_file(data: str, ignore_programs=False) -> Tuple[Dict[Tuple[str, int], Tuple[str, int]], ProgramMapping]:
+def parse_routing_file(data: str, metadata_paths=None, ignore_programs=False) -> Tuple[Dict[Tuple[str, int], Tuple[str, int]], ProgramMapping]:
+    if metadata_paths is None:
+        metadata_paths = []
+
+    path_index = {}
+    for path in metadata_paths:
+        path_index[os.path.splitext(os.path.basename(path))[0]] = path
+
     data = json.loads(data)
     program_cache = {}
     fpga_map = {}
@@ -67,7 +75,8 @@ def parse_routing_file(data: str, ignore_programs=False) -> Tuple[Dict[Tuple[str
             if ignore_programs:
                 program_cache[program_path] = None
             else:
-                with open(program_path) as pf:
+                real_path = path_index[program_path]
+                with open(real_path) as pf:
                     program_cache[program_path] = parse_program(pf.read())
 
         fpga_map[fpga] = program_cache[program_path]

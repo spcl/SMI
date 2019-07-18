@@ -52,18 +52,8 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
  * @param comm communicator
  * @return the channel descriptor
  */
-SMI_RChannel SMI_Open_reduce_channel(int count, SMI_Datatype data_type, SMI_Op op, int port, int root, SMI_Comm comm)
-{
-    // implemented in codegen
-    SMI_RChannel chan;
-    return chan;
-}
-SMI_RChannel SMI_Open_reduce_channel_ad(int count, SMI_Datatype data_type, SMI_Op op, int port, int root, SMI_Comm comm, int buffer_size)
-{
-    // fake function
-    SMI_RChannel chan;
-    return chan;
-}
+SMI_RChannel SMI_Open_reduce_channel(int count, SMI_Datatype data_type, SMI_Op op, int port, int root, SMI_Comm comm);
+SMI_RChannel SMI_Open_reduce_channel_ad(int count, SMI_Datatype data_type, SMI_Op op, int port, int root, SMI_Comm comm, int buffer_size);
 
 /**
  * @brief SMI_Reduce
@@ -71,9 +61,6 @@ SMI_RChannel SMI_Open_reduce_channel_ad(int count, SMI_Datatype data_type, SMI_O
  * @param data_snd pointer to the data element that must be reduced
  * @param data_rcv pointer to the receiving data element  (root only)
  */
-void SMI_Reduce(SMI_RChannel *chan,  void* data_snd, void* data_rcv)
-{
-    // implemented in codegen
-}
+void SMI_Reduce(SMI_RChannel *chan,  void* data_snd, void* data_rcv);
 
 #endif // REDUCE_H

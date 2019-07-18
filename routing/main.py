@@ -17,12 +17,17 @@ def prepare_directory(path):
         os.makedirs(path, exist_ok=True)
 
 
+def write_file(path, content, binary=False):
+    prepare_directory(os.path.dirname(os.path.abspath(path)))
+    with open(path, "wb" if binary else "w") as f:
+        f.write(content)
+
+
 def write_table(channel: Channel, prefix: str, table: List[int], output_folder):
     bytes = serialize_to_array(table)
     filename = "{}-rank{}-channel{}".format(prefix, channel.fpga.rank, channel.index)
 
-    with open(os.path.join(output_folder, filename), "wb") as f:
-        f.write(bytes)
+    write_file(os.path.join(output_folder, filename), bytes, binary=True)
 
 
 @click.command()
@@ -66,11 +71,9 @@ def codegen_device(routing_file, rewriter, src_dir, dest_dir, device_src, output
 
     fpgas = ctx.fpgas
     if fpgas:
-        with open(device_src, "w") as f:
-            f.write(generate_program_device(fpgas[0], fpgas, ctx.graph, CHANNELS_PER_FPGA))
+        write_file(device_src, generate_program_device(fpgas[0], fpgas, ctx.graph, CHANNELS_PER_FPGA))
 
-    with open(output_program, "w") as f:
-        f.write(serialize_program(program))
+    write_file(output_program, serialize_program(program))
 
 
 @click.command()
@@ -87,21 +90,24 @@ def codegen_host(host_src, program_metadata):
         with open(program) as pf:
             programs.append(parse_program(pf.read()))
 
-    with open(host_src, "w") as f:
-        f.write(generate_program_host(programs))
+    write_file(host_src, generate_program_host(programs))
 
 
 @click.command()
 @click.argument("routing_file")
 @click.argument("dest_dir")
-def route(routing_file, dest_dir):
+@click.argument("metadata")
+def route(routing_file, dest_dir, metadata):
     """
     Creates routing tables and hostfile.
     :param routing_file: path to a file with FPGA connections and FPGA-to-program mapping
     :param dest_dir: path to a directory where routing tables and the hostfile will be generated
+    :param metadata: space separated list of metadata files
     """
+    prepare_directory(os.path.abspath(dest_dir))
+
     with open(routing_file) as rf:
-        (connections, mapping) = parse_routing_file(rf.read())
+        (connections, mapping) = parse_routing_file(rf.read(), metadata.split(" "))
         ctx = create_routing_context(connections, mapping)
 
     for fpga in ctx.fpgas:

@@ -44,18 +44,8 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
  * @param comm communicator
  * @return the channel descriptor
  */
-SMI_GatherChannel SMI_Open_gather_channel(int send_count, int recv_count, SMI_Datatype data_type, int port, int root, SMI_Comm comm)
-{
-    // implemented in codegen
-    SMI_GatherChannel chan;
-    return chan;
-}
-SMI_GatherChannel SMI_Open_gather_channel_ad(int send_count, int recv_count, SMI_Datatype data_type, int port, int root, SMI_Comm comm, int buffer_size)
-{
-    // fake function
-    SMI_GatherChannel chan;
-    return chan;
-}
+SMI_GatherChannel SMI_Open_gather_channel(int send_count, int recv_count, SMI_Datatype data_type, int port, int root, SMI_Comm comm);
+SMI_GatherChannel SMI_Open_gather_channel_ad(int send_count, int recv_count, SMI_Datatype data_type, int port, int root, SMI_Comm comm, int buffer_size);
 
 /**
  * @brief SMI_Gather
@@ -63,9 +53,6 @@ SMI_GatherChannel SMI_Open_gather_channel_ad(int send_count, int recv_count, SMI
  * @param data_snd pointer to the data element that must be sent
  * @param data_rcv pointer to the receiving data element (significant on the root rank only)
  */
-void SMI_Gather(SMI_GatherChannel *chan, void* send_data, void* rcv_data)
-{
-    // implemented in codegen
-}
+void SMI_Gather(SMI_GatherChannel *chan, void* send_data, void* rcv_data);
 
 #endif // GATHER_H

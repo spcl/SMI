@@ -40,18 +40,8 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
  * @param comm communicator
  * @return the channel descriptor
  */
-SMI_BChannel SMI_Open_bcast_channel(int count, SMI_Datatype data_type, int port, int root, SMI_Comm comm)
-{
-    // implemented in codegen
-    SMI_BChannel chan;
-    return chan;
-}
-SMI_BChannel SMI_Open_bcast_channel_ad(int count, SMI_Datatype data_type, int port, int root, SMI_Comm comm, int buffer_size)
-{
-    // fake function
-    SMI_BChannel chan;
-    return chan;
-}
+SMI_BChannel SMI_Open_bcast_channel(int count, SMI_Datatype data_type, int port, int root, SMI_Comm comm);
+SMI_BChannel SMI_Open_bcast_channel_ad(int count, SMI_Datatype data_type, int port, int root, SMI_Comm comm, int buffer_size);
 
 /**
  * @brief SMI_Bcast
@@ -59,8 +49,5 @@ SMI_BChannel SMI_Open_bcast_channel_ad(int count, SMI_Datatype data_type, int po
  * @param data pointer to the data element: on the root rank is the element that will be transmitted,
     on the non-root rank will be the received element
  */
-void SMI_Bcast(SMI_BChannel *chan, void* data)
-{
-    // implemented in codegen
-}
+void SMI_Bcast(SMI_BChannel *chan, void* data);
 #endif // BCAST_H

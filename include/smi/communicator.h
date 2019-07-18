@@ -17,7 +17,7 @@ typedef char2 SMI_Comm;
  * @param comm
  * @return the communicator size
  */
-int SMI_Comm_size(SMI_Comm comm){
+inline int SMI_Comm_size(SMI_Comm comm){
     return comm[1];
 }
 
@@ -26,7 +26,7 @@ int SMI_Comm_size(SMI_Comm comm){
  * @param comm
  * @return rank of the caller
  */
-int SMI_Comm_rank(SMI_Comm comm){
+inline int SMI_Comm_rank(SMI_Comm comm){
     return comm[0];
 }
 #endif

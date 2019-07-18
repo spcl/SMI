@@ -47,19 +47,9 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
  * @return the channel descriptor
  */
 SMI_ScatterChannel SMI_Open_scatter_channel(int send_count, int recv_count,
-        SMI_Datatype data_type, int port, int root, SMI_Comm comm)
-{
-    // implemented in codegen
-    SMI_ScatterChannel chan;
-    return chan;
-}
+        SMI_Datatype data_type, int port, int root, SMI_Comm comm);
 SMI_ScatterChannel SMI_Open_scatter_channel_ad(int send_count, int recv_count,
-        SMI_Datatype data_type, int port, int root, SMI_Comm comm, int buffer_size)
-{
-    // fake function
-    SMI_ScatterChannel chan;
-    return chan;
-}
+        SMI_Datatype data_type, int port, int root, SMI_Comm comm, int buffer_size);
 
 /**
  * @brief SMI_Scatter
@@ -67,9 +57,6 @@ SMI_ScatterChannel SMI_Open_scatter_channel_ad(int send_count, int recv_count,
  * @param data_snd pointer to the data element that must be sent (root only)
  * @param data_rcv pointer to the receiving data element
  */
-void SMI_Scatter(SMI_ScatterChannel *chan, void* data_snd, void* data_rcv)
-{
-    // implemented in codegen
-}
+void SMI_Scatter(SMI_ScatterChannel *chan, void* data_snd, void* data_rcv);
 
 #endif // SCATTER_H

@@ -17,27 +17,14 @@
  * @param comm communicator
  * @return channel descriptor
  */
-SMI_Channel SMI_Open_receive_channel(int count, SMI_Datatype data_type, int source, int port, SMI_Comm comm)
-{
-    // implemented in codegen
-    SMI_Channel chan;
-    return chan;
-}
-SMI_Channel SMI_Open_receive_channel_ad(int count, SMI_Datatype data_type, int source, int port, SMI_Comm comm, int buffer_size)
-{
-    // fake function
-    SMI_Channel chan;
-    return chan;
-}
+SMI_Channel SMI_Open_receive_channel(int count, SMI_Datatype data_type, int source, int port, SMI_Comm comm);
+SMI_Channel SMI_Open_receive_channel_ad(int count, SMI_Datatype data_type, int source, int port, SMI_Comm comm, int buffer_size);
 
 /**
  * @brief SMI_Pop: receive a data element. Returns only when data arrives
  * @param chan pointer to the transient channel descriptor
  * @param data pointer to the target variable that, on return, will contain the data element
  */
-void SMI_Pop(SMI_Channel *chan, void *data)
-{
-    // implemented in codegen
-}
+void SMI_Pop(SMI_Channel *chan, void *data);
 
 #endif //ifndef POP_H
