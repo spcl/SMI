@@ -1,8 +1,30 @@
-[{
-  "buffer_size": 128,
-  "ports": [{
-    "id": 0,
-    "type": "broadcast"
-  }],
-  "fpgas": ["fpga-0006:acl0", "fpga-0006:acl1","fpga-0007:acl0", "fpga-0007:acl1","fpga-0008:acl0", "fpga-0008:acl1","fpga-0009:acl0", "fpga-0009:acl1"]
-}]
+{
+    "fpgas": {
+      "fpga-0006:acl0": "broadcast",
+      "fpga-0006:acl1": "broadcast",
+      "fpga-0007:acl0": "broadcast",
+      "fpga-0007:acl1": "broadcast",
+      "fpga-0008:acl0": "broadcast",
+      "fpga-0008:acl1": "broadcast",
+      "fpga-0009:acl0": "broadcast",
+      "fpga-0009:acl1": "broadcast"
+    },
+    "connections": {
+      "fpga-0006:acl0:ch2": "fpga-0006:acl1:ch3",
+      "fpga-0006:acl0:ch3": "fpga-0006:acl1:ch2",
+      "fpga-0007:acl0:ch2": "fpga-0007:acl1:ch3",
+      "fpga-0007:acl0:ch3": "fpga-0007:acl1:ch2",
+      "fpga-0006:acl0:ch1": "fpga-0007:acl0:ch0",
+      "fpga-0006:acl1:ch1": "fpga-0007:acl1:ch0",
+      "fpga-0007:acl0:ch1": "fpga-0008:acl0:ch0",
+      "fpga-0007:acl1:ch1": "fpga-0008:acl1:ch0",
+      "fpga-0008:acl0:ch2": "fpga-0008:acl1:ch3",
+      "fpga-0008:acl0:ch3": "fpga-0008:acl1:ch2",
+      "fpga-0009:acl0:ch2": "fpga-0009:acl1:ch3",
+      "fpga-0009:acl0:ch3": "fpga-0009:acl1:ch2",
+      "fpga-0008:acl0:ch1": "fpga-0009:acl0:ch0",
+      "fpga-0008:acl1:ch1": "fpga-0009:acl1:ch0",
+      "fpga-0006:acl0:ch0": "fpga-0009:acl0:ch1",
+      "fpga-0006:acl1:ch0": "fpga-0009:acl1:ch1"
+    }
+  }

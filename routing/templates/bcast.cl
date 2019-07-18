@@ -129,4 +129,5 @@ SMI_BChannel {{ utils.impl_name_port_type("SMI_Open_bcast_channel", op) }}(int c
     chan.packet_element_id = 0;
     chan.packet_element_id_rcv = 0;
     return chan;
+}
 {%- endmacro -%}
