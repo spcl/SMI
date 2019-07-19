@@ -70,7 +70,7 @@ def parse_routing_file(data: str, metadata_paths=None, ignore_programs=False) ->
     data = json.loads(data)
     program_cache = {}
     fpga_map = {}
-    for (fpga, program_path) in data["fpgas"].items():
+    for (fpga, program_path) in data.get("fpgas", {}).items():
         if program_path not in program_cache:
             if ignore_programs:
                 program_cache[program_path] = None
@@ -95,7 +95,7 @@ def parse_routing_file(data: str, metadata_paths=None, ignore_programs=False) ->
         match = channel_regex.match(channel)
         return int(match.group(1))
 
-    for (src, dst) in data["connections"].items():
+    for (src, dst) in data.get("connections", {}).items():
         src, dst = [item.split(":") for item in (src, dst)]
         src, dst = [(parse_key(d), parse_channel(d)) for d in (src, dst)]
         assert src not in connections
