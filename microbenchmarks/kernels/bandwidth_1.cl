@@ -5,9 +5,9 @@
 
     RANK 0 is the source of the data
 */
-#pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
-#include "bandwidth_routing/smi-device-1.h"
+
+#include <smi.h>
 
 __kernel void app(__global char *mem, const int N, SMI_Comm comm)
 {
