@@ -272,8 +272,7 @@ function(smi_target TARGET_NAME CONNECTION_FILE HOST_SOURCE KERNELS NUM_RANKS)
         add_custom_target(${KERNEL_TARGET}
             COMMAND python
                 ${SMI_SCRIPT} codegen-device
-                --include '${CMAKE_SOURCE_DIR}/include'
-                --include '${CMAKE_CURRENT_BINARY_DIR}'
+                --include '${CMAKE_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR}'
                 ${CONNECTION_FILE}
                 ${SMI_REWRITER}
                 ${KERNEL_SRC_DIR}
