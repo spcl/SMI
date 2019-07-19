@@ -353,9 +353,9 @@ int main(int argc, char *argv[])
     int fpga=my_rank%2;
     program_path = replace(program_path, "<rank>", std::to_string(my_rank));
     if(my_rank==0)
-        program_path = replace(program_path, "<type>", std::to_string(0));
+        program_path = replace(program_path, "<type>", std::string("0"));
     else
-        program_path = replace(program_path, "<type>", std::to_string(1));
+        program_path = replace(program_path, "<type>", std::string("1"));
     comm=SmiInit_p2p_rank0(my_rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga,buffers);
 
 

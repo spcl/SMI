@@ -7,8 +7,7 @@
 
 __kernel void test_char(const int N, const char dest_rank, const SMI_Comm comm)
 {
-    const int port=1;
-    SMI_Channel chan=SMI_Open_send_channel(N,SMI_CHAR,dest_rank,port,comm);
+    SMI_Channel chan=SMI_Open_send_channel(N,SMI_CHAR,dest_rank,1,comm);
     for(int i=0;i<N;i++)
     {
        char send=3;

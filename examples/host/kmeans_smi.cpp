@@ -58,7 +58,8 @@ int main(int argc, char **argv) {
     emulator = true;
     // In emulation mode, each rank has its own kernel file
     kernel_path =
-        ("kmeans_smi_emulator_" + std::to_string(mpi_rank) + ".aocx");
+        ("emulator_" + std::to_string(mpi_rank) + "/kmeans_smi.aocx");
+
   } else if (mode_str == "hardware") {
     kernel_path = "kmeans_smi_hardware.aocx";
     emulator = false;
@@ -81,9 +82,9 @@ int main(int argc, char **argv) {
   std::vector<std::vector<char>> routing_tables_cks(
       kChannelsPerRank, std::vector<char>(mpi_size));
   for (int i = 0; i < kChannelsPerRank; ++i) {
-    LoadRoutingTable<char>(mpi_rank, i, kNumTags*2, "kmeans_smi_routing", "ckr",
+    LoadRoutingTable<char>(mpi_rank, i, kNumTags*2, "smi-routes", "ckr",
                            &routing_tables_ckr[i][0]);
-    LoadRoutingTable<char>(mpi_rank, i, mpi_size, "kmeans_smi_routing", "cks",
+    LoadRoutingTable<char>(mpi_rank, i, mpi_size, "smi-routes", "cks",
                            &routing_tables_cks[i][0]);
   }
 

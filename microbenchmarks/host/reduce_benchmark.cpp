@@ -12,7 +12,7 @@
 #include <cmath>
 #include <utils/ocl_utils.hpp>
 #include "smi_generated_host.c"
-#define ROUTING_DIR "smi_routes/"
+#define ROUTING_DIR "smi-routes/"
 
 using namespace std;
 int main(int argc, char *argv[])

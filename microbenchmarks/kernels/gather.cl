@@ -3,10 +3,7 @@
     The root checks the correctness of the result
 */
 
-#pragma OPENCL EXTENSION cl_intel_channels : enable
-#define BUFFER_SIZE 256 //provisional
 #include <smi.h>
-#include "smi-generated-device.cl"
 
 
 __kernel void app(const int N, char root, __global char *mem, SMI_Comm comm)
@@ -15,7 +12,7 @@ __kernel void app(const int N, char root, __global char *mem, SMI_Comm comm)
     int my_rank=SMI_Comm_rank(comm);
     int num_ranks=SMI_Comm_size(comm);
     const int loop_bound=(my_rank==root)?N*num_ranks:N;
-    int to_send=(my_rank==root)?0:my_rank*N;    //starting point
+    int to_send=(my_rank==root)?0:my_rank*N;    //starting number
     char check=1;
     for(int i=0;i<loop_bound;i++)
     {

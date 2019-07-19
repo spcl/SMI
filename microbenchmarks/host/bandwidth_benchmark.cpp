@@ -14,7 +14,7 @@
 #include <utils/utils.hpp>
 #include <limits.h>
 #include <cmath>
-#include "smi-generated-host.c"
+#include "smi_generated_host.c"
 #define ROUTING_DIR "smi-routes/"
 using namespace std;
 int main(int argc, char *argv[])
@@ -23,10 +23,10 @@ int main(int argc, char *argv[])
     CHECK_MPI(MPI_Init(&argc, &argv));
 
     //command line argument parsing
-    if(argc<11)
+    if(argc<9)
     {
         cerr << "Bandwidth benchmark " <<endl;
-        cerr << "Usage: mpirun -np <num_rank>"<< argv[0]<<"-m <emulator/hardware> -b <binary file> -k <KB> -r <rank on which run the receiver> -i <number of runs>"<<endl;
+        cerr << "Usage: mpirun -np <num_rank>"<< argv[0]<<"-m <emulator/hardware> -k <KB> -r <rank on which run the receiver> -i <number of runs> [-b <binary file>]"<<endl;
         exit(-1);
     }
     int n;
@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
     int rank;
     int kb;
     bool emulator;
-
+    bool binary_file_provided=false;
     while ((c = getopt (argc, argv, "k:b:r:f:i:m:")) != -1)
         switch (c)
         {
@@ -61,6 +61,7 @@ int main(int argc, char *argv[])
                 break;
             case 'b':
                 program_path=std::string(optarg);
+                binary_file_provided=true;
                 break;
             case 'f':
                 fpga=atoi(optarg);
@@ -75,20 +76,45 @@ int main(int argc, char *argv[])
                 cerr << "Usage: "<< argv[0]<<"-m <emulator/hardware> -b <binary file> -k <KB> -r <rank on which run the receiver> -i <number of runs>"<<endl;
                 exit(-1);
         }
-    cout << "Performing scaling test with "<<n<<" elements per app"<<endl;
+    if(rank == 0)
+    cout << "Performing bandwidth test with "<<n<<" elements per app"<<endl;
     int rank_count;
     CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &rank_count));
     CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
     fpga = rank % 2;
-    if(!emulator)
+    if(binary_file_provided)
     {
-        if(rank==0)
+        if(!emulator)
+        {
+            if(rank==0)
                 program_path = replace(program_path, "<rank>", std::string("0"));
-            else
+            else //any rank other than 0
                 program_path = replace(program_path, "<rank>", std::string("1"));
+        }
+        else//for emulation
+        {
+            program_path = replace(program_path, "<rank>", std::to_string(rank));
+            if(rank==0)
+                program_path = replace(program_path, "<type>", std::string("0"));
+            else
+                program_path = replace(program_path, "<type>", std::string("1"));
+        }
     }
-    else //for emulation
-        program_path = replace(program_path, "<rank>", std::to_string(rank));
+    else
+    {
+        if(emulator)
+        {
+            program_path = ("emulator_" + std::to_string(rank));
+            if(rank==0) program_path+="/bandwidth_0.aocx";
+            else program_path+="/bandwidth_1.aocx";
+        }
+        else
+        {
+            if(rank==0) program_path="bandwidth_0.aocx";
+            else program_path="bandwidth_1.aocx";
+        }
+
+    }
     char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);
     std::cout << "Rank" << rank<<" executing on host:" <<hostname << " program: "<<program_path<<std::endl;

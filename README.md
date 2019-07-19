@@ -24,9 +24,17 @@ The project uses CMake for configuration. To configure the project and build the
 ```bash
 mkdir build
 cd build
-cmake .. -DSMI_TARGET_BOARD=p520_max_sg280l"
-make
+cmake .. 
 ```
+The experiments show in the paper are organized in two subdirectories of the CMake folder, `microbenchmarks` and `examples`.
+
+For each of them the following targets are offered:
+
+`make <benchmark>_emulator` build the emulator
+`make <benchmark>_host` build the host file
+`make <benchmark>_<program>_aoc_emulator` build the report
+`make <benchmark>_<program>_aoc_build` build the hardware
+
 
 The benchmarks shown in the paper will be built in the `examples` subdirectory of the CMake build folder. To build for the FPGA, there are three targets for each kernel:
 

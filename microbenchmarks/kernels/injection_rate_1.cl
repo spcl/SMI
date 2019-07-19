@@ -5,8 +5,7 @@
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 
-#include "injection_rate_routing/smi-device-1.h"
-
+#include <smi.h>
 
 
 __kernel void app(const int N,SMI_Comm comm)

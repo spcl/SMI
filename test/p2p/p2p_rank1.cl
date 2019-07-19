@@ -8,8 +8,8 @@
 
 __kernel void test_char(__global char *mem, const int N, SMI_Comm comm)
 {
-    const int port=1;
-    SMI_Channel chan=SMI_Open_receive_channel(N,SMI_CHAR,0,port,comm);
+
+    SMI_Channel chan=SMI_Open_receive_channel(N,SMI_CHAR,0,1,comm);
     char check=1;
     //since it is char, we send always the same number
     const char expected=3;

@@ -4,9 +4,8 @@
 	whose rank id is specied as parameter
 */
 
-#pragma OPENCL EXTENSION cl_intel_channels : enable
 
-#include "injection_rate_routing/smi-device-0.h"
+#include <smi.h>
 
 
 

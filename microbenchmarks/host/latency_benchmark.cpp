@@ -15,8 +15,8 @@
 #include <utils/utils.hpp>
 #include <limits.h>
 #include <cmath>
-#define ROUTING_DIR "latency_routing/"
-#include "latency_routing/smi-host-0.h"
+#include "smi_generated_host.c"
+#define ROUTING_DIR "smi-routes/"
 
 
 using namespace std;
@@ -26,10 +26,10 @@ int main(int argc, char *argv[])
     CHECK_MPI(MPI_Init(&argc, &argv));
 
     //command line argument parsing
-    if(argc<11)
+    if(argc<9)
     {
         cerr << "Send/Receiver tester " <<endl;
-        cerr << "Usage: mpirun -np <num_ranks>"<< argv[0]<<" -m <emulator/hardware> -b <binary file> -n <length> -r <rank on which run the receiver> -i <number of runs>"<<endl;
+        cerr << "Usage: mpirun -np <num_ranks>"<< argv[0]<<" -m <emulator/hardware> -n <length> -r <rank on which run the receiver> -i <number of runs> [-b <binary file>]"<<endl;
         exit(-1);
     }
     int n;
@@ -39,6 +39,8 @@ int main(int argc, char *argv[])
     int fpga,runs;
     int rank;
     bool emulator;
+    bool binary_file_provided=false;
+
     while ((c = getopt (argc, argv, "m:n:b:r:f:i:")) != -1)
         switch (c)
         {
@@ -61,6 +63,7 @@ int main(int argc, char *argv[])
             }
             case 'b':
                 program_path=std::string(optarg);
+                binary_file_provided=true;
                 break;
             case 'f':
                 fpga=atoi(optarg);
@@ -86,17 +89,40 @@ int main(int argc, char *argv[])
     int rank_count;
     CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &rank_count));
     CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
-    fpga = rank % 2; // in this case is ok, pay attention
-    std::cout << "Rank: " << rank << " out of " << rank_count << " ranks, executing on fpga " <<fpga<< std::endl;
-    if(!emulator)
+    fpga = rank % 2; // which fpga select depends on the target cluster
+    if(binary_file_provided)
     {
-        if(rank==0)
-        program_path = replace(program_path, "<rank>", std::string("0"));
-        else
-        program_path = replace(program_path, "<rank>", std::string("1"));
+        if(!emulator)
+        {
+            if(rank==0)
+                program_path = replace(program_path, "<rank>", std::string("0"));
+            else //any rank other than 0
+                program_path = replace(program_path, "<rank>", std::string("1"));
+        }
+        else//for emulation
+        {
+            program_path = replace(program_path, "<rank>", std::to_string(rank));
+            if(rank==0)
+                program_path = replace(program_path, "<type>", std::string("0"));
+            else
+                program_path = replace(program_path, "<type>", std::string("1"));
+        }
     }
     else
-        program_path = replace(program_path, "<rank>", std::to_string(rank));
+    {
+        if(emulator)
+        {
+            program_path = ("emulator_" + std::to_string(rank));
+            if(rank==0) program_path+="/latency_0.aocx";
+            else program_path+="/latency_1.aocx";
+        }
+        else
+        {
+            if(rank==0) program_path="latency_0.aocx";
+            else program_path="latency_1.aocx";
+        }
+
+    }
 
     char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);
@@ -108,7 +134,7 @@ int main(int argc, char *argv[])
     cl::Context context;
     cl::Program program;
     std::vector<cl::Buffer> buffers;
-    SMI_Comm comm=SmiInit(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga,buffers);
+    SMI_Comm comm=SmiInit_latency_0(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga,buffers);
     cl::Kernel kernel;
     cl::CommandQueue queue;
     IntelFPGAOCLUtils::createCommandQueue(context,device,queue);

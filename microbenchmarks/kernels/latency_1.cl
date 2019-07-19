@@ -14,12 +14,7 @@
 
     Important: you need to use the FENCE
 */
-#pragma OPENCL EXTENSION cl_intel_channels : enable
-
-//For this benchmark we need two different programs,
-//but both of them use the same number/type of ports
-#include "latency_routing/smi-device-0.h"
-
+#include <smi.h>
 
 
 __kernel void app(const int N, SMI_Comm comm)

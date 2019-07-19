@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
     if(argc<9)
     {
         cerr << "Send/Receiver tester " <<endl;
-        cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <length> -r <who is the root> -i <number of iterations> "<<endl;
+        cerr << "Usage: "<< argv[0]<<" -m <emulator/hardware> -n <length> -r <who is the root> -i <number of iterations> [-b <binary file>]"<<endl;
         exit(-1);
     }
     int n;
@@ -34,7 +34,9 @@ int main(int argc, char *argv[])
     char root;
     int fpga,runs;
     int rank;
-    while ((c = getopt (argc, argv, "n:b:r:i:")) != -1)
+    bool binary_file_provided=false;
+    bool emulator;
+    while ((c = getopt (argc, argv, "n:b:r:i:m:")) != -1)
         switch (c)
         {
             case 'n':
@@ -43,8 +45,20 @@ int main(int argc, char *argv[])
             case 'i':
                 runs=atoi(optarg);
                 break;
+            case 'm':
+            {
+                std::string mode=std::string(optarg);
+                if(mode!="emulator" && mode!="hardware")
+                {
+                    cerr << "Mode: emulator or hardware"<<endl;
+                    exit(-1);
+                }
+                emulator=mode=="emulator";
+                break;
+            }
             case 'b':
                 program_path=std::string(optarg);
+                binary_file_provided=true;
                 break;
             case 'r':
                 root=(char)atoi(optarg);
@@ -59,8 +73,15 @@ int main(int argc, char *argv[])
     CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &rank_count));
     CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
     fpga = rank % 2;
-    program_path = replace(program_path, "<rank>", std::to_string(rank));
-    char hostname[HOST_NAME_MAX];
+    if(binary_file_provided)
+        program_path = replace(program_path, "<rank>", std::to_string(rank));
+    else
+    {
+        if(emulator)
+            program_path = ("emulator_" + std::to_string(rank) +"/gather.aocx");
+        else
+            program_path = "gather.aocx";
+    }    char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);
     std::cout << "Rank" << rank<<" executing on host:" <<hostname << " program: "<<program_path<<std::endl;
 
@@ -70,7 +91,7 @@ int main(int argc, char *argv[])
     cl::Context context;
     cl::Program program;
     std::vector<cl::Buffer> buffers;
-    SMI_Comm comm=SmiInit(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga, buffers);
+    SMI_Comm comm=SmiInit_gather(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga, buffers);
     cl::Kernel kernel;
     cl::CommandQueue queue;
     IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
