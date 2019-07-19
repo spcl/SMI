@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
     cl::Context context;
     cl::Program program;
     std::vector<cl::Buffer> buffers;
-    SMI_Comm comm=SmiInit_s2s_test_0(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga,buffers);
+    SMI_Comm comm=SmiInit_bandwidth_0(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga,buffers);
     cl::Kernel kernels[2];
     cl::CommandQueue queues[2];
     IntelFPGAOCLUtils::createCommandQueue(context,device,queues[0]);
