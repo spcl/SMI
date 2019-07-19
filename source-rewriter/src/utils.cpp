@@ -1,5 +1,7 @@
 #include "utils.h"
 
+#include <unordered_set>
+
 using namespace clang;
 
 bool isKernelFunction(FunctionDecl* decl)
@@ -7,9 +9,18 @@ bool isKernelFunction(FunctionDecl* decl)
     if (!decl) return false;
     if (!decl->hasBody()) return false;
 
+    std::unordered_set<std::string> validAttrs = {
+            "kernel",
+            "__kernel"
+    };
+
     for (auto& attr: decl->attrs())
     {
-        if (std::string(attr->getSpelling()) == "__kernel") return true;
+        auto spelling = std::string(attr->getSpelling());
+        if (validAttrs.find(spelling) != validAttrs.end())
+        {
+            return true;
+        }
     }
 
     return false;
