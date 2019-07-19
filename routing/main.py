@@ -61,6 +61,8 @@ def codegen_device(routing_file, rewriter, src_dir, dest_dir, device_src,
     """
     paths = list(copy_files(src_dir, dest_dir, device_input))
 
+    p2p_rendezvous = True if p2p_rendezvous in (True, 1, "1", "ON") else False
+
     with open("rewrite.log", "w") as f:
         ops = []
         include_dirs = set(include.split(" "))
