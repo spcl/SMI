@@ -39,7 +39,12 @@ def write_table(channel: Channel, prefix: str, table: List[int], output_folder):
 @click.argument("output-program")
 @click.argument("device-input", nargs=-1)
 @click.option("--include")
-def codegen_device(routing_file, rewriter, src_dir, dest_dir, device_src, output_program, device_input, include):
+@click.option("--consecutive-read-limit", default=8)
+@click.option("--max-ranks", default=8)
+@click.option("--p2p-rendezvous", default=True)
+def codegen_device(routing_file, rewriter, src_dir, dest_dir, device_src,
+                   output_program, device_input,
+                   include, consecutive_read_limit, max_ranks, p2p_rendezvous):
     """
     Transpiles device code and generates device kernels and host initialization code.
     :param routing_file: path to a file with FPGA connections and FPGA-to-program mapping
@@ -50,6 +55,9 @@ def codegen_device(routing_file, rewriter, src_dir, dest_dir, device_src, output
     :param output_program: path to generated JSON program description
     :param device_input: list of device sources
     :param include: list of include directories for device sources
+    :param consecutive_read_limit: how many reads should be performed in succession from a single channel in CKR/CKS
+    :param max_ranks: maximum number of ranks in the cluster
+    :param p2p_rendezvous: whether to use rendezvous for P2P operations
     """
     paths = list(copy_files(src_dir, dest_dir, device_input))
 
@@ -60,7 +68,7 @@ def codegen_device(routing_file, rewriter, src_dir, dest_dir, device_src, output
             ops += rewrite(rewriter, dest, include_dirs, f)
 
     ops = sorted(ops, key=lambda op: op.logical_port)
-    program = Program(ops)
+    program = Program(ops, consecutive_read_limit, max_ranks, p2p_rendezvous)
 
     with open(routing_file) as rf:
         (connections, mapping) = parse_routing_file(rf.read(), ignore_programs=True)

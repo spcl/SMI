@@ -235,6 +235,23 @@ endfunction()
 function(smi_target TARGET_NAME CONNECTION_FILE HOST_SOURCE KERNELS NUM_RANKS)
     set(SMI_SCRIPT ${CMAKE_SOURCE_DIR}/routing/main.py)
 
+    # parse optional arguments
+    set(EXTRA_ARGS ${ARGN})
+    set(OPT_CONSECUTIVE_READS 8)
+    set(OPT_MAX_RANKS 8)
+    set(OPT_P2P_RENDEZVOUS ON)
+
+    list(LENGTH EXTRA_ARGS EXTRA_ARGS_COUNT)
+    if(${EXTRA_ARGS_COUNT} GREATER 0)
+        list(GET EXTRA_ARGS 0 OPT_CONSECUTIVE_READS)
+    endif()
+    if(${EXTRA_ARGS_COUNT} GREATER 1)
+        list(GET EXTRA_ARGS 1 OPT_MAX_RANKS)
+    endif()
+    if(${EXTRA_ARGS_COUNT} GREATER 2)
+        list(GET EXTRA_ARGS 2 OPT_P2P_RENDEZVOUS)
+    endif()
+
     set(PROGRAM_METADATA)           # list of produced JSON metadata (one per program)
     set(KERNEL_TARGETS)             # list of targets (one per program)
     set(FPGA_SOURCES)               # list of transformed user device files (one per program)
@@ -273,6 +290,9 @@ function(smi_target TARGET_NAME CONNECTION_FILE HOST_SOURCE KERNELS NUM_RANKS)
             COMMAND python
                 ${SMI_SCRIPT} codegen-device
                 --include '${CMAKE_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR}'
+                --consecutive-read-limit '${OPT_CONSECUTIVE_READS}'
+                --max-ranks '${OPT_MAX_RANKS}'
+                --p2p-rendezvous '${OPT_P2P_RENDEZVOUS}'
                 ${CONNECTION_FILE}
                 ${SMI_REWRITER}
                 ${KERNEL_SRC_DIR}

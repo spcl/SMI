@@ -89,15 +89,15 @@ class Program:
     """
     def __init__(self,
                  operations: List[SmiOperation],
-                 consecutive_read_limit=None,
-                 max_ranks=None,
-                 p2p_rendezvous=None,
+                 consecutive_read_limit=8,
+                 max_ranks=8,
+                 p2p_rendezvous=True,
                  channel_count=CHANNELS_PER_FPGA):
         assert are_ops_consecutive(operations)
 
-        self.consecutive_read_limit = consecutive_read_limit or 8
-        self.max_ranks = max_ranks or 8
-        self.p2p_rendezvous = True if p2p_rendezvous is None else p2p_rendezvous
+        self.consecutive_read_limit = consecutive_read_limit
+        self.max_ranks = max_ranks
+        self.p2p_rendezvous = p2p_rendezvous
         self.operations = sorted(operations, key=lambda op: op.logical_port)
         self.channel_count = channel_count
 
