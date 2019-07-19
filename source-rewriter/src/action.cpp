@@ -4,29 +4,34 @@
 #include <iostream>
 
 #include <clang/Frontend/CompilerInstance.h>
+#include <clang/Lex/PreprocessorOptions.h>
 
 using namespace clang;
 using namespace llvm;
 
-void SpecializeCallsAction::EndSourceFileAction()
+bool SpecializeCallsConsumer::HandleTopLevelDecl(DeclGroupRef group)
 {
-    this->rewriter.overwriteChangedFiles();
-}
-
-std::unique_ptr<ASTConsumer> SpecializeCallsAction::CreateASTConsumer(
-        CompilerInstance& CI,
-        StringRef file)
-{
-    this->rewriter.setSourceMgr(CI.getSourceManager(), CI.getLangOpts());
-    CI.getDiagnostics().setErrorLimit(9999);
-    return std::make_unique<SpecializeCallsConsumer>(this->rewriter);
-}
-
-bool SpecializeCallsConsumer::HandleTopLevelDecl(DeclGroupRef DR)
-{
-    for (auto& decl : DR)
+    for (auto& decl: group)
     {
         this->visitor.TraverseDecl(decl);
     }
     return true;
+}
+
+bool SpecializeCallsAction::PrepareToExecuteAction(CompilerInstance& compiler)
+{
+    compiler.getPreprocessorOpts().addMacroDef("SMI_REWRITER");
+    compiler.getDiagnostics().setErrorLimit(9999);
+    return true;
+}
+std::unique_ptr<ASTConsumer> SpecializeCallsAction::CreateASTConsumer(
+        CompilerInstance& compiler,
+        StringRef file)
+{
+    this->rewriter.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
+    return std::make_unique<SpecializeCallsConsumer>(this->rewriter);
+}
+void SpecializeCallsAction::EndSourceFileAction()
+{
+    this->rewriter.overwriteChangedFiles();
 }

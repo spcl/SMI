@@ -1,5 +1,10 @@
 #ifndef SMI_H
 #define SMI_H
+
+#ifdef SMI_REWRITER
+#include "opencl-shim.h"
+#endif
+
 #include "smi/header_message.h"
 #include "smi/network_message.h"
 #include "smi/data_types.h"

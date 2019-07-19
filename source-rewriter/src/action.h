@@ -14,7 +14,7 @@ public:
 
     }
 
-    bool HandleTopLevelDecl(clang::DeclGroupRef DR) override;
+    bool HandleTopLevelDecl(clang::DeclGroupRef group) override;
 
 private:
     RewriteKernelsVisitor visitor;
@@ -23,11 +23,12 @@ private:
 class SpecializeCallsAction: public clang::ASTFrontendAction
 {
 public:
-    void EndSourceFileAction() override;
+    bool PrepareToExecuteAction(clang::CompilerInstance& compiler) override;
 
     std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(
-            clang::CompilerInstance& CI,
+            clang::CompilerInstance& compiler,
             llvm::StringRef file) override;
+    void EndSourceFileAction() override;
 
 private:
     clang::Rewriter rewriter;
