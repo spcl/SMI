@@ -14,6 +14,16 @@ bool FindIntegerLiteral::VisitDeclRefExpr(DeclRefExpr* expr)
     {
         this->setValue(enumeration->getInitVal().getZExtValue());
     }
+    else if (auto varDecl = dyn_cast<VarDecl>(decl))
+    {
+        FindIntegerLiteral visitor;
+        visitor.TraverseDecl(varDecl);
+        if (visitor.valueFound)
+        {
+            this->value = visitor.value;
+            this->valueFound = true;
+        }
+    }
     return false;
 }
 size_t FindIntegerLiteral::getValue() const
@@ -26,6 +36,15 @@ void FindIntegerLiteral::setValue(size_t value)
     assert(!this->valueFound);
     this->valueFound = true;
     this->value = value;
+}
+
+size_t extractIntArg(CallExpr* expr, int argumentIndex)
+{
+    auto arg = expr->getArgs()[argumentIndex];
+
+    FindIntegerLiteral visitor;
+    visitor.TraverseStmt(arg);
+    return visitor.getValue();
 }
 
 std::string formatDataType(DataType dataType)
@@ -47,15 +66,6 @@ std::string renamePortDataType(const std::string& callName, const OperationMetad
 {
     auto call = callName + "_" + std::to_string(metadata.port);
     return call + "_" + formatDataType(metadata.dataType);
-}
-
-size_t extractIntArg(CallExpr* expr, int argumentIndex)
-{
-    auto arg = expr->getArgs()[argumentIndex];
-
-    FindIntegerLiteral visitor;
-    visitor.TraverseStmt(arg);
-    return visitor.getValue();
 }
 
 DataType extractDataType(CallExpr* expr, int argumentIndex)
