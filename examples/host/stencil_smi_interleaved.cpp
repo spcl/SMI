@@ -145,8 +145,7 @@ int main(int argc, char **argv) {
     setenv("CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA", "1", false);
     emulator = true;
     // In emulation mode, each rank has its own kernel file
-    kernel_path = ("stencil_smi_interleaved_emulator_" +
-                   std::to_string(mpi_rank) + ".aocx");
+    kernel_path = ("emulator_" + std::to_string(mpi_rank) + "/stencil_smi_interleaved.aocx");
   } else if (mode_str == "hardware") {
     kernel_path = "stencil_smi_interleaved_hardware.aocx";
     emulator = false;
@@ -163,10 +162,10 @@ int main(int argc, char **argv) {
   std::vector<std::vector<char>> routing_tables_cks(
       kChannelsPerRank, std::vector<char>(mpi_size));
   for (int i = 0; i < kChannelsPerRank; ++i) {
-    LoadRoutingTable<char>(mpi_rank, i, 8, "stencil_smi_interleaved_routing",
+    LoadRoutingTable<char>(mpi_rank, i, 8, "smi-routes",
                            "ckr", &routing_tables_ckr[i][0]);
     LoadRoutingTable<char>(mpi_rank, i, mpi_size,
-                           "stencil_smi_interleaved_routing", "cks",
+                           "smi-routes", "cks",
                            &routing_tables_cks[i][0]);
   }
 

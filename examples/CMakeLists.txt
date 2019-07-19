@@ -25,53 +25,9 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 find_package(PythonInterp 3)
 
 if(PythonInterp_FOUND)
-  #[[add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_simple.cl" OFF 1 0 OFF)
-  add_smi_executable("stencil_simple")
-  add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_spatial_tiling.cl" ON 1 0 OFF)
-  add_smi_executable("stencil_spatial_tiling")
-  add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_smi.cl" OFF ${SMI_STENCIL_NUM_PROCS} 4 OFF)
-  add_smi_executable("stencil_smi")
-  add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_smi_interleaved.cl" OFF ${SMI_STENCIL_NUM_PROCS} 4 OFF)
-  add_smi_executable("stencil_smi_interleaved")
-  # Rodinia hotspot kernel
-  configure_file(include/hotspot.h.in hotspot.h)
-  add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/hotspot_smi.cl" OFF ${SMI_STENCIL_NUM_PROCS} 4 OFF)
-  add_smi_executable("hotspot_smi")
 
-
-
-  add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/kmeans_smi.cl" OFF ${SMI_KMEANS_RANKS} 6 OFF)
-  add_smi_executable("kmeans_smi")
-  add_dependencies(kmeans_smi.exe generate_kmeans_smi_routing)
-  add_dependencies(build_kmeans_smi_emulator generate_kmeans_smi_routing)
-  add_dependencies(build_kmeans_smi_hardware generate_kmeans_smi_routing)
-
-
-  add_custom_target(generate_kmeans_smi_iterate_routing
-                    COMMAND ${CMAKE_COMMAND} -E copy_directory
-                    ${CMAKE_CURRENT_SOURCE_DIR}/host/k_means_routing 
-                    ${CMAKE_CURRENT_BINARY_DIR}/kmeans_smi_iterate_routing)
-  add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/kmeans_smi_iterate.cl" OFF ${SMI_KMEANS_RANKS} 6 ON)
-  add_smi_executable("kmeans_smi_iterate")
-  add_dependencies(kmeans_smi_iterate.exe generate_kmeans_smi_iterate_routing)
-  add_dependencies(build_kmeans_smi_iterate_emulator generate_kmeans_smi_iterate_routing)
-  add_dependencies(build_kmeans_smi_iterate_hardware generate_kmeans_smi_iterate_routing)
-
-
-  add_custom_target(generate_kmeans_smi_simple_routing
-                    COMMAND ${CMAKE_COMMAND} -E copy_directory
-                    ${CMAKE_CURRENT_SOURCE_DIR}/host/k_means_routing 
-                    ${CMAKE_CURRENT_BINARY_DIR}/kmeans_smi_simple_routing)
-  add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/kmeans_smi_simple.cl" OFF ${SMI_KMEANS_RANKS} 6 ON)
-  add_smi_executable("kmeans_smi_simple")
-  add_dependencies(kmeans_smi_simple.exe generate_kmeans_smi_simple_routing)
-  add_dependencies(build_kmeans_smi_simple_emulator generate_kmeans_smi_simple_routing)
-  add_dependencies(build_kmeans_smi_simple_hardware generate_kmeans_smi_simple_routing)]]
-
-  #New rule
-  smi_target(stencil "${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_smi_interleaved.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/stencil_smi_interleaved.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_smi_interleaved.cl" 8)
+    smi_target(stencil "${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_smi_interleaved.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/stencil_smi_interleaved.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_smi_interleaved.cl" 8)
+    smi_target(kmeans "${CMAKE_CURRENT_SOURCE_DIR}/kernels/kmeans_smi.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/kmeans_smi.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/kmeans_smi.cl" 8)
 
 
 endif()
-#add_smi_kernel("${CMAKE_CURRENT_SOURCE_DIR}/kernels/kmeans_aos.cl" OFF 1 0 OFF)
-#add_smi_executable("kmeans_aos")

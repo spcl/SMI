@@ -1,6 +1,8 @@
-#define BUFFER_SIZE 256 //provisional
+/**
+  Kmeans SMI implementation
+*/
+
 #include <smi.h>
-#include "smi-generated-device.cl"
 #include "kmeans.h"
 
 // Every channel is set to twice the size it needs to be
@@ -91,7 +93,6 @@ kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
 
   for (int i = 0; i < iterations; ++i) {
     int smi_rank=SMI_Comm_rank(comm);
-    printf("[%i] ComputeMeans iteration %i\n", smi_rank, i);
 
     // Compute mean for new centroids while iterating
     VTYPE means[DIMS / W][K];
@@ -142,8 +143,6 @@ kernel void ComputeMeans(__global volatile VTYPE centroids_global[],
           DTYPE recv_val;
           SMI_Reduce(&reduce_mean_ch, &send_val, &recv_val);
           // It doesn't matter that we write junk on non-0 ranks
-          if(smi_rank==0)
-            printf("Root, reduced value float: %.3f\n",recv_val);
           means_reduced[w][d][k] = recv_val;
         }
       }
