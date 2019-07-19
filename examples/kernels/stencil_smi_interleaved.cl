@@ -1,6 +1,5 @@
-#define BUFFER_SIZE 256 //provisional
+
 #include <smi.h>
-#include "smi-generated-device.cl"
 #include "stencil.h"
 
 #if PX * PY != 8
