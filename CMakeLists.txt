@@ -444,7 +444,7 @@ function(add_smi_test KERNEL_PATH NUM_RANKS MPMD)
 endfunction()
 
 add_subdirectory(source-rewriter)
-#add_subdirectory(examples)
+add_subdirectory(examples)
 add_subdirectory(microbenchmarks)
 if (ENABLE_TESTS)
     enable_testing()
