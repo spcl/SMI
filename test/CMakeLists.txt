@@ -35,9 +35,27 @@ endif()
 
 # Now simply link against gtest or gtest_main as needed. Eg
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lgtest")
+ #broadcast
+smi_target(test_broadcast "${CMAKE_CURRENT_SOURCE_DIR}/broadcast/broadcast.json" "${CMAKE_CURRENT_SOURCE_DIR}/broadcast/test_broadcast.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/broadcast/broadcast.cl" 8)
+
+add_test(
+   NAME broadcast
+   COMMAND  env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 test_broadcast_host "emulator_<rank>/broadcast.aocx"
+   WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_broadcast/"
+ )
 
 #p2p
-add_smi_test("${CMAKE_CURRENT_SOURCE_DIR}/p2p/p2p.cl" 8 ON)
+smi_target(test_p2p "${CMAKE_CURRENT_SOURCE_DIR}/p2p/p2p.json" "${CMAKE_CURRENT_SOURCE_DIR}/p2p/test_p2p.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/p2p/p2p_rank0.cl;${CMAKE_CURRENT_SOURCE_DIR}/p2p/p2p_rank1.cl" 8)
+
+add_test(
+   NAME p2p
+   COMMAND  env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 test_broadcast_host "emulator_<rank>/broadcast.aocx"
+   WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_broadcast/"
+ )
+
+#p2p
+#[[add_smi_test("${CMAKE_CURRENT_SOURCE_DIR}/p2p/p2p.cl" 8 ON)
 add_smi_test_executable("${CMAKE_CURRENT_SOURCE_DIR}/p2p/test_p2p.cpp")
 add_test(
    NAME p2p
@@ -76,4 +94,4 @@ add_smi_test_executable("${CMAKE_CURRENT_SOURCE_DIR}/scatter/test_scatter.cpp")
 add_test(
    NAME scatter
    COMMAND  env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 "./test_scatter.exe" "./scatter_emulator_<rank>.aocx"
- )
+ )]]

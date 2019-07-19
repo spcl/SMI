@@ -3,7 +3,7 @@
 */
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
-#include "p2p_routing/smi-device-0.h"
+#include <smi.h>
 
 __kernel void test_char(const int N, const char dest_rank, const SMI_Comm comm)
 {
@@ -25,7 +25,6 @@ __kernel void test_short(const int N, const char dest_rank, const SMI_Comm comm)
        SMI_Push(&chan,&send);
     }
 }
-#if 0
 __kernel void test_int(const int N, const char dest_rank, const SMI_Comm comm)
 {
 
@@ -58,4 +57,4 @@ __kernel void test_double(const int N, const char dest_rank, const SMI_Comm comm
        SMI_Push(&chan,&send);
     }
 }
-#endif
+#

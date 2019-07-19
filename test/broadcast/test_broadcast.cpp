@@ -17,8 +17,8 @@
 #include <cmath>
 #include <thread>
 #include <future>
-#include "broadcast_routing/smi-host-0.h"
-#define ROUTING_DIR "broadcast_routing/"
+#include "smi_generated_host.c"
+#define ROUTING_DIR "smi-routes/"
 using namespace std;
 std::string program_path;
 int rank_count, my_rank;
@@ -293,7 +293,7 @@ int main(int argc, char *argv[])
     //create environemnt
     int fpga=my_rank%2;
        program_path = replace(program_path, "<rank>", std::to_string(my_rank));
-    comm=SmiInit(my_rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga,buffers);
+    comm=SmiInit_broadcast(my_rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga,buffers);
 
 
     result = RUN_ALL_TESTS();

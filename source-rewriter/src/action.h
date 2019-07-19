@@ -23,7 +23,7 @@ private:
 class SpecializeCallsAction: public clang::ASTFrontendAction
 {
 public:
-    bool PrepareToExecuteAction(clang::CompilerInstance& compiler) override;
+    bool PrepareToExecuteAction(clang::CompilerInstance& compiler);
 
     std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(
             clang::CompilerInstance& compiler,

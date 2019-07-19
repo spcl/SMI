@@ -11,7 +11,7 @@
 #include <cmath>
 #include <utils/ocl_utils.hpp>
 #include <utils/utils.hpp>
-#include "smi-generated-host.c"
+#include "smi_generated_host.c"
 #define ROUTING_DIR "smi-routes/"
 
 

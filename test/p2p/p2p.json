@@ -1,42 +1,30 @@
-[{
-  "buffer_size": 128,
-  "ports": [{
-    "id": 0,
-    "type": "push"
-  },{
-    "id": 1,
-    "type": "push"
-  },
-  {
-    "id": 2,
-    "type": "push"
-  },{
-    "id": 3,
-    "type": "push"
-  },{
-    "id": 4,
-    "type": "push"
-  }],
-  "fpgas": ["fpga-0001:acl0"]
-}, {
-  "buffer_size": 128,
-  "ports": [{
-    "id": 0,
-    "type": "pop"
-  },{
-    "id": 1,
-    "type": "pop"
-  },{
-    "id": 2,
-    "type": "pop"
-  },
-  {
-    "id": 3,
-    "type": "pop"
-  },
-  {
-    "id": 4,
-    "type": "pop"
-  }],
-  "fpgas": ["fpga-0001:acl1","fpga-0002:acl0", "fpga-0002:acl1","fpga-0003:acl0", "fpga-0003:acl1","fpga-0004:acl0", "fpga-0004:acl1"]
-}]
+{
+    "fpgas": {
+      "fpga-0001:acl0": "p2p_rank0",
+      "fpga-0001:acl1": "p2p_rank1",
+      "fpga-0002:acl0": "p2p_rank1",
+      "fpga-0002:acl1": "p2p_rank1",
+      "fpga-0003:acl0": "p2p_rank1",
+      "fpga-0003:acl1": "p2p_rank1",
+      "fpga-0004:acl0": "p2p_rank1",
+      "fpga-0004:acl1": "p2p_rank1"
+    },
+    "connections": {
+      "fpga-0001:acl0:ch2": "fpga-0001:acl1:ch3",
+      "fpga-0001:acl0:ch3": "fpga-0001:acl1:ch2",
+      "fpga-0002:acl0:ch2": "fpga-0002:acl1:ch3",
+      "fpga-0002:acl0:ch3": "fpga-0002:acl1:ch2",
+      "fpga-0001:acl0:ch1": "fpga-0002:acl0:ch0",
+      "fpga-0001:acl1:ch1": "fpga-0002:acl1:ch0",
+      "fpga-0002:acl0:ch1": "fpga-0003:acl0:ch0",
+      "fpga-0002:acl1:ch1": "fpga-0003:acl1:ch0",
+      "fpga-0003:acl0:ch2": "fpga-0003:acl1:ch3",
+      "fpga-0003:acl0:ch3": "fpga-0003:acl1:ch2",
+      "fpga-0004:acl0:ch2": "fpga-0004:acl1:ch3",
+      "fpga-0004:acl0:ch3": "fpga-0004:acl1:ch2",
+      "fpga-0003:acl0:ch1": "fpga-0004:acl0:ch0",
+      "fpga-0003:acl1:ch1": "fpga-0004:acl1:ch0",
+      "fpga-0001:acl0:ch0": "fpga-0004:acl0:ch1",
+      "fpga-0001:acl1:ch0": "fpga-0004:acl1:ch1"
+    }
+  }

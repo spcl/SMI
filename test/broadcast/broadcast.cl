@@ -3,9 +3,7 @@
 	Non-root ranks check whether the received number is correct
 */
 
-#pragma OPENCL EXTENSION cl_intel_channels : enable
-#include "broadcast_routing/smi-device-0.h"
-
+#include <smi.h>
 
 
 __kernel void test_int(__global char* mem, const int N, char root,SMI_Comm comm)

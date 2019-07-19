@@ -17,8 +17,8 @@
 #include <cmath>
 #include <thread>
 #include <future>
-#include "p2p_routing/smi-host-0.h"
-#define ROUTING_DIR "p2p_routing/"
+#include "smi_generated_host.c"
+#define ROUTING_DIR "smi-routes/"
 using namespace std;
 std::string program_path;
 int rank_count, my_rank;
@@ -330,7 +330,7 @@ int main(int argc, char *argv[])
 
     if(argc<2)
     {
-        std::cerr << "Usage: [env CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 " << argv[0] << " <fpga binary file>" << std::endl;
+        std::cerr << "Usage: [env CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 " << argv[0] << " <fpga binary file with <rank> and <type> flags>" << std::endl;
         return -1;
     }
 
@@ -351,8 +351,12 @@ int main(int argc, char *argv[])
 
     //create environemnt
     int fpga=my_rank%2;
-       program_path = replace(program_path, "<rank>", std::to_string(my_rank));
-    comm=SmiInit(my_rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga,buffers);
+    program_path = replace(program_path, "<rank>", std::to_string(my_rank));
+    if(my_rank==0)
+        program_path = replace(program_path, "<type>", std::to_string(0));
+    else
+        program_path = replace(program_path, "<type>", std::to_string(1));
+    comm=SmiInit_p2p_rank0(my_rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga,buffers);
 
 
     result = RUN_ALL_TESTS();
