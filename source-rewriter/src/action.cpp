@@ -18,7 +18,7 @@ std::unique_ptr<ASTConsumer> SpecializeCallsAction::CreateASTConsumer(
         StringRef file)
 {
     this->rewriter.setSourceMgr(CI.getSourceManager(), CI.getLangOpts());
-//    CI.getDiagnostics().setClient(new IgnoringDiagConsumer());
+    CI.getDiagnostics().setErrorLimit(9999);
     return std::make_unique<SpecializeCallsConsumer>(this->rewriter);
 }
 
