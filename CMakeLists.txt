@@ -246,6 +246,7 @@ function(smi_target TARGET_NAME CONNECTION_FILE HOST_SOURCE KERNELS NUM_RANKS)
     set(AOC_COMMAND
         -I${CMAKE_SOURCE_DIR}/include
         -I${CMAKE_SOURCE_DIR}/hlslib/include
+        -I${CMAKE_CURRENT_BINARY_DIR}
         -fp-relaxed
         -no-interleaving=default
         -fmax=${SMI_FMAX}
@@ -272,6 +273,7 @@ function(smi_target TARGET_NAME CONNECTION_FILE HOST_SOURCE KERNELS NUM_RANKS)
             COMMAND python
                 ${SMI_SCRIPT} codegen-device
                 --include '${CMAKE_SOURCE_DIR}/include'
+                --include '${CMAKE_CURRENT_BINARY_DIR}'
                 ${CONNECTION_FILE}
                 ${SMI_REWRITER}
                 ${KERNEL_SRC_DIR}
