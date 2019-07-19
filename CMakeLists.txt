@@ -260,7 +260,7 @@ function(smi_target TARGET_NAME CONNECTION_FILE HOST_SOURCE KERNELS NUM_RANKS)
         get_filename_component(KERNEL_SRC_DIR ${KERNEL} DIRECTORY)
         set(KERNEL_BIN_DIR ${WORKDIR}/${KERNEL_NAME})
         set(KERNEL_GENERATED_PATH ${KERNEL_BIN_DIR}/${KERNEL_NAME_EXT})
-        set(SMI_GENERATED_PATH ${KERNEL_BIN_DIR}/smi-generated-device.cl)
+        set(SMI_GENERATED_PATH ${KERNEL_BIN_DIR}/smi_generated_device.cl)
         file(RELATIVE_PATH KERNEL_GENERATED_RELATIVE ${KERNEL_SRC_DIR} ${KERNEL})
         set(KERNEL_TARGET ${TARGET_NAME}_${KERNEL_NAME}_codegen_device)
         set(KERNEL_METADATA ${KERNEL_NAME}.json)
@@ -298,7 +298,7 @@ function(smi_target TARGET_NAME CONNECTION_FILE HOST_SOURCE KERNELS NUM_RANKS)
         # build hardware
         set(FPGA_BUILD_TARGET ${TARGET_NAME}_${KERNEL_NAME}_aoc_build)
         add_custom_target(${FPGA_BUILD_TARGET}
-            COMMAND ${IntelFPGAOpenCL_AOC} ${AOC_COMMAND} ${FPGA_SRC_FILES} -o ${KERNEL_NAME}_hardware.aocx
+            COMMAND ${IntelFPGAOpenCL_AOC} ${AOC_COMMAND} ${FPGA_SRC_FILES}
             WORKING_DIRECTORY ${KERNEL_BIN_DIR}
         )
         add_dependencies(${FPGA_BUILD_TARGET} ${KERNEL_TARGET})
@@ -320,7 +320,7 @@ function(smi_target TARGET_NAME CONNECTION_FILE HOST_SOURCE KERNELS NUM_RANKS)
 
     # generate host code
     set(HOST_GENERATED_TARGET ${TARGET_NAME}_${KERNEL_NAME}_codegen_host)
-    set(SMI_HOST_GENERATED_PATH ${WORKDIR}/smi-generated-host.c)
+    set(SMI_HOST_GENERATED_PATH ${WORKDIR}/smi_generated_host.c)
     add_custom_target(${HOST_GENERATED_TARGET}
             COMMAND python
                 ${SMI_SCRIPT} codegen-host
@@ -340,23 +340,36 @@ function(smi_target TARGET_NAME CONNECTION_FILE HOST_SOURCE KERNELS NUM_RANKS)
 
     # generate emulation
     set(EMULATOR_TARGET ${TARGET_NAME}_emulator)
+    list(LENGTH KERNELS KERNELS_LENGTH)
     add_custom_target(${EMULATOR_TARGET} )
+
     math(EXPR LOOP_END "${NUM_RANKS} - 1")
     foreach(SMI_EMULATION_RANK RANGE 0 ${LOOP_END} 1)
-        #[[if(SMI_EMULATION_RANK EQUAL 0)
-            set(KERNEL_FILE ${CMAKE_CURRENT_SOURCE_DIR}/kernels/${KERNEL_NAME}_rank0.cl)
+        if(${KERNELS_LENGTH} EQUAL 1)
+            set(KERNEL_INDEX 0)
         else()
-            set(KERNEL_FILE ${CMAKE_CURRENT_SOURCE_DIR}/kernels/${KERNEL_NAME}_rank1.cl)
+            if(SMI_EMULATION_RANK EQUAL 0)
+                set(KERNEL_INDEX 0)
+            else()
+                set(KERNEL_INDEX 1)
+            endif()
         endif()
 
+        list(GET FPGA_SOURCES ${KERNEL_INDEX} USER_DEVICE_SRC)
+        list(GET FPGA_GENERATED_SOURCES ${KERNEL_INDEX} SMI_DEVICE_SRC)
+        set(FPGA_SRC_FILES "${SMI_DEVICE_SRC};${USER_DEVICE_SRC}")
+
+        set(EMULATION_WORKDIR ${WORKDIR}/emulator_${SMI_EMULATION_RANK})
+        file(MAKE_DIRECTORY ${EMULATION_WORKDIR})
         set(EMULATOR_TARGET_RANK ${EMULATOR_TARGET}_${SMI_EMULATION_RANK})
         add_custom_target(${EMULATOR_TARGET_RANK}
-            COMMAND ${IntelFPGAOpenCL_AOC} ${AOC_COMMAND} ${KERNEL_FILE} -march=emulator
+            COMMAND ${IntelFPGAOpenCL_AOC} ${AOC_COMMAND} ${FPGA_SRC_FILES} -march=emulator
             -DSMI_EMULATION_RANK=${SMI_EMULATION_RANK}
             -emulator-channel-depth-model=strict
-            -o ${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}.aocx)
+            WORKING_DIRECTORY ${EMULATION_WORKDIR}
+        )
         add_dependencies(${EMULATOR_TARGET} ${EMULATOR_TARGET_RANK})
-        add_dependencies(${EMULATOR_TARGET_RANK} ${ROUTING_TARGET})#]]
+        add_dependencies(${EMULATOR_TARGET_RANK} ${ROUTING_TARGET})
     endforeach()
 endfunction()
 
