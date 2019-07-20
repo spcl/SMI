@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
     if(argc<9)
     {
         cerr << "Multi-collectives benchmark " <<endl;
-        cerr << "Usage: "<< argv[0]<<" -m <emulator/hardware> -n <length> -r <who is the root> -i <number of iterations> [-b <binary file>]"<<endl;
+        cerr << "Usage: "<< argv[0]<<" -m <emulator/hardware> -n <length> -r <who is the root> -i <number of iterations> [-b \"<binary file>\"]"<<endl;
         exit(-1);
     }
     int n;

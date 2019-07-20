@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
     if(argc<9)
     {
         cerr << "Bandwidth benchmark " <<endl;
-        cerr << "Usage: mpirun -np <num_rank>"<< argv[0]<<"-m <emulator/hardware> -k <KB> -r <rank on which run the receiver> -i <number of runs> [-b <binary file>]"<<endl;
+        cerr << "Usage: mpirun -np <num_rank>"<< argv[0]<<"-m <emulator/hardware> -k <KB> -r <rank on which run the receiver> -i <number of runs> [-b \"<binary file>\"]"<<endl;
         exit(-1);
     }
     int n;
@@ -110,8 +110,8 @@ int main(int argc, char *argv[])
         }
         else
         {
-            if(rank==0) program_path="bandwidth_0.aocx";
-            else program_path="bandwidth_1.aocx";
+            if(rank==0) program_path="bandwidth_0/bandwidth_0.aocx";
+            else program_path="bandwidth_1/bandwidth_1.aocx";
         }
 
     }

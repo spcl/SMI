@@ -82,3 +82,30 @@ __kernel void test_double(__global char *mem, const int N, SMI_Comm comm)
 
 }
 
+__kernel void test_int_ad_1(__global char *mem, const int N, SMI_Comm comm)
+{
+    SMI_Channel chan=SMI_Open_receive_channel_ad(N,SMI_INT,0,5,comm,1);
+    char check=1;
+    for(int i=0;i<N;i++)
+    {
+        int rcvd;
+        SMI_Pop(&chan,&rcvd);
+        check &= (rcvd==(i));
+    }
+    *mem=check;
+
+}
+
+__kernel void test_int_ad_2(__global char *mem, const int N, SMI_Comm comm)
+{
+    SMI_Channel chan=SMI_Open_receive_channel_ad(N,SMI_INT,0,5,comm,711); //streange asynch degree
+    char check=1;
+    for(int i=0;i<N;i++)
+    {
+        int rcvd;
+        SMI_Pop(&chan,&rcvd);
+        check &= (rcvd==(i));
+    }
+    *mem=check;
+
+}

@@ -3,9 +3,7 @@
     The root checks that the result is correct
 */
 
-#pragma OPENCL EXTENSION cl_intel_channels : enable
-
-#include "reduce_routing/smi-device-0.h"
+#include <smi.h>
 
 __kernel void test_float_add(const int N, char root, __global volatile char *mem, SMI_Comm comm)
 {

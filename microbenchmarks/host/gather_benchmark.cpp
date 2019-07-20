@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
     if(argc<9)
     {
         cerr << "Send/Receiver tester " <<endl;
-        cerr << "Usage: "<< argv[0]<<" -m <emulator/hardware> -n <length> -r <who is the root> -i <number of iterations> [-b <binary file>]"<<endl;
+        cerr << "Usage: "<< argv[0]<<" -m <emulator/hardware> -n <length> -r <who is the root> -i <number of iterations> [-b \"<binary file>\"]"<<endl;
         exit(-1);
     }
     int n;
@@ -80,8 +80,9 @@ int main(int argc, char *argv[])
         if(emulator)
             program_path = ("emulator_" + std::to_string(rank) +"/gather.aocx");
         else
-            program_path = "gather.aocx";
-    }    char hostname[HOST_NAME_MAX];
+            program_path = "gather/gather.aocx";
+    }    
+    char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);
     std::cout << "Rank" << rank<<" executing on host:" <<hostname << " program: "<<program_path<<std::endl;
 

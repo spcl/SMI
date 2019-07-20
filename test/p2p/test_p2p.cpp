@@ -324,6 +324,103 @@ TEST(P2P, DoubleMessages)
     }
 }
 
+TEST(P2P, IntegerMessagesAD1)
+{
+    //with this test we evaluate the correcteness of integer messages transmission
+  
+    cl::Kernel kernel;
+    cl::CommandQueue queue;
+    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
+    IntelFPGAOCLUtils::createKernel(program,"test_int_ad_1",kernel);
+
+    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
+    std::vector<int> message_lengths={1,128,1024,100000};
+    std::vector<int> receivers={1,4,7};
+    int runs=2;
+    for(int recv_rank:receivers)    //consider different receivers
+    {
+
+        for(int ml:message_lengths)     //consider different message lengths
+        {
+            if(my_rank==0)
+            {
+                char dest=(char)recv_rank;
+                kernel.setArg(0,sizeof(int),&ml);
+                kernel.setArg(1,sizeof(char),&dest);
+                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+            }
+            else
+            {
+                kernel.setArg(0,sizeof(cl_mem),&check);
+                kernel.setArg(1,sizeof(int),&ml);
+                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+            }
+
+            for(int i=0;i<runs;i++)
+            {
+                if(my_rank==0)  //remove emulated channels
+                    system("rm emulated_chan* 2> /dev/null;");
+
+
+                // run some_function() and compared with some_value
+                // but end the function if it exceeds 3 seconds
+                //source https://github.com/google/googletest/issues/348#issuecomment-492785854
+                ASSERT_DURATION_LE(TEST_TIMEOUT, {
+                  ASSERT_TRUE(runAndReturn(queue,kernel,check,my_rank,recv_rank));
+                });
+            }
+        }
+    }
+}
+TEST(P2P, IntegerMessagesAD2)
+{
+    //with this test we evaluate the correcteness of integer messages transmission
+  
+    cl::Kernel kernel;
+    cl::CommandQueue queue;
+    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
+    IntelFPGAOCLUtils::createKernel(program,"test_int_ad_2",kernel);
+
+    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
+    std::vector<int> message_lengths={1,128,1024,100000};
+    std::vector<int> receivers={1,4,7};
+    int runs=2;
+    for(int recv_rank:receivers)    //consider different receivers
+    {
+
+        for(int ml:message_lengths)     //consider different message lengths
+        {
+            if(my_rank==0)
+            {
+                char dest=(char)recv_rank;
+                kernel.setArg(0,sizeof(int),&ml);
+                kernel.setArg(1,sizeof(char),&dest);
+                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+            }
+            else
+            {
+                kernel.setArg(0,sizeof(cl_mem),&check);
+                kernel.setArg(1,sizeof(int),&ml);
+                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+            }
+
+            for(int i=0;i<runs;i++)
+            {
+                if(my_rank==0)  //remove emulated channels
+                    system("rm emulated_chan* 2> /dev/null;");
+
+
+                // run some_function() and compared with some_value
+                // but end the function if it exceeds 3 seconds
+                //source https://github.com/google/googletest/issues/348#issuecomment-492785854
+                ASSERT_DURATION_LE(TEST_TIMEOUT, {
+                  ASSERT_TRUE(runAndReturn(queue,kernel,check,my_rank,recv_rank));
+                });
+            }
+        }
+    }
+}
+
 int main(int argc, char *argv[])
 {
 

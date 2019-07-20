@@ -51,7 +51,18 @@ smi_target(test_p2p "${CMAKE_CURRENT_SOURCE_DIR}/p2p/p2p.json" "${CMAKE_CURRENT_
 add_test(
    NAME p2p
    COMMAND  env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 test_broadcast_host "emulator_<rank>/broadcast.aocx"
-   WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_broadcast/"
+   WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_p2p/"
+ )
+
+
+#reduce
+
+smi_target(test_reduce "${CMAKE_CURRENT_SOURCE_DIR}/reduce/reduce.json" "${CMAKE_CURRENT_SOURCE_DIR}/reduce/test_reduce.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/reduce/reduce.cl" 8)
+
+add_test(
+   NAME reduce
+   COMMAND  env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 test_reduce_host "emulator_<rank>/reduce.aocx"
+   WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_reduce/"
  )
 
 #p2p

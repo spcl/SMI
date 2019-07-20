@@ -6,7 +6,7 @@
          env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 ./test_gather.exe "./gather_emulator_<rank>.aocx"
  */
 
-#define TEST_TIMEOUT 20
+#define TEST_TIMEOUT 30
 
 #include <gtest/gtest.h>
 #include <stdio.h>
@@ -20,8 +20,8 @@
 #include <cmath>
 #include <thread>
 #include <future>
-#include "reduce_routing/smi-host-0.h"
-#define ROUTING_DIR "reduce_routing/"
+#include "smi_generated_host.c"
+#define ROUTING_DIR "smi-routes/"
 using namespace std;
 std::string program_path;
 int rank_count, my_rank;
@@ -84,7 +84,7 @@ TEST(Reduce, FloatAdd)
     IntelFPGAOCLUtils::createKernel(program,"test_float_add",kernel);
 
     cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
-    std::vector<int> message_lengths={1,128,1000};
+    std::vector<int> message_lengths={500};
     std::vector<int> roots={1,4,7};
     int runs=2;
     for(int root:roots)    //consider different roots
@@ -99,7 +99,7 @@ TEST(Reduce, FloatAdd)
 
             for(int i=0;i<runs;i++)
             {
-                //printf("root: %d ml: %d, it:%d\n",root, ml,i);
+                printf("root: %d ml: %d, it:%d\n",root, ml,i);
                 if(my_rank==0)  //remove emulated channels
                     system("rm emulated_chan* 2> /dev/null;");
 
@@ -210,7 +210,7 @@ int main(int argc, char *argv[])
 
     if(argc<2)
     {
-        std::cerr << "Usage: [env CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 " << argv[0] << " <fpga binary file>" << std::endl;
+        std::cerr << "Usage: [env CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 " << argv[0] << " \"<fpga binary file>\"" << std::endl;
         return -1;
     }
 
@@ -231,8 +231,8 @@ int main(int argc, char *argv[])
 
     //create environemnt
     int fpga=my_rank%2;
-       program_path = replace(program_path, "<rank>", std::to_string(my_rank));
-    comm=SmiInit(my_rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga,buffers);
+    program_path = replace(program_path, "<rank>", std::to_string(my_rank));
+    comm=SmiInit_reduce(my_rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga,buffers);
 
 
     result = RUN_ALL_TESTS();

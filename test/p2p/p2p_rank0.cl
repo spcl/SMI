@@ -56,4 +56,26 @@ __kernel void test_double(const int N, const char dest_rank, const SMI_Comm comm
        SMI_Push(&chan,&send);
     }
 }
-#
+
+
+__kernel void test_int_ad_1(const int N, const char dest_rank, const SMI_Comm comm)
+{
+
+    SMI_Channel chan=SMI_Open_send_channel_ad(N,SMI_INT,dest_rank,5,comm,1); //min asynch degree
+    for(int i=0;i<N;i++)
+    {
+       int send=i;
+       SMI_Push(&chan,&send);
+    }
+}
+
+__kernel void test_int_ad_2(const int N, const char dest_rank, const SMI_Comm comm)
+{
+
+    SMI_Channel chan=SMI_Open_send_channel_ad(N,SMI_INT,dest_rank,6,comm,711); //strange asynch degree
+    for(int i=0;i<N;i++)
+    {
+       int send=i;
+       SMI_Push(&chan,&send);
+    }
+}
