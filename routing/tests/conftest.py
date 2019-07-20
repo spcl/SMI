@@ -3,8 +3,6 @@ import os
 import shutil
 import subprocess
 import sys
-import tempfile
-from io import StringIO
 from typing import Union, List
 
 import pytest
@@ -12,7 +10,7 @@ from networkx import Graph
 
 from common import RoutingContext
 from ops import SmiOperation
-from serialization import parse_routing_file, parse_smi_operation
+from serialization import parse_smi_operation
 
 sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 
