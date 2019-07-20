@@ -65,21 +65,26 @@ class SmiOperation:
     def serialize_args(self):
         return {}
 
+    def _signature(self):
+        return (self.logical_port, self.data_type, self.buffer_size)
+
+    def __eq__(self, other):
+        if other.__class__ != self.__class__:
+            return False
+        return self._signature() == other._signature()
+
+    def __repr__(self):
+        return "{}{}".format(self.__class__.__name__, self._signature())
+
 
 class Push(SmiOperation):
     def channel_usage(self) -> Set[str]:
         return {KEY_CKS_DATA, KEY_CKR_CONTROL}
 
-    def __repr__(self):
-        return "Push({})".format(self.logical_port)
-
 
 class Pop(SmiOperation):
     def channel_usage(self) -> Set[str]:
         return {KEY_CKR_DATA, KEY_CKS_CONTROL}
-
-    def __repr__(self):
-        return "Pop({})".format(self.logical_port)
 
 
 class Broadcast(SmiOperation):
@@ -91,9 +96,6 @@ class Broadcast(SmiOperation):
             KEY_CKR_CONTROL,
             KEY_BROADCAST
         }
-
-    def __repr__(self):
-        return "Broadcast({})".format(self.logical_port)
 
 
 class Reduce(SmiOperation):
@@ -133,7 +135,7 @@ class Reduce(SmiOperation):
 
     }
 
-    def __init__(self, logical_port, data_type, buffer_size, op_type):
+    def __init__(self, logical_port, data_type="int", buffer_size=None, op_type="add"):
         super().__init__(logical_port, data_type, buffer_size)
 
         assert data_type in Reduce.SHIFT_REG
@@ -167,8 +169,8 @@ class Reduce(SmiOperation):
             "op_type": self.op_type
         }
 
-    def __repr__(self):
-        return "Reduce({})".format(self.logical_port)
+    def _signature(self):
+        return (*super()._signature(), self.op_type)
 
 
 class Scatter(SmiOperation):
@@ -181,9 +183,6 @@ class Scatter(SmiOperation):
             KEY_SCATTER
         }
 
-    def __repr__(self):
-        return "Scatter({})".format(self.logical_port)
-
 
 class Gather(SmiOperation):
     def channel_usage(self) -> Set[str]:
@@ -194,9 +193,6 @@ class Gather(SmiOperation):
             KEY_CKR_CONTROL,
             KEY_GATHER
         }
-
-    def __repr__(self):
-        return "Gather({})".format(self.logical_port)
 
 
 OP_MAPPING = {

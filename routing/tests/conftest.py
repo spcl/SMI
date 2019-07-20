@@ -1,14 +1,18 @@
+import json
 import os
 import shutil
+import subprocess
 import sys
+import tempfile
 from io import StringIO
-from typing import Union
+from typing import Union, List
 
 import pytest
 from networkx import Graph
 
 from common import RoutingContext
-from serialization import parse_routing_file
+from ops import SmiOperation
+from serialization import parse_routing_file, parse_smi_operation
 
 sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 
@@ -18,6 +22,9 @@ from routing import create_routing_context
 PYTEST_DIR = os.path.dirname(__file__)
 WORK_DIR = os.path.join(PYTEST_DIR, "work")
 DATA_DIR = os.path.join(PYTEST_DIR, "data")
+
+ROOT_DIR = os.path.dirname(os.path.dirname(PYTEST_DIR))
+REWRITER_BUILD_DIR = os.environ.get("REWRITER_DIR", ROOT_DIR.join("build/rewriter"))
 
 
 def prepare():
@@ -85,3 +92,40 @@ class FileTester:
 def file_tester():
     prepare()
     yield FileTester()
+
+
+class RewriteTester:
+    def check(self, path: str, operations: List[SmiOperation]):
+        orig_file = get_data("{}.cl".format(path))
+        work_file = os.path.join(WORK_DIR, "{}.cl".format(path))
+        expected_file = get_data("{}-expected.cl".format(path))
+
+        shutil.copyfile(orig_file, work_file)
+        ok = False
+
+        try:
+            result = subprocess.run([
+                os.path.join(REWRITER_BUILD_DIR, "rewriter"),
+                "-extra-arg=-I{}".format(os.path.join(ROOT_DIR, "include")),
+                work_file
+            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout = result.stdout.decode()
+            parsed_ops = [parse_smi_operation(json.loads(line)) for line in stdout.splitlines() if line]
+            assert parsed_ops == operations
+
+            with open(expected_file) as expected:
+                with open(work_file) as work:
+                    assert work.read() == expected.read()
+
+            ok = True
+        finally:
+            if ok:
+                shutil.rmtree(WORK_DIR, ignore_errors=True)
+            else:
+                print(result.stderr.decode())
+
+
+@pytest.yield_fixture(autouse=True, scope="function")
+def rewrite_tester():
+    prepare()
+    yield RewriteTester()
