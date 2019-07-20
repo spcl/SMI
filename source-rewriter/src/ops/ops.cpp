@@ -3,11 +3,22 @@
 
 #include "../third-party/json.hpp"
 
+#include <clang/Lex/Lexer.h>
+
 using json = nlohmann::json;
+using namespace clang;
 
 std::string OperationExtractor::RenameCall(const std::string& callName, const OperationMetadata& metadata)
 {
     return renamePortDataType(callName, metadata);
+}
+
+OperationMetadata OperationExtractor::ModifyCall(clang::Rewriter& rewriter, clang::CallExpr& callExpr, const std::string& callName)
+{
+    auto metadata = this->GetOperationMetadata(&callExpr);
+    auto renamed = this->RenameCall(callName, metadata);
+    rewriter.ReplaceText(callExpr.getBeginLoc(), renamed);
+    return metadata;
 }
 
 void ChannelExtractor::OutputMetadata(const OperationMetadata& metadata, std::ostream& os)
@@ -46,29 +57,37 @@ std::string ChannelExtractor::CreateChannelDeclaration(const std::string& callNa
         const std::string& returnType, const std::string& parameters)
 {
     std::stringstream ss;
-    ss << returnType << " " << this->RenameCall(callName, metadata) << "(";
-    ss << parameters;
-    if (isExtendedChannelOpen(callName))
-    {
-        ss << ", int bufferSize";
-    }
-    ss << ");";
+    ss << returnType << " " << this->RenameCall(callName, metadata) << "(" << parameters << ");";
 
     return ss.str();
 }
 
 std::string ChannelExtractor::RenameCall(const std::string& callName, const OperationMetadata& metadata)
 {
-    auto name = OperationExtractor::RenameCall(callName, metadata);
+    auto name = callName;
     if (isExtendedChannelOpen(name))
     {
         name.resize(name.size() - 3);
     }
-    return name;
+    return OperationExtractor::RenameCall(name, metadata);
 }
 
 std::vector<std::string> ChannelExtractor::GetFunctionNames()
 {
     auto name = this->GetChannelFunctionName();
     return {name, name + "_ad"};
+}
+
+OperationMetadata ChannelExtractor::ModifyCall(Rewriter& rewriter, CallExpr& callExpr, const std::string& callName)
+{
+    auto metadata = OperationExtractor::ModifyCall(rewriter, callExpr, callName);
+    if (isExtendedChannelOpen(callName) && callExpr.getNumArgs() >= 2)
+    {
+        auto lastArg = callExpr.getArgs()[callExpr.getNumArgs() - 1];
+        auto previousArg = callExpr.getArgs()[callExpr.getNumArgs() - 2];
+        auto end0 = Lexer::getLocForEndOfToken(previousArg->getEndLoc(), 0, rewriter.getSourceMgr(), rewriter.getLangOpts());
+        auto end1 = Lexer::getLocForEndOfToken(lastArg->getEndLoc(), 0, rewriter.getSourceMgr(), rewriter.getLangOpts());
+        rewriter.RemoveText(CharSourceRange::getCharRange(end0, end1));
+    }
+    return metadata;
 }

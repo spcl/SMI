@@ -120,6 +120,6 @@ CallExpr* extractChannelDecl(CallExpr* expr)
 
 size_t extractBufferSize(CallExpr* callExpr, int argumentIndex)
 {
-    if (callExpr->getNumArgs() >= argumentIndex) return -1;
+    if (argumentIndex >= callExpr->getNumArgs()) return -1;
     return extractIntArg(callExpr, argumentIndex);
 }

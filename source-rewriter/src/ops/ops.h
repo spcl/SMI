@@ -6,6 +6,7 @@
 #include <sstream>
 
 #include <clang/AST/Expr.h>
+#include <clang/Rewrite/Core/Rewriter.h>
 
 enum class DataType {
     Char,
@@ -77,6 +78,11 @@ public:
      * Returns the function names that should invoke this extractor.
      */
     virtual std::vector<std::string> GetFunctionNames() = 0;
+
+    /**
+     * Rewrite the function call if necessary.
+     */
+    virtual OperationMetadata ModifyCall(clang::Rewriter& rewriter, clang::CallExpr& callExpr, const std::string& callName);
 };
 
 class ChannelExtractor: public OperationExtractor
@@ -89,6 +95,8 @@ public:
      */
     void OutputMetadata(const OperationMetadata& metadata, std::ostream& os) override;
     std::vector<std::string> GetFunctionNames() final;
+
+    OperationMetadata ModifyCall(clang::Rewriter& rewriter, clang::CallExpr& callExpr, const std::string& callName) override;
 
     virtual std::string GetChannelFunctionName() = 0;
 

@@ -64,12 +64,9 @@ public:
             if (it != this->callMap.end())
             {
                 auto& extractor = it->second;
-                auto metadata = extractor->GetOperationMetadata(expr);
 
+                auto metadata = extractor->ModifyCall(this->rewriter, *expr, name);
                 this->rewrites.emplace_back(metadata, name, extractor);
-
-                auto renamed = extractor->RenameCall(name, metadata);
-                this->rewriter.ReplaceText(expr->getBeginLoc(), renamed);
             }
         }
 
