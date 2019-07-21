@@ -1,0 +1,10 @@
+{
+    "fpgas": {
+      "fpga-0006:acl0": "gesummv_rank0",
+      "fpga-0006:acl1": "gesummv_rank1"
+    },
+    "connections": {
+      "fpga-0006:acl0:ch2": "fpga-0006:acl1:ch3",
+      "fpga-0006:acl0:ch3": "fpga-0006:acl1:ch2"
+    }
+  }

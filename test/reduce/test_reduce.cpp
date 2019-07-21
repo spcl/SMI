@@ -84,7 +84,7 @@ TEST(Reduce, FloatAdd)
     IntelFPGAOCLUtils::createKernel(program,"test_float_add",kernel);
 
     cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
-    std::vector<int> message_lengths={500};
+    std::vector<int> message_lengths={1,128, 500};
     std::vector<int> roots={1,4,7};
     int runs=2;
     for(int root:roots)    //consider different roots
@@ -99,7 +99,6 @@ TEST(Reduce, FloatAdd)
 
             for(int i=0;i<runs;i++)
             {
-                printf("root: %d ml: %d, it:%d\n",root, ml,i);
                 if(my_rank==0)  //remove emulated channels
                     system("rm emulated_chan* 2> /dev/null;");
 
@@ -128,7 +127,7 @@ TEST(Reduce, IntAdd)
     IntelFPGAOCLUtils::createKernel(program,"test_int_add",kernel);
 
     cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
-    std::vector<int> message_lengths={1,128,1000};
+    std::vector<int> message_lengths={1,128, 500};
     std::vector<int> roots={1,4,7};
     int runs=2;
     for(int root:roots)    //consider different roots
@@ -171,7 +170,7 @@ TEST(Reduce, IntMax)
     IntelFPGAOCLUtils::createKernel(program,"test_int_max",kernel);
 
     cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
-    std::vector<int> message_lengths={1,128,1000};
+    std::vector<int> message_lengths={1,128, 500};
     std::vector<int> roots={1,4,7};
     int runs=2;
     for(int root:roots)    //consider different roots

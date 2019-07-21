@@ -18,6 +18,7 @@ endif()
 
 configure_file(include/stencil.h.in stencil.h)
 configure_file(include/kmeans.h.in kmeans.h)
+configure_file(include/fblas.h  fblas.h)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
@@ -28,6 +29,11 @@ if(PythonInterp_FOUND)
 
     smi_target(stencil "${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_smi_interleaved.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/stencil_smi_interleaved.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_smi_interleaved.cl" 8)
     smi_target(kmeans "${CMAKE_CURRENT_SOURCE_DIR}/kernels/kmeans_smi.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/kmeans_smi.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/kmeans_smi.cl" 8)
+
+    #gesummv
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lopenblas")
+
+    smi_target(gesummv "${CMAKE_CURRENT_SOURCE_DIR}/kernels/gesummv_smi.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/distributed_gesummv.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/gesummv_rank0.cl;${CMAKE_CURRENT_SOURCE_DIR}/kernels/gesummv_rank1.cl" 2)
 
 
 endif()
