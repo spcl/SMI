@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
     IntelFPGAOCLUtils::createCommandQueues(context,device,queues, num_kernels);
     IntelFPGAOCLUtils::createKernels(program,kernel_names,kernels);
 
-    int tile_size=2048;
+    int tile_size=128;
     cout << "Executing with tile size " << tile_size<<endl;
 
 
