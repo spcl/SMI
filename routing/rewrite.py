@@ -3,6 +3,8 @@ import os
 import shutil
 import subprocess
 
+import math
+
 from ops import SmiOperation
 from serialization import parse_smi_operation
 
@@ -24,10 +26,11 @@ def copy_files(src_dir, dest_dir, files):
 def transform_buffer_size(data, op: SmiOperation):
     """
     Buffer size from the user is given in number of elements, it has to be translated into the number of messages.
+    The transformed buffer size has to be a multiple of 8.
     """
     buffer_size = data.get("buffer_size")
     if buffer_size is not None:
-        op.buffer_size /= op.data_elements_per_packet()
+        op.buffer_size = math.ceil((max(1, op.buffer_size) / op.data_elements_per_packet()) / 8) * 8
 
 
 def rewrite(rewriter, file, include_dirs, log):

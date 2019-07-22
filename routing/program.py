@@ -44,7 +44,7 @@ def validate_allocations(channel_allocations):
             ports.add(op.logical_port)
 
 
-def allocate_channels(operations: List[SmiOperation], count: int):
+def allocate_channels(operations: List[SmiOperation], p2p_rendezvous: bool, count: int):
     channel_allocations = {}
 
     for channel in range(count):
@@ -64,7 +64,7 @@ def allocate_channels(operations: List[SmiOperation], count: int):
 
     for chan in required_channels:
         for op in operations:
-            usage = op.channel_usage()
+            usage = op.channel_usage(p2p_rendezvous)
             if chan in usage:
                 op_channels[chan.split("_")[0]].append((op, chan))
 
@@ -102,7 +102,7 @@ class Program:
         self.channel_count = channel_count
 
         self.logical_port_count = max((op.logical_port for op in operations), default=0) + 1
-        self.channel_allocations = allocate_channels(self.operations, channel_count)
+        self.channel_allocations = allocate_channels(self.operations, p2p_rendezvous, channel_count)
         validate_allocations(self.channel_allocations)
 
     def get_channel_allocations(self, channel: int):
