@@ -20,7 +20,7 @@ Please refer to the wiki for a reference on how to use SMI for your own distribu
 
 The library depends on:
 
-* CMake for configuration 
+* CMake for configuration
 * Intel FPGA SDK for OpenCL pro, version 18.1 ([http://fpgasoftware.intel.com/opencl/](http://fpgasoftware.intel.com/opencl/))
 * GCC (version 5+)
 * An MPI implementation (e.g. OpenMPI)
@@ -40,7 +40,7 @@ The project uses CMake for configuration. To configure the project and build the
 ```bash
 mkdir build
 cd build
-cmake .. 
+cmake ..
 ```
 The experiments shown in the paper are organized in two subdirectories of the CMake folder, `microbenchmarks` and `examples`.
 
@@ -77,13 +77,13 @@ If you are using a different setup, please adjust the host programs.
 ### Example 
 
 Suppose that the user wants to execute the `stencil_smi` application in emulation.
-The following steps must be performed: 
+The following steps must be performed:
 
 ```bash
 cd examples
 # Compile the emulation version
-make stencil_smi_emulator -j   
-# Compile the host program     
+make stencil_smi_emulator -j
+# Compile the host program
 make stencil_smi_host
 cd stencil_smi
 # Execute the program
