@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
                 cout << "Rank: " << rank  <<" Error!!!!"<<endl;
         }
     }
-    if(rank==0)
+    if(rank==root)
     {
 
        //check

@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
                 cout << "Error!!!!"<<endl;
         }
     }
-    if(rank==0)
+    if(rank==root)
     {
 
        //check
