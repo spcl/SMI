@@ -1,3 +1,5 @@
+<img align="left" width="312" height="128" src="/misc/smi.png?raw=true">
+
 # Streaming Message Interface
 
 Streaming Message Information
