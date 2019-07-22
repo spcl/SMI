@@ -122,115 +122,6 @@ function(add_smi_kernel KERNEL_PATH USE_CODEGEN NUM_RANKS NUM_TAGS CUSTOM_ROUTIN
     configure_file(${CMAKE_SOURCE_DIR}/build.sh.in build_${KERNEL_NAME}.sh)
 endfunction()
 
-## Targets related to microbenchmarks
-# NUM_RANKS is used for generating the right emulations binaries
-# MPMD used for the benchmarks described as MPMD programs
-function(add_smi_microbenchmarks KERNEL_PATH NUM_RANKS MPMD)
-    get_filename_component(KERNEL_NAME ${KERNEL_PATH} NAME_WE)
-    file(RELATIVE_PATH KERNEL_FILE ${CMAKE_CURRENT_SOURCE_DIR} ${KERNEL_PATH})
-
-    #code-gen
-
-    set(SMI_GENERATED_HOST ${CMAKE_CURRENT_BINARY_DIR}/smi-generated-host.c)
-    set(SMI_GENERATED_DEVICE ${CMAKE_CURRENT_BINARY_DIR}/smi-generated-device.cl)
-
-    # user kernel file, modified by codegen in the build directory
-    set(SMI_DEVICE_KERNEL ${CMAKE_CURRENT_BINARY_DIR}/${KERNEL_FILE})
-
-    #set(AOC_SRC_FILES "${SMI_DEVICE_KERNEL}" "${SMI_GENERATED_DEVICE}")
-    set(AOC_SRC_FILES "${SMI_DEVICE_KERNEL}")
-    add_custom_target(generate_${KERNEL_NAME}_codegen ALL
-        COMMAND python
-        ${CMAKE_SOURCE_DIR}/routing/main.py codegen
-            --include '${CMAKE_SOURCE_DIR}/include'
-            ${SMI_ROUTING_FILE}
-            ${SMI_REWRITER}
-            ${CMAKE_CURRENT_SOURCE_DIR}
-            ${CMAKE_CURRENT_BINARY_DIR}
-            ${SMI_GENERATED_HOST}
-            ${SMI_GENERATED_DEVICE}
-            ${CMAKE_CURRENT_BINARY_DIR}/pg1.json
-            ${KERNEL_FILE})
-    add_dependencies(generate_${KERNEL_NAME}_codegen rewriter)
-
-    add_custom_target(generate_${KERNEL_NAME}_routing ALL
-            COMMAND python
-            ${CMAKE_SOURCE_DIR}/routing/main.py route
-            ${SMI_ROUTING_FILE}
-            ${CMAKE_CURRENT_BINARY_DIR})
-    add_dependencies(generate_${KERNEL_NAME}_routing generate_${KERNEL_NAME}_codegen)
-
-    #add_dependencies(generate_${KERNEL_NAME} generate_${KERNEL_NAME}_routing)
-    set(AOC_COMMAND
-        -I${CMAKE_SOURCE_DIR}/include
-        -I${CMAKE_SOURCE_DIR}/hlslib/include
-        -I${CMAKE_CURRENT_SOURCE_DIR}/include
-        -I${CMAKE_BINARY_DIR}
-        -I${CMAKE_CURRENT_BINARY_DIR}
-        -fp-relaxed
-        -no-interleaving=default
-        -fmax=${SMI_FMAX}
-        -board=${SMI_TARGET_BOARD}
-    )
-
-    if(MPMD)
-        add_custom_target(build_${KERNEL_NAME}_report
-            COMMAND ${IntelFPGAOpenCL_AOC}
-            ${AOC_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR}/kernels/${KERNEL_NAME}_rank0.cl  -rtl -report
-            COMMAND ${IntelFPGAOpenCL_AOC} ${AOC_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR}/kernels/${KERNEL_NAME}_rank1.cl  -rtl -report)
-        # To emulate an MPI-like setup, we need to generate a separate emulation
-        # kernel for each rank
-        add_custom_target(build_${KERNEL_NAME}_emulator )
-        math(EXPR LOOP_END "${NUM_RANKS} - 1")
-        foreach(SMI_EMULATION_RANK RANGE 0 ${LOOP_END} 1)
-            if(SMI_EMULATION_RANK EQUAL 0)
-                set(KERNEL_FILE ${CMAKE_CURRENT_SOURCE_DIR}/kernels/${KERNEL_NAME}_rank0.cl)
-            else()
-                set(KERNEL_FILE ${CMAKE_CURRENT_SOURCE_DIR}/kernels/${KERNEL_NAME}_rank1.cl)
-            endif()
-            add_custom_target(build_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}
-                COMMAND ${IntelFPGAOpenCL_AOC}
-                ${AOC_COMMAND} ${KERNEL_FILE} -march=emulator
-                -DSMI_EMULATION_RANK=${SMI_EMULATION_RANK}
-                -emulator-channel-depth-model=strict
-                -o ${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}.aocx)
-            add_dependencies(build_${KERNEL_NAME}_emulator
-                build_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK})
-            add_dependencies(build_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}
-                generate_${KERNEL_NAME}_routing)
-        endforeach()
-        add_custom_target(build_${KERNEL_NAME}_hardware
-            COMMAND ${IntelFPGAOpenCL_AOC}
-            ${AOC_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR}/kernels/${KERNEL_NAME}_rank0.cl -o ${KERNEL_NAME}_rank0_hardware.aocx
-            COMMAND ${IntelFPGAOpenCL_AOC} ${AOC_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR}/kernels/${KERNEL_NAME}_rank1.cl -o ${KERNEL_NAME}_rank1_hardware.aocx;)
-    else()
-        add_custom_target(build_${KERNEL_NAME}_report
-            COMMAND ${IntelFPGAOpenCL_AOC}
-            ${AOC_COMMAND} ${AOC_SRC_FILES} -rtl -report)
-        # To emulate an MPI-like setup, we need to generate a separate emulation
-        # kernel for each rank
-        add_custom_target(build_${KERNEL_NAME}_emulator )
-        math(EXPR LOOP_END "${NUM_RANKS} - 1")
-        foreach(SMI_EMULATION_RANK RANGE 0 ${LOOP_END} 1)
-            add_custom_target(build_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}
-                COMMAND ${IntelFPGAOpenCL_AOC}
-                ${AOC_COMMAND} ${AOC_SRC_FILES} -march=emulator
-                -DSMI_EMULATION_RANK=${SMI_EMULATION_RANK}
-                -emulator-channel-depth-model=strict
-                -o ${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}.aocx)
-            add_dependencies(build_${KERNEL_NAME}_emulator
-                build_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK})
-            add_dependencies(build_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}
-                generate_${KERNEL_NAME}_routing)
-        endforeach()
-        add_custom_target(build_${KERNEL_NAME}_hardware
-            COMMAND ${IntelFPGAOpenCL_AOC}
-            ${AOC_COMMAND} ${AOC_SRC_FILES} -o ${KERNEL_NAME}_hardware.aocx)
-    endif()
-    add_dependencies(build_${KERNEL_NAME}_report generate_${KERNEL_NAME}_routing)
-    add_dependencies(build_${KERNEL_NAME}_emulator generate_${KERNEL_NAME}_routing)
-    add_dependencies(build_${KERNEL_NAME}_hardware generate_${KERNEL_NAME}_routing)
-endfunction()
 
 function(smi_target TARGET_NAME CONNECTION_FILE HOST_SOURCE KERNELS NUM_RANKS)
     set(SMI_SCRIPT ${CMAKE_SOURCE_DIR}/routing/main.py)
@@ -393,87 +284,78 @@ function(smi_target TARGET_NAME CONNECTION_FILE HOST_SOURCE KERNELS NUM_RANKS)
     endforeach()
 endfunction()
 
-#################################
-#TESTING
-################################
-enable_testing()
-function(add_smi_test_executable TEST_PATH)
-    get_filename_component(TEST_NAME ${TEST_PATH} NAME_WE)
-    get_filename_component(DIRECTORY_NAME ${TEST_PATH} DIRECTORY)
-    add_executable(${TEST_NAME}.exe ${DIRECTORY_NAME}/${TEST_NAME}.cpp)
-    target_link_libraries(${TEST_NAME}.exe ${SMI_LIBS} ${GTEST_LIBS})
-endfunction()
 
-##Target for building test program
-# NUM_RANKS is used for generating the right emulations binaries
-# MPMD used for the benchmarks described as MPMD programs
-function(add_smi_test KERNEL_PATH NUM_RANKS MPMD)
-    get_filename_component(KERNEL_NAME ${KERNEL_PATH} NAME_WE)
-    get_filename_component(DIRECTORY_NAME ${KERNEL_PATH} NAME_WE)
-    #code-gen
 
-    add_custom_target(generate_test_${KERNEL_NAME}_routing
-        COMMAND ${PYTHON_EXECUTABLE}
-        ${CMAKE_SOURCE_DIR}/routing/main.py build ${CMAKE_CURRENT_SOURCE_DIR}/${DIRECTORY_NAME}/${KERNEL_NAME}.json  ${TEST_ROUTING_FILE}
-        ${KERNEL_NAME}_routing)
-    #add_dependencies(generate_${KERNEL_NAME} generate_${KERNEL_NAME}_routing)
+
+function(fpga_target TARGET_NAME HOST_SOURCE KERNEL GENERATE_KERNEL)
+
+    set(FPGA_SOURCES)               # list of transformed user device files (one per program)
+    set(FPGA_GENERATED_SOURCES)     # list of generated device files (one per program)
+
+    set(WORKDIR ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME})
+    file(MAKE_DIRECTORY ${WORKDIR})
+
+    if(GENERATE_KERNEL)
+           add_custom_target(generate_${KERNEL_NAME}
+               COMMAND ${PYTHON_EXECUTABLE}
+               ${CMAKE_CURRENT_SOURCE_DIR}/kernels/${KERNEL_NAME}.py
+               ${SMI_STENCIL_NUM_PROCS_X} ${SMI_STENCIL_NUM_PROCS_Y}
+               ${CMAKE_CURRENT_SOURCE_DIR}/kernels ${CMAKE_CURRENT_BINARY_DIR})
+           set(KERNEL_FILE ${CMAKE_CURRENT_BINARY_DIR}/${KERNEL_NAME}.cl)
+    endif()
+
+
     set(AOC_COMMAND
         -I${CMAKE_SOURCE_DIR}/include
         -I${CMAKE_SOURCE_DIR}/hlslib/include
-        -I${CMAKE_CURRENT_SOURCE_DIR}/include
-        -I${CMAKE_BINARY_DIR}
         -I${CMAKE_CURRENT_BINARY_DIR}
-        -I${CMAKE_CURRENT_BINARY_DIR}/${KERNEL_NAME}_routing
         -fp-relaxed
         -no-interleaving=default
         -fmax=${SMI_FMAX}
         -board=${SMI_TARGET_BOARD}
-        -emulator-channel-depth-model=strict
-        )
+    )
 
-    if(MPMD)
-        # To emulate an MPI-like setup, we need to generate a separate emulation
-        # kernel for each rank
-        add_custom_target(build_test_${KERNEL_NAME}_emulator )
-        math(EXPR LOOP_END "${NUM_RANKS} - 1")
-        foreach(SMI_EMULATION_RANK RANGE 0 ${LOOP_END} 1)
-            if(SMI_EMULATION_RANK EQUAL 0)
-                set(KERNEL_FILE ${CMAKE_CURRENT_SOURCE_DIR}/${DIRECTORY_NAME}/${KERNEL_NAME}_rank0.cl)
-            else()
-                set(KERNEL_FILE ${CMAKE_CURRENT_SOURCE_DIR}/${DIRECTORY_NAME}/${KERNEL_NAME}_rank1.cl)
-            endif()
-            add_custom_target(build_test_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}
-                COMMAND ${IntelFPGAOpenCL_AOC}
-                ${AOC_COMMAND} ${KERNEL_FILE} -march=emulator
-                -DSMI_EMULATION_RANK=${SMI_EMULATION_RANK}
-                -emulator-channel-depth-model=strict
-                -o ${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}.aocx)
-            add_dependencies(build_test_${KERNEL_NAME}_emulator
-                build_test_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK})
-            add_dependencies(build_test_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}
-                generate_test_${KERNEL_NAME}_routing)
-        endforeach()
-    else()
-        # To emulate an MPI-like setup, we need to generate a separate emulation
-        # kernel for each rank
-        add_custom_target(build_test_${KERNEL_NAME}_emulator )
-        math(EXPR LOOP_END "${NUM_RANKS} - 1")
-        foreach(SMI_EMULATION_RANK RANGE 0 ${LOOP_END} 1)
-            set(KERNEL_FILE ${CMAKE_CURRENT_SOURCE_DIR}/${DIRECTORY_NAME}/${KERNEL_NAME}.cl)
-            add_custom_target(build_test_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}
-                COMMAND ${IntelFPGAOpenCL_AOC}
-                ${AOC_COMMAND} ${KERNEL_FILE} -march=emulator
-                -DSMI_EMULATION_RANK=${SMI_EMULATION_RANK}
-                -emulator-channel-depth-model=strict
-                -o ${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}.aocx)
-            add_dependencies(build_test_${KERNEL_NAME}_emulator
-                build_test_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK})
-            add_dependencies(build_test_${KERNEL_NAME}_emulator_${SMI_EMULATION_RANK}
-                generate_test_${KERNEL_NAME}_routing)
-        endforeach()
-    endif()
-    add_dependencies(build_test_${KERNEL_NAME}_emulator generate_test_${KERNEL_NAME}_routing)
+
+    get_filename_component(KERNEL_NAME ${KERNEL} NAME_WE)
+    get_filename_component(KERNEL_NAME_EXT ${KERNEL} NAME)
+    get_filename_component(KERNEL_SRC_DIR ${KERNEL} DIRECTORY)
+    set(KERNEL_BIN_DIR ${WORKDIR}/${KERNEL_NAME})
+
+    # generate report
+    set(FPGA_REPORT_TARGET ${TARGET_NAME}_${KERNEL_NAME}_aoc_report)
+    add_custom_target(${FPGA_REPORT_TARGET}
+            COMMAND ${IntelFPGAOpenCL_AOC} ${AOC_COMMAND} ${KERNEL} -rtl -report
+            WORKING_DIRECTORY ${WORKDIR}
+    )
+
+    # build hardware
+    set(FPGA_BUILD_TARGET ${TARGET_NAME}_${KERNEL_NAME}_aoc_build)
+    add_custom_target(${FPGA_BUILD_TARGET}
+        COMMAND ${IntelFPGAOpenCL_AOC} ${AOC_COMMAND} ${KERNEL}
+        WORKING_DIRECTORY ${KERNEL_BIN_DIR}
+    )
+
+    # compile host code
+    set(HOST_TARGET ${TARGET_NAME}_host)
+    add_executable(${HOST_TARGET} ${HOST_SOURCE})
+    target_include_directories(${HOST_TARGET} PRIVATE ${WORKDIR})
+    set_target_properties(${HOST_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${WORKDIR})
+    target_link_libraries(${HOST_TARGET} ${SMI_LIBS})
+
+
+    # generate emulation
+    set(EMULATOR_TARGET ${TARGET_NAME}_emulator)
+
+    set(EMULATION_WORKDIR ${WORKDIR}/emulator)
+    file(MAKE_DIRECTORY ${EMULATION_WORKDIR})
+    add_custom_target(${EMULATOR_TARGET}
+        COMMAND ${IntelFPGAOpenCL_AOC} ${AOC_COMMAND} ${KERNEL} -march=emulator
+        -emulator-channel-depth-model=strict
+        WORKING_DIRECTORY ${EMULATION_WORKDIR}
+    )
 endfunction()
+
+
 
 add_subdirectory(source-rewriter)
 add_subdirectory(examples)
