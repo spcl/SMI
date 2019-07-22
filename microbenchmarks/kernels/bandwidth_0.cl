@@ -11,7 +11,7 @@
 __kernel void app(const int N, const char dest_rank, const SMI_Comm comm)
 {
 
-    SMI_Channel chan=SMI_Open_send_channel(N,SMI_DOUBLE,dest_rank,0,comm);
+    SMI_Channel chan=SMI_Open_send_channel_ad(N,SMI_DOUBLE,dest_rank,0,comm,128);
     const double start=0.1f;
     for(int i=0;i<N;i++)
     {

@@ -81,3 +81,31 @@ __kernel void test_short(__global char* mem, const int N, char root,SMI_Comm com
 }
 
 
+__kernel void test_int_ad(__global char* mem, const int N, char root,SMI_Comm comm)
+{
+    char check=1;
+    SMI_BChannel  __attribute__((register)) chan= SMI_Open_bcast_channel_ad(N, SMI_INT,5, root,comm,1);
+    for(int i=0;i<N;i++)
+    {
+
+        int to_comm=i;
+        SMI_Bcast(&chan,&to_comm);
+        check &= (to_comm==i);
+    }
+    *mem=check;
+}
+
+__kernel void test_float_ad(__global char* mem, const int N, char root,SMI_Comm comm)
+{
+    char check=1;
+    const float offset=0.1f;
+    SMI_BChannel  __attribute__((register)) chan= SMI_Open_bcast_channel_ad(N, SMI_FLOAT,6, root,comm,2);
+    for(int i=0;i<N;i++)
+    {
+
+        float to_comm=i+offset;
+        SMI_Bcast(&chan,&to_comm);
+        check &= (to_comm==i+offset);
+    }
+    *mem=check;
+}

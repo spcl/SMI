@@ -66,6 +66,86 @@ TEST(Broadcast, MPIinit)
     ASSERT_EQ(rank_count,8);
 }
 
+TEST(Broadcast, CharMessages)
+{
+    //with this test we evaluate the correcteness of integer messages transmission
+
+    cl::Kernel kernel;
+    cl::CommandQueue queue;
+    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
+    IntelFPGAOCLUtils::createKernel(program,"test_char",kernel);
+
+    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
+    std::vector<int> message_lengths={1,128,1024,1000};
+    std::vector<int> roots={0,4,5};
+    int runs=2;
+    for(int root:roots)    //consider different roots
+    {
+
+        for(int ml:message_lengths)     //consider different message lengths
+        {
+            kernel.setArg(0,sizeof(cl_mem),&check);
+            kernel.setArg(1,sizeof(int),&ml);
+            kernel.setArg(2,sizeof(char),&root);
+            kernel.setArg(3,sizeof(SMI_Comm),&comm);
+
+            for(int i=0;i<runs;i++)
+            {
+                if(my_rank==0)  //remove emulated channels
+                    system("rm emulated_chan* 2> /dev/null;");
+
+
+                // run some_function() and compared with some_value
+                // but end the function if it exceeds 3 seconds
+                //source https://github.com/google/googletest/issues/348#issuecomment-492785854
+                ASSERT_DURATION_LE(TEST_TIMEOUT, {
+                  ASSERT_TRUE(runAndReturn(queue,kernel,check));
+                });
+            }
+        }
+    }
+}
+
+TEST(Broadcast, ShortMessages)
+{
+    //with this test we evaluate the correcteness of integer messages transmission
+
+    cl::Kernel kernel;
+    cl::CommandQueue queue;
+    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
+    IntelFPGAOCLUtils::createKernel(program,"test_short",kernel);
+
+    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
+    std::vector<int> message_lengths={1,128,1024,10000};
+    std::vector<int> roots={0,4,7};
+    int runs=2;
+    for(int root:roots)    //consider different roots
+    {
+
+        for(int ml:message_lengths)     //consider different message lengths
+        {
+            kernel.setArg(0,sizeof(cl_mem),&check);
+            kernel.setArg(1,sizeof(int),&ml);
+            kernel.setArg(2,sizeof(char),&root);
+            kernel.setArg(3,sizeof(SMI_Comm),&comm);
+
+            for(int i=0;i<runs;i++)
+            {
+                if(my_rank==0)  //remove emulated channels
+                    system("rm emulated_chan* 2> /dev/null;");
+
+
+                // run some_function() and compared with some_value
+                // but end the function if it exceeds x seconds
+                //source https://github.com/google/googletest/issues/348#issuecomment-492785854
+                ASSERT_DURATION_LE(TEST_TIMEOUT, {
+                  ASSERT_TRUE(runAndReturn(queue,kernel,check));
+                });
+            }
+        }
+    }
+}
+
 TEST(Broadcast, IntegerMessages)
 {
     //with this test we evaluate the correcteness of integer messages transmission
@@ -186,18 +266,19 @@ TEST(Broadcast, DoubleMessages)
     }
 }
 
-TEST(Broadcast, CharMessages)
+
+TEST(Broadcast, IntegerMessagesAD)
 {
     //with this test we evaluate the correcteness of integer messages transmission
 
     cl::Kernel kernel;
     cl::CommandQueue queue;
     IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
-    IntelFPGAOCLUtils::createKernel(program,"test_char",kernel);
+    IntelFPGAOCLUtils::createKernel(program,"test_int_ad",kernel);
 
     cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
-    std::vector<int> message_lengths={1,128,1024,1000};
-    std::vector<int> roots={0,4,5};
+    std::vector<int> message_lengths={1,128,1024,10000};
+    std::vector<int> roots={0,4,7};
     int runs=2;
     for(int root:roots)    //consider different roots
     {
@@ -226,14 +307,14 @@ TEST(Broadcast, CharMessages)
     }
 }
 
-TEST(Broadcast, ShortMessages)
+TEST(Broadcast, FloatMessagesAD)
 {
     //with this test we evaluate the correcteness of integer messages transmission
 
     cl::Kernel kernel;
     cl::CommandQueue queue;
     IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
-    IntelFPGAOCLUtils::createKernel(program,"test_short",kernel);
+    IntelFPGAOCLUtils::createKernel(program,"test_float_ad",kernel);
 
     cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
     std::vector<int> message_lengths={1,128,1024,10000};
@@ -256,7 +337,7 @@ TEST(Broadcast, ShortMessages)
 
 
                 // run some_function() and compared with some_value
-                // but end the function if it exceeds x seconds
+                // but end the function if it exceeds 3 seconds
                 //source https://github.com/google/googletest/issues/348#issuecomment-492785854
                 ASSERT_DURATION_LE(TEST_TIMEOUT, {
                   ASSERT_TRUE(runAndReturn(queue,kernel,check));
@@ -269,17 +350,16 @@ TEST(Broadcast, ShortMessages)
 int main(int argc, char *argv[])
 {
 
-    if(argc<2)
-    {
-        std::cerr << "Usage: [env CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 " << argv[0] << " <fpga binary file>" << std::endl;
-        return -1;
-    }
+    //std::cerr << "Usage: [env CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 " << argv[0] << " [<fpga binary file>]" << std::endl;
 
     int result = 0;
 
     ::testing::InitGoogleTest(&argc, argv);
     //delete listeners for all the rank except 0
-    program_path =argv[1];
+    if(argc==2)
+        program_path =argv[1];
+    else
+        program_path="emulator_<rank>/broadcast.aocx";
     ::testing::TestEventListeners& listeners =
             ::testing::UnitTest::GetInstance()->listeners();
     CHECK_MPI(MPI_Init(&argc, &argv));

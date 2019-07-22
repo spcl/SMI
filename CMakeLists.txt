@@ -8,7 +8,7 @@ set(TEST_ROUTING_FILE "${CMAKE_SOURCE_DIR}/test/network_topologies/8FPGAs-2D-tor
 
 set(SMI_REWRITER "${CMAKE_BINARY_DIR}/source-rewriter/rewriter")
 
-set(SMI_FMAX "300" CACHE STRING "Target Fmax when compiling for hardware.")
+set(SMI_FMAX "480" CACHE STRING "Target Fmax when compiling for hardware.")
 set(SMI_DEVICES_PER_NODE 2 CACHE STRING "Number of FPGA devices per node.")
 
 option (ENABLE_TESTS "Enables testing" OFF)

@@ -9,11 +9,12 @@ The user can compile and runn all of them with
 
 
 Tested primitives:
-- p2p
+- p2p: point to point communications
 - broadcast
 - scatter
 - gather
 - reduce
+- mixed: p2p and collective communications in the same bitstream
 
 Each primitive is tested against different message lenght, data types and (in case of collective)
 different roots.
@@ -25,18 +26,21 @@ or increase the timeout.
 For each test, the timeout value is defined as macro at the begining of the respective .cpp file.
 
 
-Otherwise she can selectively choose a primitive to test:
+To test a primitive, in the `test` folder of the Cmake folder:
+
 1. compile the emulated bitstream
 
-    `make build_test_<primitive>_emulator`
+    `make test_<primitive>_emulator`
 
 2. compile the test program
 
-    `make test_<primitive>.exe`
+    `make test_<primitive>_host`
 
-3. execute the test program
+3. execute the test program from the respective working directory `test_<primitive>/`
 
-    `env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 ./test_<primitive>.exe "./<primitive>_emulator_<rank>.aocx"`
+    `env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 ./test_<primitive>_host`
 
-    where the last `<rank>` must be explictly written like this
+    or simply use the integration with `ctest`
+
+
 

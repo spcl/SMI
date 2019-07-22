@@ -54,7 +54,6 @@ bool runAndReturn(cl::CommandQueue &queue, cl::Kernel &kernel, cl::Buffer &check
     MPI_Barrier(MPI_COMM_WORLD);
     
     queue.enqueueTask(kernel);
-
     queue.finish();
     
     MPI_Barrier(MPI_COMM_WORLD);
@@ -74,60 +73,18 @@ TEST(Reduce, MPIinit)
     ASSERT_EQ(rank_count,8);
 }
 
-TEST(Reduce, FloatAdd)
+
+TEST(Reduce, CharMax)
 {
     //with this test we evaluate the correcteness of integer messages transmission
-  
+
     cl::Kernel kernel;
     cl::CommandQueue queue;
     IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
-    IntelFPGAOCLUtils::createKernel(program,"test_float_add",kernel);
+    IntelFPGAOCLUtils::createKernel(program,"test_char_max",kernel);
 
     cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
-    std::vector<int> message_lengths={1,128, 500};
-    std::vector<int> roots={1,4,7};
-    int runs=2;
-    for(int root:roots)    //consider different roots
-    {
-
-        for(int ml:message_lengths)     //consider different message lengths
-        {
-            kernel.setArg(0,sizeof(int),&ml);
-            kernel.setArg(1,sizeof(char),&root);
-            kernel.setArg(2,sizeof(cl_mem),&check);
-            kernel.setArg(3,sizeof(SMI_Comm),&comm);
-
-            for(int i=0;i<runs;i++)
-            {
-                if(my_rank==0)  //remove emulated channels
-                    system("rm emulated_chan* 2> /dev/null;");
-
-
-                // run some_function() and compared with some_value
-                // but end the function if it exceeds 3 seconds
-                //source https://github.com/google/googletest/issues/348#issuecomment-492785854
-                //reduce mya needs more time
-                ASSERT_DURATION_LE(TEST_TIMEOUT, {
-                  ASSERT_TRUE(runAndReturn(queue,kernel,check,root));
-                });
-
-            }
-        }
-    }
-}
-
-
-TEST(Reduce, IntAdd)
-{
-    //with this test we evaluate the correcteness of integer messages transmission
-  
-    cl::Kernel kernel;
-    cl::CommandQueue queue;
-    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
-    IntelFPGAOCLUtils::createKernel(program,"test_int_add",kernel);
-
-    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
-    std::vector<int> message_lengths={1,128, 500};
+    std::vector<int> message_lengths={1,128, 300};
     std::vector<int> roots={1,4,7};
     int runs=2;
     for(int root:roots)    //consider different roots
@@ -146,11 +103,82 @@ TEST(Reduce, IntAdd)
                 if(my_rank==0)  //remove emulated channels
                     system("rm emulated_chan* 2> /dev/null;");
 
+                ASSERT_DURATION_LE(TEST_TIMEOUT, {
+                  ASSERT_TRUE(runAndReturn(queue,kernel,check,root));
+                });
 
-                // run some_function() and compared with some_value
-                // but end the function if it exceeds 3 seconds
-                //source https://github.com/google/googletest/issues/348#issuecomment-492785854
-                //reduce mya needs more time
+            }
+        }
+    }
+}
+
+
+TEST(Reduce, ShortMin)
+{
+    //with this test we evaluate the correcteness of integer messages transmission
+
+    cl::Kernel kernel;
+    cl::CommandQueue queue;
+    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
+    IntelFPGAOCLUtils::createKernel(program,"test_short_min",kernel);
+
+    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
+    std::vector<int> message_lengths={1,128, 300};
+    std::vector<int> roots={1,4,7};
+    int runs=2;
+    for(int root:roots)    //consider different roots
+    {
+
+        for(int ml:message_lengths)     //consider different message lengths
+        {
+            kernel.setArg(0,sizeof(int),&ml);
+            kernel.setArg(1,sizeof(char),&root);
+            kernel.setArg(2,sizeof(cl_mem),&check);
+            kernel.setArg(3,sizeof(SMI_Comm),&comm);
+
+            for(int i=0;i<runs;i++)
+            {
+                //printf("root: %d ml: %d, it:%d\n",root, ml,i);
+                if(my_rank==0)  //remove emulated channels
+                    system("rm emulated_chan* 2> /dev/null;");
+
+                ASSERT_DURATION_LE(TEST_TIMEOUT, {
+                  ASSERT_TRUE(runAndReturn(queue,kernel,check,root));
+                });
+
+            }
+        }
+    }
+}
+TEST(Reduce, IntAdd)
+{
+    //with this test we evaluate the correcteness of integer messages transmission
+
+    cl::Kernel kernel;
+    cl::CommandQueue queue;
+    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
+    IntelFPGAOCLUtils::createKernel(program,"test_int_add",kernel);
+
+    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
+    std::vector<int> message_lengths={1,128, 300};
+    std::vector<int> roots={1,4,7};
+    int runs=2;
+    for(int root:roots)    //consider different roots
+    {
+
+        for(int ml:message_lengths)     //consider different message lengths
+        {
+            kernel.setArg(0,sizeof(int),&ml);
+            kernel.setArg(1,sizeof(char),&root);
+            kernel.setArg(2,sizeof(cl_mem),&check);
+            kernel.setArg(3,sizeof(SMI_Comm),&comm);
+
+            for(int i=0;i<runs;i++)
+            {
+                //printf("root: %d ml: %d, it:%d\n",root, ml,i);
+                if(my_rank==0)  //remove emulated channels
+                    system("rm emulated_chan* 2> /dev/null;");
+
                 ASSERT_DURATION_LE(TEST_TIMEOUT, {
                   ASSERT_TRUE(runAndReturn(queue,kernel,check,root));
                 });
@@ -162,7 +190,6 @@ TEST(Reduce, IntAdd)
 
 TEST(Reduce, IntMax)
 {
-    //with this test we evaluate the correcteness of integer messages transmission
 
     cl::Kernel kernel;
     cl::CommandQueue queue;
@@ -170,7 +197,7 @@ TEST(Reduce, IntMax)
     IntelFPGAOCLUtils::createKernel(program,"test_int_max",kernel);
 
     cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
-    std::vector<int> message_lengths={1,128, 500};
+    std::vector<int> message_lengths={1,128, 300};
     std::vector<int> roots={1,4,7};
     int runs=2;
     for(int root:roots)    //consider different roots
@@ -189,11 +216,6 @@ TEST(Reduce, IntMax)
                 if(my_rank==0)  //remove emulated channels
                     system("rm emulated_chan* 2> /dev/null;");
 
-
-                // run some_function() and compared with some_value
-                // but end the function if it exceeds 3 seconds
-                //source https://github.com/google/googletest/issues/348#issuecomment-492785854
-                //reduce mya needs more time
                 ASSERT_DURATION_LE(TEST_TIMEOUT, {
                   ASSERT_TRUE(runAndReturn(queue,kernel,check,root));
                 });
@@ -203,21 +225,165 @@ TEST(Reduce, IntMax)
     }
 }
 
+TEST(Reduce, FloatAdd)
+{
+    cl::Kernel kernel;
+    cl::CommandQueue queue;
+    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
+    IntelFPGAOCLUtils::createKernel(program,"test_float_add",kernel);
+
+    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
+    std::vector<int> message_lengths={1,128, 300};
+    std::vector<int> roots={1,4,7};
+    int runs=2;
+    for(int root:roots)    //consider different roots
+    {
+
+        for(int ml:message_lengths)     //consider different message lengths
+        {
+            kernel.setArg(0,sizeof(int),&ml);
+            kernel.setArg(1,sizeof(char),&root);
+            kernel.setArg(2,sizeof(cl_mem),&check);
+            kernel.setArg(3,sizeof(SMI_Comm),&comm);
+
+            for(int i=0;i<runs;i++)
+            {
+                if(my_rank==0)  //remove emulated channels
+                    system("rm emulated_chan* 2> /dev/null;");
+
+                ASSERT_DURATION_LE(TEST_TIMEOUT, {
+                  ASSERT_TRUE(runAndReturn(queue,kernel,check,root));
+                });
+
+            }
+        }
+    }
+}
+
+TEST(Reduce, DoubleAdd)
+{
+
+    cl::Kernel kernel;
+    cl::CommandQueue queue;
+    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
+    IntelFPGAOCLUtils::createKernel(program,"test_double_add",kernel);
+
+    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
+    std::vector<int> message_lengths={1,128, 300};
+    std::vector<int> roots={1,4,7};
+    int runs=2;
+    for(int root:roots)    //consider different roots
+    {
+
+        for(int ml:message_lengths)     //consider different message lengths
+        {
+            kernel.setArg(0,sizeof(int),&ml);
+            kernel.setArg(1,sizeof(char),&root);
+            kernel.setArg(2,sizeof(cl_mem),&check);
+            kernel.setArg(3,sizeof(SMI_Comm),&comm);
+
+            for(int i=0;i<runs;i++)
+            {
+                if(my_rank==0)  //remove emulated channels
+                    system("rm emulated_chan* 2> /dev/null;");
+
+                ASSERT_DURATION_LE(TEST_TIMEOUT, {
+                  ASSERT_TRUE(runAndReturn(queue,kernel,check,root));
+                });
+
+            }
+        }
+    }
+}
+
+TEST(Reduce, IntMaxAD)
+{
+
+    cl::Kernel kernel;
+    cl::CommandQueue queue;
+    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
+    IntelFPGAOCLUtils::createKernel(program,"test_int_max_ad",kernel);
+
+    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
+    std::vector<int> message_lengths={1,128, 300};
+    std::vector<int> roots={1,4,7};
+    int runs=2;
+    for(int root:roots)    //consider different roots
+    {
+
+        for(int ml:message_lengths)     //consider different message lengths
+        {
+            kernel.setArg(0,sizeof(int),&ml);
+            kernel.setArg(1,sizeof(char),&root);
+            kernel.setArg(2,sizeof(cl_mem),&check);
+            kernel.setArg(3,sizeof(SMI_Comm),&comm);
+
+            for(int i=0;i<runs;i++)
+            {
+                if(my_rank==0)  //remove emulated channels
+                    system("rm emulated_chan* 2> /dev/null;");
+
+                ASSERT_DURATION_LE(TEST_TIMEOUT, {
+                  ASSERT_TRUE(runAndReturn(queue,kernel,check,root));
+                });
+
+            }
+        }
+    }
+}
+
+TEST(Reduce, FloatMinAD)
+{
+
+    cl::Kernel kernel;
+    cl::CommandQueue queue;
+    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
+    IntelFPGAOCLUtils::createKernel(program,"test_float_min",kernel);
+
+    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
+    std::vector<int> message_lengths={1,128, 300};
+    std::vector<int> roots={1,4,7};
+    int runs=2;
+    for(int root:roots)    //consider different roots
+    {
+
+        for(int ml:message_lengths)     //consider different message lengths
+        {
+            kernel.setArg(0,sizeof(int),&ml);
+            kernel.setArg(1,sizeof(char),&root);
+            kernel.setArg(2,sizeof(cl_mem),&check);
+            kernel.setArg(3,sizeof(SMI_Comm),&comm);
+
+            for(int i=0;i<runs;i++)
+            {
+                if(my_rank==0)  //remove emulated channels
+                    system("rm emulated_chan* 2> /dev/null;");
+
+                ASSERT_DURATION_LE(TEST_TIMEOUT, {
+                  ASSERT_TRUE(runAndReturn(queue,kernel,check,root));
+                });
+
+            }
+        }
+    }
+}
+
+
+
 int main(int argc, char *argv[])
 {
 
 
-    if(argc<2)
-    {
-        std::cerr << "Usage: [env CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 " << argv[0] << " \"<fpga binary file>\"" << std::endl;
-        return -1;
-    }
+     //   std::cerr << "Usage: [env CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 " << argv[0] << " \"<fpga binary file>\"" << std::endl;
 
     int result = 0;
 
     ::testing::InitGoogleTest(&argc, argv);
     //delete listeners for all the rank except 0
-    program_path =argv[1];
+    if(argc==2)
+        program_path =argv[1];
+    else
+        program_path="emulator_<rank>/reduce.aocx";
     ::testing::TestEventListeners& listeners =
             ::testing::UnitTest::GetInstance()->listeners();
     CHECK_MPI(MPI_Init(&argc, &argv));

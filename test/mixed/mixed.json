@@ -1,13 +1,13 @@
 {
     "fpgas": {
-      "fpga-0001:acl0": "scatter",
-      "fpga-0001:acl1": "scatter",
-      "fpga-0002:acl0": "scatter",
-      "fpga-0002:acl1": "scatter",
-      "fpga-0003:acl0": "scatter",
-      "fpga-0003:acl1": "scatter",
-      "fpga-0004:acl0": "scatter",
-      "fpga-0004:acl1": "scatter"
+      "fpga-0001:acl0": "mixed",
+      "fpga-0001:acl1": "mixed",
+      "fpga-0002:acl0": "mixed",
+      "fpga-0002:acl1": "mixed",
+      "fpga-0003:acl0": "mixed",
+      "fpga-0003:acl1": "mixed",
+      "fpga-0004:acl0": "mixed",
+      "fpga-0004:acl1": "mixed"
     },
     "connections": {
       "fpga-0001:acl0:ch2": "fpga-0001:acl1:ch3",

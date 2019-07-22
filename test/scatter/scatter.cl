@@ -2,9 +2,8 @@
   Scatter test. The root scatters N*NUM_RANKS elements
   accross all the ranks. Cheks is performed on each rank
 */
-#pragma OPENCL EXTENSION cl_intel_channels : enable
 
-#include "scatter_routing/smi-device-0.h"
+#include <smi.h>
 
 
 

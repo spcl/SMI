@@ -421,13 +421,182 @@ TEST(P2P, IntegerMessagesAD2)
     }
 }
 
+
+TEST(P2P, CharMessagesAD1)
+{
+    //with this test we evaluate the correcteness of char messages transmission
+    cl::Kernel kernel;
+    cl::CommandQueue queue;
+    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
+    IntelFPGAOCLUtils::createKernel(program,"test_char_ad_1",kernel);
+
+    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
+    std::vector<int> message_lengths={1,128,1024,100000};
+    std::vector<int> receivers={1,4,7};
+    int runs=2;
+    for(int recv_rank:receivers)    //consider different receivers
+    {
+
+        for(int ml:message_lengths)     //consider different message lengths
+        {
+            if(my_rank==0)
+            {
+                char dest=(char)recv_rank;
+                kernel.setArg(0,sizeof(int),&ml);
+                kernel.setArg(1,sizeof(char),&dest);
+                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+            }
+            else
+            {
+                kernel.setArg(0,sizeof(cl_mem),&check);
+                kernel.setArg(1,sizeof(int),&ml);
+                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+            }
+
+            for(int i=0;i<runs;i++)
+            {
+                if(my_rank==0)  //remove emulated channels
+                    system("rm emulated_chan* 2> /dev/null;");
+                ASSERT_DURATION_LE(TEST_TIMEOUT, {
+                  ASSERT_TRUE(runAndReturn(queue,kernel,check,my_rank,recv_rank));
+                });
+            }
+        }
+    }
+}
+TEST(P2P, ShortMessagesAD1)
+{
+    //with this test we evaluate the correcteness of char messages transmission
+    cl::Kernel kernel;
+    cl::CommandQueue queue;
+    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
+    IntelFPGAOCLUtils::createKernel(program,"test_short_ad_1",kernel);
+
+    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
+    std::vector<int> message_lengths={1,128,1024,100000};
+    std::vector<int> receivers={1,4,7};
+    int runs=2;
+    for(int recv_rank:receivers)    //consider different receivers
+    {
+
+        for(int ml:message_lengths)     //consider different message lengths
+        {
+            if(my_rank==0)
+            {
+                char dest=(char)recv_rank;
+                kernel.setArg(0,sizeof(int),&ml);
+                kernel.setArg(1,sizeof(char),&dest);
+                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+            }
+            else
+            {
+                kernel.setArg(0,sizeof(cl_mem),&check);
+                kernel.setArg(1,sizeof(int),&ml);
+                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+            }
+
+            for(int i=0;i<runs;i++)
+            {
+                if(my_rank==0)  //remove emulated channels
+                    system("rm emulated_chan* 2> /dev/null;");
+                ASSERT_DURATION_LE(TEST_TIMEOUT, {
+                  ASSERT_TRUE(runAndReturn(queue,kernel,check,my_rank,recv_rank));
+                });
+            }
+        }
+    }
+}
+TEST(P2P, FloatrMessagesAD1)
+{
+    //with this test we evaluate the correcteness of char messages transmission
+    cl::Kernel kernel;
+    cl::CommandQueue queue;
+    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
+    IntelFPGAOCLUtils::createKernel(program,"test_float_ad_1",kernel);
+
+    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
+    std::vector<int> message_lengths={1,128,1024,100000};
+    std::vector<int> receivers={1,4,7};
+    int runs=2;
+    for(int recv_rank:receivers)    //consider different receivers
+    {
+
+        for(int ml:message_lengths)     //consider different message lengths
+        {
+            if(my_rank==0)
+            {
+                char dest=(char)recv_rank;
+                kernel.setArg(0,sizeof(int),&ml);
+                kernel.setArg(1,sizeof(char),&dest);
+                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+            }
+            else
+            {
+                kernel.setArg(0,sizeof(cl_mem),&check);
+                kernel.setArg(1,sizeof(int),&ml);
+                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+            }
+
+            for(int i=0;i<runs;i++)
+            {
+                if(my_rank==0)  //remove emulated channels
+                    system("rm emulated_chan* 2> /dev/null;");
+                ASSERT_DURATION_LE(TEST_TIMEOUT, {
+                  ASSERT_TRUE(runAndReturn(queue,kernel,check,my_rank,recv_rank));
+                });
+            }
+        }
+    }
+}
+TEST(P2P, DoubleMessagesAD1)
+{
+    //with this test we evaluate the correcteness of char messages transmission
+    cl::Kernel kernel;
+    cl::CommandQueue queue;
+    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
+    IntelFPGAOCLUtils::createKernel(program,"test_double_ad_1",kernel);
+
+    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
+    std::vector<int> message_lengths={1,128,1024,100000};
+    std::vector<int> receivers={1,4,7};
+    int runs=2;
+    for(int recv_rank:receivers)    //consider different receivers
+    {
+
+        for(int ml:message_lengths)     //consider different message lengths
+        {
+            if(my_rank==0)
+            {
+                char dest=(char)recv_rank;
+                kernel.setArg(0,sizeof(int),&ml);
+                kernel.setArg(1,sizeof(char),&dest);
+                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+            }
+            else
+            {
+                kernel.setArg(0,sizeof(cl_mem),&check);
+                kernel.setArg(1,sizeof(int),&ml);
+                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+            }
+
+            for(int i=0;i<runs;i++)
+            {
+                if(my_rank==0)  //remove emulated channels
+                    system("rm emulated_chan* 2> /dev/null;");
+                ASSERT_DURATION_LE(TEST_TIMEOUT, {
+                  ASSERT_TRUE(runAndReturn(queue,kernel,check,my_rank,recv_rank));
+                });
+            }
+        }
+    }
+}
 int main(int argc, char *argv[])
 {
 
 
-    if(argc<2)
+    if(argc<1)
     {
-        std::cerr << "Usage: [env CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 " << argv[0] << " <fpga binary file with <rank> and <type> flags>" << std::endl;
+        std::cerr << "Usage: [env CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 " << argv[0] << " [<fpga binary file with <rank> and <type> flags>]" << std::endl;
         return -1;
     }
 
@@ -435,7 +604,11 @@ int main(int argc, char *argv[])
 
     ::testing::InitGoogleTest(&argc, argv);
     //delete listeners for all the rank except 0
-    program_path =argv[1];
+    if(argc==2)
+        program_path =argv[1];
+    else
+        program_path = "emulator_<rank>/p2p_rank<type>.aocx";
+
     ::testing::TestEventListeners& listeners =
             ::testing::UnitTest::GetInstance()->listeners();
     CHECK_MPI(MPI_Init(&argc, &argv));

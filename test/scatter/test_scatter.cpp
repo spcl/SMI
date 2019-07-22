@@ -19,8 +19,8 @@
 #include <cmath>
 #include <thread>
 #include <future>
-#include "scatter_routing/smi-host-0.h"
-#define ROUTING_DIR "scatter_routing/"
+#include "smi_generated_host.c"
+#define ROUTING_DIR "smi-routes/"
 using namespace std;
 std::string program_path;
 int rank_count, my_rank;
@@ -73,10 +73,41 @@ TEST(Gather, MPIinit)
     ASSERT_EQ(rank_count,8);
 }
 
+TEST(Scatter, CharMessages)
+{
+    cl::Kernel kernel;
+    cl::CommandQueue queue;
+    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
+    IntelFPGAOCLUtils::createKernel(program,"test_char",kernel);
+
+    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
+    std::vector<int> message_lengths={16};
+    std::vector<int> roots={0,1,3};
+    int runs=2;
+    for(int root:roots)    //consider different roots
+    {
+
+        for(int ml:message_lengths)     //consider different message lengths
+        {
+            kernel.setArg(0,sizeof(int),&ml);
+            kernel.setArg(1,sizeof(char),&root);
+            kernel.setArg(2,sizeof(cl_mem),&check);
+            kernel.setArg(3,sizeof(SMI_Comm),&comm);
+
+            for(int i=0;i<runs;i++)
+            {
+                if(my_rank==0)  //remove emulated channels
+                    system("rm emulated_chan* 2> /dev/null;");
+                ASSERT_DURATION_LE(TEST_TIMEOUT, {
+                  ASSERT_TRUE(runAndReturn(queue,kernel,check,root));
+                });
+
+            }
+        }
+    }
+}
 TEST(Scatter, IntegerMessages)
 {
-    //with this test we evaluate the correcteness of integer messages transmission
-
     cl::Kernel kernel;
     cl::CommandQueue queue;
     IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
@@ -101,10 +132,6 @@ TEST(Scatter, IntegerMessages)
                 if(my_rank==0)  //remove emulated channels
                     system("rm emulated_chan* 2> /dev/null;");
 
-
-                // run some_function() and compared with some_value
-                // but end the function if it exceeds 3 seconds
-                //source https://github.com/google/googletest/issues/348#issuecomment-492785854
                 ASSERT_DURATION_LE(TEST_TIMEOUT, {
                   ASSERT_TRUE(runAndReturn(queue,kernel,check,root));
                 });
@@ -117,7 +144,6 @@ TEST(Scatter, IntegerMessages)
 
 TEST(Scatter, FloatMessages)
 {
-    //with this test we evaluate the correcteness of integer messages transmission
 
     cl::Kernel kernel;
     cl::CommandQueue queue;
@@ -143,10 +169,6 @@ TEST(Scatter, FloatMessages)
                 if(my_rank==0)  //remove emulated channels
                     system("rm emulated_chan* 2> /dev/null;");
 
-
-                // run some_function() and compared with some_value
-                // but end the function if it exceeds 3 seconds
-                //source https://github.com/google/googletest/issues/348#issuecomment-492785854
                 ASSERT_DURATION_LE(TEST_TIMEOUT, {
                   ASSERT_TRUE(runAndReturn(queue,kernel,check,root));
                 });
@@ -196,60 +218,17 @@ TEST(Scatter, DoubleMessages)
     }
 }
 
-TEST(Scatter, CharMessages)
-{
-    //with this test we evaluate the correcteness of char messages transmission
-
-    cl::Kernel kernel;
-    cl::CommandQueue queue;
-    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
-    IntelFPGAOCLUtils::createKernel(program,"test_char",kernel);
-
-    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
-    std::vector<int> message_lengths={16};
-    std::vector<int> roots={0,1,3};
-    int runs=2;
-    for(int root:roots)    //consider different roots
-    {
-
-        for(int ml:message_lengths)     //consider different message lengths
-        {
-            kernel.setArg(0,sizeof(int),&ml);
-            kernel.setArg(1,sizeof(char),&root);
-            kernel.setArg(2,sizeof(cl_mem),&check);
-            kernel.setArg(3,sizeof(SMI_Comm),&comm);
-
-            for(int i=0;i<runs;i++)
-            {
-                if(my_rank==0)  //remove emulated channels
-                    system("rm emulated_chan* 2> /dev/null;");
-
-                // run some_function() and compared with some_value
-                // but end the function if it exceeds 3 seconds
-                //source https://github.com/google/googletest/issues/348#issuecomment-492785854
-                ASSERT_DURATION_LE(TEST_TIMEOUT, {
-                  ASSERT_TRUE(runAndReturn(queue,kernel,check,root));
-                });
-
-            }
-        }
-    }
-}
 int main(int argc, char *argv[])
 {
-
-
-    if(argc<2)
-    {
-        std::cerr << "Usage: [env CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 " << argv[0] << " <fpga binary file>" << std::endl;
-        return -1;
-    }
-
+//      std::cerr << "Usage: [env CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 " << argv[0] << " <fpga binary file>" << std::endl;
     int result = 0;
 
     ::testing::InitGoogleTest(&argc, argv);
     //delete listeners for all the rank except 0
-    program_path =argv[1];
+    if(argc==2)
+        program_path =argv[1];
+    else
+        program_path = "emulator_<rank>/scatter.aocx";
     ::testing::TestEventListeners& listeners =
             ::testing::UnitTest::GetInstance()->listeners();
     CHECK_MPI(MPI_Init(&argc, &argv));
@@ -263,7 +242,7 @@ int main(int argc, char *argv[])
     //create environemnt
     int fpga=my_rank%2;
     program_path = replace(program_path, "<rank>", std::to_string(my_rank));
-    comm=SmiInit(my_rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga,buffers);
+    comm=SmiInit_scatter(my_rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga,buffers);
 
 
     result = RUN_ALL_TESTS();
