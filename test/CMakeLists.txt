@@ -43,7 +43,7 @@ smi_target(test_p2p "${CMAKE_CURRENT_SOURCE_DIR}/p2p/p2p.json" "${CMAKE_CURRENT_
 
 add_test(
    NAME p2p
-   COMMAND  env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 test_broadcast_host "emulator_<rank>/broadcast.aocx"
+   COMMAND  env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 test_p2p_host
    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_p2p/"
  )
 
@@ -53,7 +53,7 @@ smi_target(test_broadcast "${CMAKE_CURRENT_SOURCE_DIR}/broadcast/broadcast.json"
 
 add_test(
   NAME broadcast
-  COMMAND  env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 test_broadcast_host "emulator_<rank>/broadcast.aocx"
+  COMMAND  env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 test_broadcast_host
   WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_broadcast/"
 )
 
@@ -62,7 +62,7 @@ smi_target(test_reduce "${CMAKE_CURRENT_SOURCE_DIR}/reduce/reduce.json" "${CMAKE
 
 add_test(
    NAME reduce
-   COMMAND  env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 test_reduce_host "emulator_<rank>/reduce.aocx"
+   COMMAND  env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 test_reduce_host
    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_reduce/"
  )
 
@@ -71,7 +71,7 @@ smi_target(test_scatter "${CMAKE_CURRENT_SOURCE_DIR}/scatter/scatter.json" "${CM
 
 add_test(
    NAME scatter
-   COMMAND  env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 test_scatter_host "emulator_<rank>/scatter.aocx"
+   COMMAND  env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 test_scatter_host
    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_scatter/"
  )
 
@@ -79,7 +79,7 @@ smi_target(test_gather "${CMAKE_CURRENT_SOURCE_DIR}/gather/gather.json" "${CMAKE
 
 add_test(
    NAME gather
-   COMMAND  env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 test_gather_host "emulator_<rank>/gather.aocx"
+   COMMAND  env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 test_gather_host
    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_gather/"
  )
 
@@ -88,6 +88,6 @@ smi_target(test_mixed "${CMAKE_CURRENT_SOURCE_DIR}/mixed/mixed.json" "${CMAKE_CU
 
 add_test(
    NAME mixed
-   COMMAND  env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 test_mixed_host "emulator_<rank>/mixed.aocx"
+   COMMAND  env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 test_mixed_host
    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_mixed/"
  )
