@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
         ("emulator_" + std::to_string(mpi_rank) + "/kmeans_smi.aocx");
 
   } else if (mode_str == "hardware") {
-    kernel_path = "kmeans_smi_hardware.aocx";
+    kernel_path = "kmeans_smi/kmeans_smi.aocx";
     emulator = false;
   } else {
     std::cout << kUsage;
