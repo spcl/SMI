@@ -26,7 +26,6 @@ class SmiOperation:
         self.logical_port = logical_port
         self.data_type = data_type
         self.buffer_size = buffer_size or 16
-        assert self.buffer_size > 0 and self.buffer_size % 8 == 0
 
     def get_channel(self, key: str) -> str:
         inv_map = {v: k for k, v in OP_MAPPING.items()}

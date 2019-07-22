@@ -3,6 +3,7 @@ import os
 import shutil
 import subprocess
 
+from ops import SmiOperation
 from serialization import parse_smi_operation
 
 
@@ -18,6 +19,15 @@ def copy_files(src_dir, dest_dir, files):
         os.makedirs(dest_dir, exist_ok=True)
         shutil.copyfile(src_path, dest_path, follow_symlinks=True)
         yield (src_path, dest_path)
+
+
+def transform_buffer_size(data, op: SmiOperation):
+    """
+    Buffer size from the user is given in number of elements, it has to be translated into the number of messages.
+    """
+    buffer_size = data.get("buffer_size")
+    if buffer_size is not None:
+        op.buffer_size /= op.data_elements_per_packet()
 
 
 def rewrite(rewriter, file, include_dirs, log):
@@ -36,6 +46,9 @@ def rewrite(rewriter, file, include_dirs, log):
     ops = []
     for line in output.splitlines():
         if line:
-            ops.append(parse_smi_operation(json.loads(line)))
+            data = json.loads(line)
+            op = parse_smi_operation(data)
+            transform_buffer_size(data, op)
+            ops.append(op)
 
     return ops
