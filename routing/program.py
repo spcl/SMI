@@ -93,7 +93,6 @@ class Program:
                  max_ranks=8,
                  p2p_rendezvous=True,
                  channel_count=CHANNELS_PER_FPGA):
-        assert are_ops_consecutive(operations)
 
         self.consecutive_read_limit = consecutive_read_limit
         self.max_ranks = max_ranks
@@ -153,16 +152,6 @@ class ProgramMapping:
         """
         self.programs = programs
         self.fpga_map = fpga_map
-
-
-def are_ops_consecutive(ops: List[SmiOperation]) -> bool:
-    if not ops:
-        return True
-
-    ports = set([op.logical_port for op in ops])
-    start = min(ports)
-    end = max(ports)
-    return sorted(ports) == list(range(start, end + 1)) and start == 0
 
 
 def target_index(source: int, target: int) -> int:
