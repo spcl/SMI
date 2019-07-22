@@ -1,4 +1,0 @@
-fpga-0015:acl0:ch1 <-> fpga-0015:acl1:ch1
-fpga-0015:acl1:ch2 <-> fpga-0016:acl0:ch2
-fpga-0016:acl0:ch1 <-> fpga-0016:acl1:ch1
-

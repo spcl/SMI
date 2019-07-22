@@ -1,6 +1,6 @@
 /**
-    Scaling benchmark
-
+    Bandwidth benchmark
+    Two ranks exchange data and bandwidth is measured
  */
 
 
