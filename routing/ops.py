@@ -30,12 +30,14 @@ class SmiOperation:
     def get_channel(self, key: str) -> str:
         inv_map = {v: k for k, v in OP_MAPPING.items()}
         type = inv_map[self.__class__]
-        keys = self.channel_usage()
+        # True to avoid passing program parameters on get_channel, which is used heavily in templates
+        # TODO: change
+        keys = self.channel_usage(True)
         assert key in keys
         return "{}_{}_{}".format(type, self.logical_port, key)
 
-    def get_channel_defs(self):
-        return [(self.get_channel(ch), self.get_channel_depth(ch)) for ch in sorted(self.channel_usage())]
+    def get_channel_defs(self, p2p_rendezvous: bool):
+        return [(self.get_channel(ch), self.get_channel_depth(ch)) for ch in sorted(self.channel_usage(p2p_rendezvous))]
 
     def get_channel_depth(self, channel):
         mapping = {
@@ -58,7 +60,7 @@ class SmiOperation:
         size = self.data_size()
         return PACKET_PAYLOAD_SIZE // size
 
-    def channel_usage(self) -> Set[str]:
+    def channel_usage(self, p2p_rendezvous: bool) -> Set[str]:
         return set()
 
     def serialize_args(self):
@@ -77,17 +79,21 @@ class SmiOperation:
 
 
 class Push(SmiOperation):
-    def channel_usage(self) -> Set[str]:
-        return {KEY_CKS_DATA, KEY_CKR_CONTROL}
+    def channel_usage(self, p2p_rendezvous: bool) -> Set[str]:
+        if p2p_rendezvous:
+            return {KEY_CKS_DATA, KEY_CKR_CONTROL}
+        return {KEY_CKS_DATA}
 
 
 class Pop(SmiOperation):
-    def channel_usage(self) -> Set[str]:
-        return {KEY_CKR_DATA, KEY_CKS_CONTROL}
+    def channel_usage(self, p2p_rendezvous: bool) -> Set[str]:
+        if p2p_rendezvous:
+            return {KEY_CKR_DATA, KEY_CKS_CONTROL}
+        return {KEY_CKR_DATA}
 
 
 class Broadcast(SmiOperation):
-    def channel_usage(self) -> Set[str]:
+    def channel_usage(self, p2p_rendezvous: bool) -> Set[str]:
         return {
             KEY_CKS_DATA,
             KEY_CKS_CONTROL,
@@ -141,7 +147,7 @@ class Reduce(SmiOperation):
         assert op_type in Reduce.OP_TYPE
         self.op_type = op_type
 
-    def channel_usage(self) -> Set[str]:
+    def channel_usage(self, p2p_rendezvous: bool) -> Set[str]:
         return {
             KEY_CKS_DATA,
             KEY_CKS_CONTROL,
@@ -173,7 +179,7 @@ class Reduce(SmiOperation):
 
 
 class Scatter(SmiOperation):
-    def channel_usage(self) -> Set[str]:
+    def channel_usage(self, p2p_rendezvous: bool) -> Set[str]:
         return {
             KEY_CKS_DATA,
             KEY_CKS_CONTROL,
@@ -184,7 +190,7 @@ class Scatter(SmiOperation):
 
 
 class Gather(SmiOperation):
-    def channel_usage(self) -> Set[str]:
+    def channel_usage(self, p2p_rendezvous: bool) -> Set[str]:
         return {
             KEY_CKS_DATA,
             KEY_CKS_CONTROL,

@@ -14,7 +14,7 @@
 #define READS_LIMIT {{ program.consecutive_read_limit }}
 // maximum number of ranks in the cluster
 #define MAX_RANKS {{ program.max_ranks }}
-{% if program.p2p_rendezvous  %}
+{% if program.p2p_rendezvous %}
 //P2P communications use synchronization
 #define P2P_RENDEZVOUS
 {% else %}
@@ -40,7 +40,7 @@ channel SMI_Network_message io_in_{{ channel }} __attribute__((depth(16))) __att
 
 {% for op in program.operations %}
 // {{ op }}
-{% for (channel, depth) in op.get_channel_defs() %}
+{% for (channel, depth) in op.get_channel_defs(program.p2p_rendezvous) %}
 channel SMI_Network_message {{ channel }} __attribute__((depth({{ depth }})));
 {% endfor %}
 {% endfor %}
