@@ -117,7 +117,7 @@ __kernel void smi_kernel_reduce_{{ op.logical_port }}(char num_rank)
                     // We received all the contributions, we can send result to application
                     char* data_snd = reduce.data;
                     // Build reduced result
-                    {{ op.data_type }} res = 0;
+                    {{ op.data_type }} res = {{ op.shift_reg_init() }};
                     #pragma unroll
                     for (int i = 0; i < SHIFT_REG; i++)
                     {
