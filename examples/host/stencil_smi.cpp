@@ -148,7 +148,7 @@ int main(int argc, char **argv) {
     // In emulation mode, each rank has its own kernel file
     kernel_path = ("emulator_" + std::to_string(mpi_rank) + "/stencil_smi_interleaved.aocx");
   } else if (mode_str == "hardware") {
-    kernel_path = "stencil_smi_interleaved_hardware.aocx";
+    kernel_path = "stencil_smi/stencil_smi.aocx";
     emulator = false;
   } else {
     std::cout << kUsage;
