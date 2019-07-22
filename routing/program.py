@@ -35,6 +35,12 @@ class Channel:
 
 
 def validate_allocations(channel_allocations):
+    """
+    Each channel type (cks_data, ckr_control, etc.) must contain unique port numbers, i.e. it is an error if there's
+    an op with port 0 that access cks_data and another op with the same port that also accesses cks_data.
+
+    This function validates that this is the case.
+    """
     ch_to_port = {}
     for allocations in channel_allocations.values():
         for (op, ch) in allocations:
