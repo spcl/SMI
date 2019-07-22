@@ -7,7 +7,6 @@ void {{ utils.impl_name_port_type("SMI_Push_flush", op) }}(SMI_Channel *chan, vo
     COPY_DATA_TO_NET_MESSAGE(chan, chan->net, conv);
     chan->processed_elements++;
     chan->packet_element_id++;
-    chan->tokens--;
 
     // send the network packet if it full or we reached the message size
     if (chan->packet_element_id == chan->elements_per_packet || immediate || chan->processed_elements == chan->message_size)
@@ -19,7 +18,8 @@ void {{ utils.impl_name_port_type("SMI_Push_flush", op) }}(SMI_Channel *chan, vo
     // This fence is not mandatory, the two channel operations can be
     // performed independently
     // mem_fence(CLK_CHANNEL_MEM_FENCE);
-
+    #if defined P2P_RENDEZVOUS
+    chan->tokens--;
     if (chan->tokens == 0)
     {
         // receives also with tokens=0
@@ -28,6 +28,7 @@ void {{ utils.impl_name_port_type("SMI_Push_flush", op) }}(SMI_Channel *chan, vo
         unsigned int tokens = *(unsigned int *) mess.data;
         chan->tokens += tokens; // tokens
     }
+    #endif
 }
 void {{ utils.impl_name_port_type("SMI_Push", op) }}(SMI_Channel *chan, void* data)
 {

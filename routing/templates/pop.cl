@@ -30,10 +30,11 @@ void {{ utils.impl_name_port_type("SMI_Pop", op) }}(SMI_Channel *chan, void *dat
     {
         chan->packet_element_id = 0;
     }
-    chan->tokens--;
     // TODO: This is used to prevent this funny compiler to re-oder the two *_channel_intel operations
     // mem_fence(CLK_CHANNEL_MEM_FENCE);
-
+    #if defined P2P_RENDEZVOUS
+    //echange tokens
+    chan->tokens--;
     if (chan->tokens == 0)
     {
         // At this point, the sender has still max_tokens*7/8 tokens: we have to consider this while we send
@@ -47,6 +48,7 @@ void {{ utils.impl_name_port_type("SMI_Pop", op) }}(SMI_Channel *chan, void *dat
         SET_HEADER_OP(mess.header, SMI_SYNCH);
         write_channel_intel({{ op.get_channel("cks_control") }}, mess);
     }
+    #endif
 }
 {%- endmacro %}
 
