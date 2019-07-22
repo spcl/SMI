@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
         queue.finish();
 
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-        if(rank==0)
+        if(rank==root)
         {
             ulong end, start;
             events.getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
