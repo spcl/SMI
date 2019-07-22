@@ -7,12 +7,17 @@
 
     GEMV has access to 2 memory modules.
 
+    Please note: default tile sizes and unrolling width are
+    set to lower values to enable fast emulation.
+    For the results reported in the paper, we used W=64 and
+    Tile Sizes equal to 2048.
+
 */
 
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 
-#define W 32
+#define W 64
 #define TILE_N 128
 #define TILE_M 128
 #define INCX 1

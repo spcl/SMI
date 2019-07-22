@@ -26,16 +26,17 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 find_package(PythonInterp 3)
 
 if(PythonInterp_FOUND)
-
-    smi_target(stencil_smi "${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_smi_interleaved.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/stencil_smi_interleaved.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_smi_interleaved.cl" 8)
+    #stencil
+    smi_target(stencil_smi "${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_smi.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/stencil_smi.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_smi.cl" 8)
+    #kmeans
     smi_target(kmeans_smi "${CMAKE_CURRENT_SOURCE_DIR}/kernels/kmeans_smi.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/kmeans_smi.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/kmeans_smi.cl" 8)
 
     #gesummv
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lopenblas")
+    smi_target(gesummv_smi "${CMAKE_CURRENT_SOURCE_DIR}/kernels/gesummv_smi.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/gesummv_smi.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/gesummv_rank0.cl;${CMAKE_CURRENT_SOURCE_DIR}/kernels/gesummv_rank1.cl" 2)
 
-    smi_target(gesummv_smi "${CMAKE_CURRENT_SOURCE_DIR}/kernels/gesummv_smi.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/distributed_gesummv.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/gesummv_rank0.cl;${CMAKE_CURRENT_SOURCE_DIR}/kernels/gesummv_rank1.cl" 2)
-
-    fpga_target(gesummv "${CMAKE_CURRENT_SOURCE_DIR}/host/onchip_gesummv.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/onchip_gesummv.cl" OFF)
-    #fpga_target(stencil "${CMAKE_CURRENT_SOURCE_DIR}/host/stencil_spatial_tiling.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_spatial_tiling.cl" ON)
+    #onchip versions
+    fpga_target(gesummv_onchip "${CMAKE_CURRENT_SOURCE_DIR}/host/gesummv_onchip.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/gesummv_onchip.cl" OFF)
+    fpga_target(stencil_onchip "${CMAKE_CURRENT_SOURCE_DIR}/host/stencil_onchip.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_onchip.cl" ON)
 
 endif()

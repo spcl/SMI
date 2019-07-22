@@ -1,16 +1,17 @@
 /**
-	Single modules have been code generated.
-	I've put them here for convenience
+        Onchip implementation of GESUMMV
 
-        ATTENTION: helpers modified for better performance and achieve interleave
-        //TODO
+        Please note: default tile sizes and unrolling width are
+        set to lower values to enable fast emulation.
+        For the results reported in the paper, we used W=64 and
+        Tile Sizes equal to 2048.
 */
 
 
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 
-#define W 32
+#define W 64
 #define CHANNEL_VECTOR_X_A channel_x_A
 #define CHANNEL_VECTOR_Y_A channel_vect_y_A
 #define CHANNEL_VECTOR_OUT channel_vect_out_y

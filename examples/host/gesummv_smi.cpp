@@ -48,22 +48,23 @@ inline bool test_equals(float result, float expected, float relative_error)
 
 int main(int argc, char *argv[])
 {
+    system("rm emulated_chan* 2> /dev/null;"); //remove old emulation channels
     CHECK_MPI(MPI_Init(&argc, &argv));
     //command line argument parsing
-    if(argc<17)
+    if(argc<11)
     {
-        cerr << "Usage: "<< argv[0]<<" -b <binary file> -n <n>  -m <m> -a <alpha> -c <beta> -r <num runs> -k <rank 0/1> -f <fpga>"<<endl;
+        cerr << "Usage: "<< argv[0]<<" -t <emulator/hardware>  -n <n>  -m <m> -a <alpha> -c <beta> -r <num runs> [-b \"<binary file with <rank> for the rank and <type> for the program>\"]"<<endl;
         exit(-1);
     }
 
     int c;
     int n,m,runs,rank;
     float alpha,beta;
-    std::string program_path,program_path_streamed;;
-    std::string json_path;
+    std::string program_path;
     int fpga;
-
-    while ((c = getopt (argc, argv, "n:b:r:a:c:k:f:m:")) != -1)
+    bool emulator;
+    bool binary_file_provided=false;
+    while ((c = getopt (argc, argv, "n:b:r:a:c:m:t:")) != -1)
         switch (c)
         {
             case 'n':
@@ -72,6 +73,17 @@ int main(int argc, char *argv[])
             case 'm':
                 m=atoi(optarg);
                 break;
+            case 't':
+            {
+                std::string mode=std::string(optarg);
+                if(mode!="emulator" && mode!="hardware")
+                {
+                    cerr << "Mode: emulator or hardware"<<endl;
+                    exit(-1);
+                }
+                emulator=mode=="emulator";
+                break;
+            }
             case 'a':
                 alpha=atof(optarg);
                 break;
@@ -80,6 +92,7 @@ int main(int argc, char *argv[])
                 break;
             case 'b':
                 program_path=std::string(optarg);
+                binary_file_provided=true;
                 break;
             case 'f':
                 fpga=atoi(optarg);
@@ -107,8 +120,25 @@ int main(int argc, char *argv[])
     CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
     fpga = rank % 2; // in this case is ok, pay attention
     std::cout << "Rank: " << rank << " out of " << rank_count << " ranks" << std::endl;
-    program_path = replace(program_path, "<rank>", std::to_string(rank));
+    if(binary_file_provided)
+    {
+        program_path = replace(program_path, "<rank>", std::to_string(rank));
         program_path = replace(program_path, "<type>", std::to_string(rank));
+    }
+    else
+    {
+        if(emulator)
+        {
+            program_path = ("emulator_" + std::to_string(rank));
+            if(rank==0) program_path+="/gesummv_rank0.aocx";
+            else program_path+="/gesummv_rank1.aocx";
+        }
+        else
+        {
+            if(rank==0) program_path="gesummv_rank0/gesummv_rank0.aocx";
+            else program_path="gesummv_rank1/gesummv_rank1.aocx";
+        }
+    }
 
     std::cerr << "Program: " << program_path << std::endl;
 
@@ -136,7 +166,6 @@ int main(int argc, char *argv[])
     generate_float_matrix(A,n,m);
     generate_float_matrix(B,n,m);
 
-    std::vector<double> streamed_times,transfer_times;
 
     cl::Platform  platform;
     cl::Device device;
@@ -159,6 +188,7 @@ int main(int argc, char *argv[])
     IntelFPGAOCLUtils::createKernels(program,kernel_names,kernels);
 
     int tile_size=128;
+    const int w=64;
     cout << "Executing with tile size " << tile_size<<endl;
 
 
@@ -168,8 +198,6 @@ int main(int argc, char *argv[])
     size_t elem_per_module=n*m/2;
     cl::Buffer input_M_0(context, CL_MEM_READ_ONLY|CL_CHANNEL_1_INTELFPGA, elem_per_module*sizeof(float));
     cl::Buffer input_M_1(context, CL_MEM_READ_ONLY|CL_CHANNEL_2_INTELFPGA, elem_per_module*sizeof(float));
-    cl::Buffer routing_table_ck_s_0(context,CL_MEM_READ_ONLY,2);
-    cl::Buffer routing_table_ck_r_0(context,CL_MEM_READ_ONLY,1);
 
     cout << "Copying data to device..." <<endl;
     if(rank==0)
@@ -178,15 +206,15 @@ int main(int argc, char *argv[])
         //prepare data
         //copy the matrix interleaving it into two modules
         size_t offset=0;
-        size_t increment=64/2*sizeof(float);
-        const int loop_it=((int)(m))/64;   //W must be a divisor of M
+        size_t increment=w/2*sizeof(float); //attention to the way in which w is used
+        const int loop_it=((int)(m))/w;   //W must be a divisor of M
         for(int i=0;i<n;i++)
         {
             for(int j=0;j<loop_it;j++)
             {
                 //write to the different banks
-                queues[0].enqueueWriteBuffer(input_M_0, CL_FALSE,offset, (64/2)*sizeof(float),&(A[i*m+j*64]));
-                queues[0].enqueueWriteBuffer(input_M_1, CL_FALSE,offset, (64/2)*sizeof(float),&(A[i*m+j*64+32]));
+                queues[0].enqueueWriteBuffer(input_M_0, CL_FALSE,offset, (w/2)*sizeof(float),&(A[i*m+j*w]));
+                queues[0].enqueueWriteBuffer(input_M_1, CL_FALSE,offset, (w/2)*sizeof(float),&(A[i*m+j*w+32]));
 
                 offset+=increment;
             }
@@ -246,15 +274,15 @@ int main(int argc, char *argv[])
     {
         //copy the matrix interleaving it into two modules
         size_t offset=0;
-        size_t increment=64/2*sizeof(float);
-        const int loop_it=((int)(m))/64;   //W must be a divisor of M
+        size_t increment=w/2*sizeof(float);
+        const int loop_it=((int)(m))/w;   //W must be a divisor of M
         for(int i=0;i<n;i++)
         {
             for(int j=0;j<loop_it;j++)
             {
                 //write to the different banks
-                queues[0].enqueueWriteBuffer(input_M_0, CL_FALSE,offset, (64/2)*sizeof(float),&(B[i*m+j*64]));
-                queues[0].enqueueWriteBuffer(input_M_1, CL_FALSE,offset, (64/2)*sizeof(float),&(B[i*m+j*64+32]));
+                queues[0].enqueueWriteBuffer(input_M_0, CL_FALSE,offset, (w/2)*sizeof(float),&(B[i*m+j*w]));
+                queues[0].enqueueWriteBuffer(input_M_1, CL_FALSE,offset, (w/2)*sizeof(float),&(B[i*m+j*w+32]));
 
                 offset+=increment;
             }

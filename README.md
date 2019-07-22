@@ -1,5 +1,14 @@
 # Streaming Message Interface
 
+Streaming Message Information
+This README includes all the information for compiling and reproducing the results shown in the paper: 
+
+Please refer to XXX for the descirption on how to use SMI for your own distributed FPGA program.
+
+If you are going to use SMI for a paper or a report, please cite us:
+
+
+
 ## Reproducing  the paper experiments
 
 ### Requirements
@@ -19,63 +28,66 @@ After cloning this repository, make sure you clone the submodule dependency, by 
 git submodule update --init
 ```
 
-The project uses CMake for configuration. To configure the project and build the host-side executables:
+The project uses CMake for configuration. To configure the project and build the bitstreams and executables:
 
 ```bash
 mkdir build
 cd build
 cmake .. 
 ```
-The experiments show in the paper are organized in two subdirectories of the CMake folder, `microbenchmarks` and `examples`.
+The experiments shown in the paper are organized in two subdirectories of the CMake folder, `microbenchmarks` and `examples`.
 
 For each of them the following targets are offered:
 
-`make <benchmark>_emulator` build the emulator
-`make <benchmark>_host` build the host file
-`make <benchmark>_<program>_aoc_emulator` build the report
-`make <benchmark>_<program>_aoc_build` build the hardware
+- `make <application>_emulator` build the emulator
+- `make <application>_host` build the host file
+- `make <application>_<program>_aoc_emulator` build the report
+- `make <application>_<program>_aoc_build` build the hardware (can take several hours)
+
+The offered applications are:
+
+**Microbenchmarks**
+
+- `bandiwidth`: bandwidth microbenchmark. It is an MPMD application composed by two programs, namely `bandwidth_0` (sender) and `bandwidth_1` (receiver).
+- `latency`: latency microbenchmark. It is an MPMD application composed by two programs, namely `latency_0` (source) and `latency_1` (destination).
+- `injection`: injection microbenchmark.It is an MPMD application composed by two programs, namely `injection_0` (sender) and `injection_1` (receiver).
+- `broadcast`: broadcast microbenchmark: it is an SPMD application (`broadcast`)
+- `reduce`: reduce microbenchmark: it is an SPMD application (`reduce`)
+- `scatter`: scatter microbenchmark (not included in the paper): it is an SPMD application (`scatter`)
+- `gather`: gather microbenchmark (not included in the paper): it is an SPMD application (`gather`)
+
+** Application examples**
+
+- `stencil_smi`: stencil application, smi implementation. It is composed by a single program (`stencil_smi`);
+- `stencil_onchip`: on chip version of the stencil application;
+- `gesummv_smi`: gesummv, smi implementation It is composed by a two programs (`gesummv_rank0` and `gesummv_rank1`);
+- `gesummv_onchip`: on chip version of the gesummv application.
 
 
-The benchmarks shown in the paper will be built in the `examples` subdirectory of the CMake build folder. To build for the FPGA, there are three targets for each kernel:
 
-```bash
-make build_<kernel>_emulator
-make build_<kernel>_report
-make build_<kernel>_hardware
-```
+**Please Note**: all the host programs have been written by considering the target architecture used in the paper, which is characterized by a set of nodes each one having 2 FPGAs.
+If you are using a different setup, please adjust the host programs.
 
-The first command generates emulation kernels used to test correctness, the second performs HLS and generates the Intel FPGA OpenCL SDK report of the synthesized design, and the third compiles for hardware (can take 12 hours). 
+### Example 
 
-### Running the code
-
-Each target has an executable capable of executing both emulation and hardware kernels, specified at runtime:
-
+Suppose that you want to execute the `stencil_smi` application in emulation.
+The following steps must be performed: 
 ```bash
 cd examples
-./stencil_simple.exe emulator 32
+make stencil_smi_emulator -j
+make stencil_smi_host
+cd stencil_smi
+env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 ./stencil_smi_host emulator <num-timesteps
 ```
 
-For targets executing on multiple ranks, `mpirun` is used:
-
+To generate the report, from the `examples` directory in the CMake folder, the user must execute:
 ```bash
-mpirun -np 4 ./stencil_smi_smi.exe emulator 32
+make  stencil_smi_stencil_smi_aoc_report
 ```
 
-With slurm targeting multiple FPGAs per node, in this case targeting 2 nodes with 2 FPGAs each for a total of 4 FPGAs (as reported in the paper):
+The report will be stored under `examples/stencil_smi/stencil_smi`.
 
-```bash
-srun -N 2 --tasks-per-node=2 --partition=fpga ./stencil_smi_interleaved.exe hardware 32
-```
 
-### Paper benchmarks
-
-For the paper benchmarks, the stencil sizes are adjusted with the parameters above.
-The different stencil implementations are (all with vectorization width 16, and 2x2 procs in X and Y):
-- One bank: `stencil_simple.exe`
-- Four banks: `stencil_spatial_tiling.exe`
-- One bank, four FPGAs: `stencil_smi.exe`
-- Four banks, four FPGAs: `stencil_smi_interleaved.exe`
-Each kernel is built using the flow above, and the kernels are executed as specified above.
 
 ### Stencil parameters
 

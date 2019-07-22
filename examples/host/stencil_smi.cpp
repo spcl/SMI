@@ -124,6 +124,7 @@ void MPIStatus(int rank, T &&arg, Ts... args) {
 }
 
 int main(int argc, char **argv) {
+  system("rm emulated_chan* 2> /dev/null;"); //remove old emulation channels
   MPI_Init(&argc, &argv);
 
   int mpi_size, mpi_rank;
