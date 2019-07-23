@@ -18,7 +18,18 @@
  * @return channel descriptor
  */
 SMI_Channel SMI_Open_receive_channel(int count, SMI_Datatype data_type, int source, int port, SMI_Comm comm);
-SMI_Channel SMI_Open_receive_channel_ad(int count, SMI_Datatype data_type, int source, int port, SMI_Comm comm, int buffer_size);
+
+/**
+ * @brief SMI_Open_receive_channel_ad opens a receive transient channel with a given asynchronicity degree
+ * @param count number of data elements to receive
+ * @param data_type data type of the data elements
+ * @param source rank of the sender
+ * @param port port number
+ * @param comm communicator
+ * @param asynch_degree the asynchronicity degree expressed in number of data elements
+ * @return channel descriptor
+ */
+SMI_Channel SMI_Open_receive_channel_ad(int count, SMI_Datatype data_type, int source, int port, SMI_Comm comm, int asynch_degree);
 
 /**
  * @brief SMI_Pop: receive a data element. Returns only when data arrives

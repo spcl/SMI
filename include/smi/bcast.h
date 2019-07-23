@@ -32,7 +32,7 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
 }SMI_BChannel;
 
 /**
- * @brief SMI_Open_bcast_channel
+ * @brief SMI_Open_bcast_channel opens a broadcast channel
  * @param count number of data elements to broadcast
  * @param data_type type of the channel
  * @param port port number
@@ -41,7 +41,18 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
  * @return the channel descriptor
  */
 SMI_BChannel SMI_Open_bcast_channel(int count, SMI_Datatype data_type, int port, int root, SMI_Comm comm);
-SMI_BChannel SMI_Open_bcast_channel_ad(int count, SMI_Datatype data_type, int port, int root, SMI_Comm comm, int buffer_size);
+
+/**
+ * @brief SMI_Open_bcast_channel_ad opens a broadcast channel with a given asynchronicity degree
+ * @param count number of data elements to broadcast
+ * @param data_type type of the channel
+ * @param port port number
+ * @param root rank of the root
+ * @param comm communicator
+ * @param asynch_degree the asynchronicity degree in number of data elements
+ * @return the channel descriptor
+ */
+SMI_BChannel SMI_Open_bcast_channel_ad(int count, SMI_Datatype data_type, int port, int root, SMI_Comm comm, int asynch_degree);
 
 /**
  * @brief SMI_Bcast

@@ -37,7 +37,7 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
 }SMI_ScatterChannel;
 
 /**
- * @brief SMI_Open_scatter_channel
+ * @brief SMI_Open_scatter_channel opens a transient scatter channel
  * @param send_count number of data elements transmitted by root to each rank
  * @param recv_count number of data elements received by each rank 
  * @param data_type type of the channel
@@ -48,8 +48,20 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
  */
 SMI_ScatterChannel SMI_Open_scatter_channel(int send_count, int recv_count,
         SMI_Datatype data_type, int port, int root, SMI_Comm comm);
+
+/**
+ * @brief SMI_Open_scatter_channel opens a transient scatter channel
+ * @param send_count number of data elements transmitted by root to each rank
+ * @param recv_count number of data elements received by each rank
+ * @param data_type type of the channel
+ * @param port port number
+ * @param root rank of the root
+ * @param comm communicator
+ * @param asynch_degree the asynchronicity degree expressed in number of data elements
+ * @return the channel descriptor
+ */
 SMI_ScatterChannel SMI_Open_scatter_channel_ad(int send_count, int recv_count,
-        SMI_Datatype data_type, int port, int root, SMI_Comm comm, int buffer_size);
+        SMI_Datatype data_type, int port, int root, SMI_Comm comm, int asynch_degree);
 
 /**
  * @brief SMI_Scatter

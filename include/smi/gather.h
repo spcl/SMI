@@ -35,7 +35,7 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
 }SMI_GatherChannel;
 
 /**
- * @brief SMI_Open_gather_channel
+ * @brief SMI_Open_gather_channel opens a gather channel
  * @param send_count number of data elements transmitted by each rank
  * @param recv_count number of data elements received by root rank (i.e. num_ranks*send_count)
  * @param data_type type of the channel
@@ -45,7 +45,19 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
  * @return the channel descriptor
  */
 SMI_GatherChannel SMI_Open_gather_channel(int send_count, int recv_count, SMI_Datatype data_type, int port, int root, SMI_Comm comm);
-SMI_GatherChannel SMI_Open_gather_channel_ad(int send_count, int recv_count, SMI_Datatype data_type, int port, int root, SMI_Comm comm, int buffer_size);
+
+/**
+ * @brief SMI_Open_gather_channel_ad opens a gather channel with a given asynchronicity degree
+ * @param send_count number of data elements transmitted by each rank
+ * @param recv_count number of data elements received by root rank (i.e. num_ranks*send_count)
+ * @param data_type type of the channel
+ * @param port port number
+ * @param root rank of the root
+ * @param comm communicator
+ * @param asynch_degree the asynchronicity degree expressed in number of data elements
+ * @return the channel descriptor
+ */
+SMI_GatherChannel SMI_Open_gather_channel_ad(int send_count, int recv_count, SMI_Datatype data_type, int port, int root, SMI_Comm comm, int asynch_degree);
 
 /**
  * @brief SMI_Gather

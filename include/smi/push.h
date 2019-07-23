@@ -8,7 +8,7 @@
 #include "communicator.h"
 
 /**
- * @brief SMI_OpenSendChannel
+ * @brief SMI_OpenSendChannel open a sending transient channel
  * @param count number of data elements to send
  * @param data_type type of the data element
  * @param destination rank of the destination
@@ -17,7 +17,19 @@
  * @return channel descriptor
  */
 SMI_Channel SMI_Open_send_channel(int count, SMI_Datatype data_type, int destination, int port, SMI_Comm comm);
-SMI_Channel SMI_Open_send_channel_ad(int count, SMI_Datatype data_type, int destination, int port, SMI_Comm comm, int bufferSize);
+
+
+/**
+ * @brief SMI_OpenSendChannel_ad open a sending transient channel with a given asynchronicity degree
+ * @param count number of data elements to send
+ * @param data_type type of the data element
+ * @param destination rank of the destination
+ * @param port port number
+ * @param comm communicator
+ * @param asynch_degree the asynchronicity degree expressed in number of data elements
+ * @return channel descriptor
+ */
+SMI_Channel SMI_Open_send_channel_ad(int count, SMI_Datatype data_type, int destination, int port, SMI_Comm comm, int asynch_degree);
 
 /**
  * @brief private function SMI_Push push a data elements in the transient channel. Data transferring can be delayed

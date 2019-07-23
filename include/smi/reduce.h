@@ -43,7 +43,7 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
 
 
 /**
- * @brief SMI_Open_reduce_channel
+ * @brief SMI_Open_reduce_channel opens a transient reduce channel
  * @param count number of data elements to reduce
  * @param data_type type of the channel
  * @param op rapplied reduce operation
@@ -53,7 +53,19 @@ typedef struct __attribute__((packed)) __attribute__((aligned(64))){
  * @return the channel descriptor
  */
 SMI_RChannel SMI_Open_reduce_channel(int count, SMI_Datatype data_type, SMI_Op op, int port, int root, SMI_Comm comm);
-SMI_RChannel SMI_Open_reduce_channel_ad(int count, SMI_Datatype data_type, SMI_Op op, int port, int root, SMI_Comm comm, int buffer_size);
+
+/**
+ * @brief SMI_Open_reduce_channel_ad opens a transient reduce channel with a given asynchronicity degree
+ * @param count number of data elements to reduce
+ * @param data_type type of the channel
+ * @param op rapplied reduce operation
+ * @param port port number
+ * @param root rank of the root
+ * @param comm communicator
+ * @param asynch_degree the asynchronicity degree expressed in number of data elements
+ * @return the channel descriptor
+ */
+SMI_RChannel SMI_Open_reduce_channel_ad(int count, SMI_Datatype data_type, SMI_Op op, int port, int root, SMI_Comm comm, int asynch_degree);
 
 /**
  * @brief SMI_Reduce
