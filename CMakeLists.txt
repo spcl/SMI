@@ -3,8 +3,6 @@ project(smi)
 
 # Configuration
 set(SMI_TARGET_BOARD "p520_max_sg280l" CACHE STRING "aoc target board.")
-set(SMI_ROUTING_FILE "${CMAKE_SOURCE_DIR}/routing/fpga-06-07-08-09.json" CACHE STRING "File describing routing setup.")
-set(TEST_ROUTING_FILE "${CMAKE_SOURCE_DIR}/test/network_topologies/8FPGAs-2D-torus.routing" CACHE STRING "File describing routing setup for testing.")
 
 set(SMI_REWRITER "${CMAKE_BINARY_DIR}/source-rewriter/rewriter")
 
@@ -32,7 +30,7 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--disable-new-dtags")
 
 
 function(smi_target TARGET_NAME CONNECTION_FILE HOST_SOURCE KERNELS NUM_RANKS)
-    set(SMI_SCRIPT ${CMAKE_SOURCE_DIR}/routing/main.py)
+    set(SMI_SCRIPT ${CMAKE_SOURCE_DIR}/codegen/main.py)
 
     # parse optional arguments
     set(EXTRA_ARGS ${ARGN})

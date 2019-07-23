@@ -16,6 +16,9 @@ Please refer to the [wiki](https://github.com/spcl/SMI/wiki) and to the paper fo
 
 ## Reproducing the paper experiments
 
+All the tests and evaluations reported in the paper have been performed on a set of Bittware 520N cards (Stratix 10),
+each of them equipped with 4 network connections (QSFP modules) operating at 40Gbit/s.
+
 ### Requirements
 
 The library depends on:
