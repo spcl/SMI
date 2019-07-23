@@ -3,15 +3,15 @@
 # Streaming Message Interface
 
 **Streaming Message Interface** is a a distributed memory HLS programming model for **FPGAs** that provides
-the convenience of message passing for HLS-programmed hardware devices. Instead of bulk transmission typical of message passing model, 
-messages are **streamed** across the network during computation, allowing communication to be seamlessly integrated into pipelined designs.
+the convenience of message passing for HLS-programmed hardware devices. Instead of bulk transmission, typical of message passing model, 
+with SMI messages are **streamed** across the network during computation, allowing communication to be seamlessly integrated into pipelined designs.
 
-This repository contains an high-level synthesis implementation of SMI targeting OpenCL and Intel FPGAs and all the 
+This repository contains an high-level synthesis implementation of SMI targeting OpenCL and Intel FPGAs, and all the 
 applications used for the evaluation perfomed in the paper: *"Streaming Message Interface: High-Performance Distributed Memory
-  Programming on Reconfigurable Hardware"*, Tiziano De Matteis, Johannes de Fine Licht, Jakub Beranek, and Torsten Hofler. To appear in Proceedings of the International Conference for High Performance Computing, Networking, Storage, and Analysis, 2019 (SC 2019).
+Programming on Reconfigurable Hardware"*, Tiziano De Matteis, Johannes de Fine Licht, Jakub Beranek, and Torsten Hofler. To appear in Proceedings of the International Conference for High Performance Computing, Networking, Storage, and Analysis, 2019 (SC 2019).
 
 
-Please refer to the wiki for a reference on how to use SMI for your own distributed FPGA programs.
+Please refer to the [wiki](https://github.com/spcl/SMI/wiki) and to the paper for a reference on how to use SMI for your own distributed FPGA programs.
 
 
 ## Reproducing the paper experiments
@@ -63,7 +63,7 @@ The applications presents in the repository are the following. For the details p
 - `scatter`: scatter microbenchmark (not included in the paper): an SPMD application (`scatter`)
 - `gather`: gather microbenchmark (not included in the paper):  an SPMD application (`gather`)
 
-** Application examples**
+**Application examples**
 
 - `stencil_smi`: stencil application, smi implementation. It is composed by a single program (`stencil_smi`);
 - `stencil_onchip`: on chip version of the stencil application;
