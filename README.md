@@ -8,7 +8,7 @@ with SMI messages are **streamed** across the network during computation, allowi
 
 This repository contains an high-level synthesis implementation of SMI targeting OpenCL and Intel FPGAs, and all the 
 applications used for the evaluation perfomed in the paper: *"Streaming Message Interface: High-Performance Distributed Memory
-Programming on Reconfigurable Hardware"*, Tiziano De Matteis, Johannes de Fine Licht, Jakub Beranek, and Torsten Hofler. To appear in Proceedings of the International Conference for High Performance Computing, Networking, Storage, and Analysis, 2019 (SC 2019).
+Programming on Reconfigurable Hardware"*, Tiziano De Matteis, Johannes de Fine Licht, Jakub Beránek, and Torsten Hofler. To appear in Proceedings of the International Conference for High Performance Computing, Networking, Storage, and Analysis, 2019 (SC 2019).
 
 
 Please refer to the [wiki](https://github.com/spcl/SMI/wiki) and to the paper for a reference on how to use SMI for your own distributed FPGA programs.
