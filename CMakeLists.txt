@@ -63,7 +63,6 @@ function(smi_target TARGET_NAME CONNECTION_FILE HOST_SOURCE KERNELS NUM_RANKS)
         -I${CMAKE_CURRENT_BINARY_DIR}
         -fp-relaxed
         -no-interleaving=default
-        -fmax=${SMI_FMAX}
         -board=${SMI_TARGET_BOARD}
     )
 
