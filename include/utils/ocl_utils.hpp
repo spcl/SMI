@@ -17,7 +17,7 @@
 #include <unistd.h>
 
 #include "CL/cl.hpp"
-#include "CL/cl_ext_intelfpga"
+#include "CL/cl_ext_intelfpga.h"
 
 /**
  * @brief The IntelFPGAOCLUtils class contains a set of basic utilities for interacting
