@@ -8,7 +8,6 @@
   Author: Tiziano De Matteis
 */
 
-
 #ifndef OCL_UTILS_HPP
 #define OCL_UTILS_HPP
 #include <string>
@@ -17,7 +16,9 @@
 #include <unistd.h>
 
 #include "CL/cl.hpp"
+#ifndef CL_CHANNEL_1_INTELFPGA
 #include "CL/cl_ext_intelfpga.h"
+#endif
 
 /**
  * @brief The IntelFPGAOCLUtils class contains a set of basic utilities for interacting
