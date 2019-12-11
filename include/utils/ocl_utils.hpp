@@ -17,6 +17,10 @@
 #include <unistd.h>
 
 #include "CL/cl.hpp"
+#if !defined(CL_CHANNEL_1_INTELFPGA)
+// include this header if channel macros are not defined in cl.hpp (versions >=19.0)
+#include "CL/cl_ext_intelfpga.h"
+#endif
 
 /**
  * @brief The IntelFPGAOCLUtils class contains a set of basic utilities for interacting
