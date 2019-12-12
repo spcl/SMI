@@ -129,7 +129,7 @@ public:
     static void createCommandQueue(cl::Context &context, cl::Device &device, cl::CommandQueue &queue)
     {
 	cl_int status;
-	queue = std::move(cl::CommandQueue(context,device,0,&status));
+	queue = std::move(cl::CommandQueue(context,device,CL_QUEUE_PROFILING_ENABLE,&status));
 	checkError(status,__FILE__,__LINE__, "Failed to create queue");
 
     }
@@ -142,7 +142,7 @@ public:
 	cl_int status;
 	for(int i=0;i<num_queue;i++)
 	{
-	    queues.push_back(std::move(cl::CommandQueue(context,device,0,&status)));
+	    queues.push_back(std::move(cl::CommandQueue(context,device,CL_QUEUE_PROFILING_ENABLE,&status)));
 	    checkError(status,__FILE__,__LINE__, "Failed to create queue");
 	}
     }
