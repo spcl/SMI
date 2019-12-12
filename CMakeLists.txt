@@ -258,7 +258,7 @@ function(fpga_target TARGET_NAME HOST_SOURCE KERNEL GENERATE_KERNEL)
     file(MAKE_DIRECTORY ${EMULATION_WORKDIR})
     add_custom_target(${EMULATOR_TARGET}
         COMMAND ${IntelFPGAOpenCL_AOC} ${AOC_COMMAND} ${KERNEL} -march=emulator
-        -emulator-channel-depth-model=strict
+        -emulator-channel-depth-model=strict 
         WORKING_DIRECTORY ${EMULATION_WORKDIR}
     )
     if(USE_CODEGEN)
