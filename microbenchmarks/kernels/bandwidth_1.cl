@@ -11,7 +11,7 @@
 
 __kernel void app(__global char *mem, const int N, SMI_Comm comm)
 {
-    SMI_Channel chan=SMI_Open_receive_channel_ad(N,SMI_DOUBLE,0,0,comm,128);
+    SMI_Channel chan=SMI_Open_receive_channel_ad(N, SMI_DOUBLE, 0, 0, comm, 2048);
     const double start=0.1f;
     char check=1;
     for(int i=0;i<N;i++)
@@ -28,7 +28,7 @@ __kernel void app(__global char *mem, const int N, SMI_Comm comm)
 
 __kernel void app_1(__global char *mem, const int N,SMI_Comm comm)
 {
-    SMI_Channel chan=SMI_Open_receive_channel(N,SMI_DOUBLE,0,1,comm);
+    SMI_Channel chan=SMI_Open_receive_channel_ad(N, SMI_DOUBLE, 0, 1, comm, 2048);
     const double start=0.1f;
     char check=1;
 
