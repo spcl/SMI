@@ -24,7 +24,7 @@ each of them equipped with 4 network connections (QSFP modules) operating at 40G
 The library depends on:
 
 * CMake for configuration
-* Intel FPGA SDK for OpenCL pro, version 18.1 ([http://fpgasoftware.intel.com/opencl/](http://fpgasoftware.intel.com/opencl/))
+* Intel FPGA SDK for OpenCL pro, version 18.1 ([http://fpgasoftware.intel.com/opencl/](http://fpgasoftware.intel.com/opencl/)). *Support for v19+ is still experimental*
 * GCC (version 5+)
 * An MPI implementation (e.g. OpenMPI)
 * Python (version 3+)
