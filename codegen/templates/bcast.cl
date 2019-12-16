@@ -55,7 +55,14 @@ void {{ utils.impl_name_port_type("SMI_Bcast", op) }}(SMI_BChannel* chan, void* 
     {
         const unsigned int message_size = chan->message_size;
         chan->processed_elements++;
-        COPY_DATA_TO_NET_MESSAGE(chan, chan->net, conv);
+
+        //Copy data to network message. This is done explicitely to avoid internal compiler errors.
+        char* data_snd = chan->net.data;
+        #pragma unroll
+        for (char jj = 0; jj < {{ op.data_size() }}; jj++)
+        {
+            data_snd[chan->packet_element_id * {{ op.data_size() }} + jj] = conv[jj];
+        }
 
         chan->packet_element_id++;
         // send the network packet if it is full or we reached the message size
@@ -83,8 +90,17 @@ void {{ utils.impl_name_port_type("SMI_Bcast", op) }}(SMI_BChannel* chan, void* 
             chan->net_2 = read_channel_intel({{ op.get_channel("ckr_data") }});
         }
 
-        COPY_DATA_FROM_NET_MESSAGE(chan, chan->net_2, conv);
+        //Copy data from network message. This is done explicitely to avoid internal compiler errors.
 
+        #pragma unroll
+        for (int ee = 0; ee < {{ op.data_elements_per_packet() }}; ee++) { 
+            if (ee == chan->packet_element_id_rcv) { 
+                #pragma unroll
+                for (int jj = 0; jj < {{ op.data_size() }}; jj++) { 
+                        ((char *)conv)[jj] = chan->net_2.data[(ee * {{ op.data_size() }}) + jj]; 
+                } 
+            } 
+        } 
         chan->packet_element_id_rcv++;
         if (chan->packet_element_id_rcv == chan->elements_per_packet)
         {

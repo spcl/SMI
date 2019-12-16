@@ -71,12 +71,6 @@ int main(int argc, char *argv[])
             case 'r':
                 {
                     recv_rank=atoi(optarg);
-                    if(recv_rank>4)
-                    {
-                        cerr << "Error: rank may be 0-1"<<endl;
-                        exit(-1);
-                    }
-
                     break;
                 }
 
@@ -118,8 +112,8 @@ int main(int argc, char *argv[])
         }
         else
         {
-            if(rank==0) program_path="latency_0.aocx";
-            else program_path="latency_1.aocx";
+            if(rank==0) program_path="latency_0/latency_0.aocx";
+            else program_path="latency_1/latency_1.aocx";
         }
 
     }

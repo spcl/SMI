@@ -52,25 +52,19 @@ void {{ utils.impl_name_port_type("SMI_Scatter", op) }}(SMI_ScatterChannel* chan
         const unsigned int message_size = chan->send_count;
         chan->processed_elements++;
 
+        //Copy data to network message. This is done explicitely to avoid internal compiler errors.
         char* data_to_send = chan->net.data;
 
         #pragma unroll
-        for (int ee = 0; ee < {{ op.data_elements_per_packet() }}; ee++)
+        for (int jj = 0; jj < {{ op.data_size() }}; jj++)
         {
-            if (ee == chan->packet_element_id)
+            if (chan->next_rcv == chan->my_rank)
             {
-                #pragma unroll
-                for (int jj = 0; jj < {{ op.data_size() }}; jj++)
-                {
-                    if (chan->next_rcv == chan->my_rank)
-                    {
-                        ((char*) (data_rcv))[jj] = conv[jj];
-                    }
-                    else data_to_send[(ee * {{ op.data_size() }}) + jj] = conv[jj];
-                }
+                ((char*) (data_rcv))[jj] = conv[jj];
             }
+            else data_to_send[(chan->packet_element_id * {{ op.data_size() }}) + jj] = conv[jj];
         }
-
+            
         chan->packet_element_id++;
         // split this in packets holding send_count elements
         if (chan->packet_element_id == elem_per_packet ||
@@ -107,7 +101,16 @@ void {{ utils.impl_name_port_type("SMI_Scatter", op) }}(SMI_ScatterChannel* chan
         {
             chan->net_2 = read_channel_intel({{ op.get_channel("ckr_data") }});
         }
-        COPY_DATA_FROM_NET_MESSAGE(chan, chan->net_2, data_rcv);
+        // Copy data from network message. This is done explicitely to avoid internal compiler errors
+        #pragma unroll
+        for (int ee = 0; ee < {{ op.data_elements_per_packet() }}; ee++) { 
+            if (ee == chan->packet_element_id_rcv) { 
+                #pragma unroll
+                for (int jj = 0; jj < {{ op.data_size() }}; jj++) { 
+                        ((char *)data_rcv)[jj] = chan->net_2.data[(ee * {{ op.data_size() }}) + jj]; 
+                } 
+            } 
+        } 
 
         chan->packet_element_id_rcv++;
         if (chan->packet_element_id_rcv == elem_per_packet)
