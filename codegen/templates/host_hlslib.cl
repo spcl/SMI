@@ -10,7 +10,8 @@ SMI_Comm SmiInit_{{ name }}(
         int ranks_count,
         const char* routing_dir,
         hlslib::ocl::Context &context,
-        hlslib::ocl::Program &program)
+        hlslib::ocl::Program &program,
+        std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>> &buffers)
 {
 
     const int ports = {{ program.logical_port_count }};
@@ -76,6 +77,12 @@ SMI_Comm SmiInit_{{ name }}(
       // Will never terminate, so we don't care about the return value of fork
       k.ExecuteTaskFork();
     }
+
+    //move created buffers to the vector given my the user
+    {% for channel in range(program.channel_count) %}
+    buffers.push_back(std::move(routing_table_device_ck_s_{{channel}});
+    buffers.push_back(std::move(routing_table_device_ck_r_{{channel}});
+    {% endfor %}
 
     // return the communicator
     SMI_Comm comm{ char_rank, char_ranks_count };
