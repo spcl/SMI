@@ -87,9 +87,11 @@ int main(int argc, char *argv[])
     }       char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);
     std::cout << "Rank" << rank<<" executing on host:" <<hostname << " program: "<<program_path<<std::endl;
+
     hlslib::ocl::Context context(fpga);
     auto program = context.MakeProgram(program_path);
-    SMI_Comm comm=SmiInit_broadcast(rank, rank_count, ROUTING_DIR, context, program);
+    std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>> buffers;
+    SMI_Comm comm=SmiInit_broadcast(rank, rank_count, ROUTING_DIR, context, program, buffers);
 
     // Create device buffer
     hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context.MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
@@ -106,7 +108,7 @@ int main(int argc, char *argv[])
         std::pair<double, double> timings = kernel.ExecuteTask();
 
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-        if(rank==0)
+        if(rank==root)
             times.push_back(timings.first * 1e6);
 
         if(rank!=root)
@@ -121,7 +123,7 @@ int main(int argc, char *argv[])
     }
     CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
 
-    if(rank==0)
+    if(rank==root)
     {
 
        //check

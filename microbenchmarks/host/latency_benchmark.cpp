@@ -15,6 +15,7 @@
 #include <utils/utils.hpp>
 #include <limits.h>
 #include <cmath>
+#include <hlslib/intel/OpenCL.h>
 #include "smi_generated_host.c"
 #define ROUTING_DIR "smi-routes/"
 
@@ -35,7 +36,7 @@ int main(int argc, char *argv[])
     int n;
     int c;
     std::string program_path;
-    int recv_rank;
+    char recv_rank;
     int fpga,runs;
     int rank;
     bool emulator;
@@ -69,10 +70,14 @@ int main(int argc, char *argv[])
                 fpga=atoi(optarg);
                 break;
             case 'r':
-                {
-                    recv_rank=atoi(optarg);
-                    break;
+            {
+                recv_rank=atoi(optarg);
+                if(recv_rank==0){
+                    cerr <<  "Receiving rank can not be 0" <<endl;
+                    exit(-1);
                 }
+                break;
+            }
 
             default:
                 cerr << "Usage: "<< argv[0]<<"-m <emulator/hardware> -b <binary file> -n <length> -r <rank on which run the receiver> -i <number of runs>"<<endl;
@@ -122,53 +127,26 @@ int main(int argc, char *argv[])
     gethostname(hostname, HOST_NAME_MAX);
     std::cout << "Rank" << rank<<" executing on host:" <<hostname << " program: "<<program_path<<std::endl;
 
+    hlslib::ocl::Context context(fpga);
+    auto program = context.MakeProgram(program_path);
+    std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>> buffers;
+    SMI_Comm comm=SmiInit_latency_0(rank, rank_count, ROUTING_DIR, context, program, buffers);
 
-    cl::Platform  platform;
-    cl::Device device;
-    cl::Context context;
-    cl::Program program;
-    std::vector<cl::Buffer> buffers;
-    SMI_Comm comm=SmiInit_latency_0(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga,buffers);
-    cl::Kernel kernel;
-    cl::CommandQueue queue;
-    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
-    IntelFPGAOCLUtils::createKernel(program,"app",kernel);
+    //create kernel
+    hlslib::ocl::Kernel app = (rank==0)?program.MakeKernel("app", n, recv_rank,  comm) : program.MakeKernel("app", n, comm) ;
 
-    if(rank==0)
-    {
-        char dest=(char)recv_rank;
-        kernel.setArg(0,sizeof(int),&n);
-        kernel.setArg(1,sizeof(char),&dest);
-        kernel.setArg(2,sizeof(SMI_Comm),&comm);
-    }
-    else
-    {
-        kernel.setArg(0,sizeof(int),&n);
-        kernel.setArg(1,sizeof(SMI_Comm),&comm);
-    }
     std::vector<double> times;
     for(int i=0;i<runs;i++)
     {
-
-        cl::Event event; 
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
         //only rank 0 and the recv rank start the app kernels
-        timestamp_t startt=current_time_usecs();
-        //
+        std::pair<double, double> timings;
         if(rank==0 || rank==recv_rank)
-        {
-            queue.enqueueTask(kernel,nullptr,&event);
-            queue.finish();
-        }
+            timings = app.ExecuteTask();
+
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
         if(rank==0)
-        {
-            ulong end, start;
-            event.getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
-            event.getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
-            double time= (double)((end-start)/1000.0f);
-            times.push_back(time/(2*n));
-        }
+            times.push_back(timings.first * 1e6);
     }
 
     if(rank==0)

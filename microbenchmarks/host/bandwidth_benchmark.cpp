@@ -122,7 +122,8 @@ int main(int argc, char *argv[])
 
     hlslib::ocl::Context context(fpga);
     auto program = context.MakeProgram(program_path);
-    SMI_Comm comm=SmiInit_bandwidth_0(rank, rank_count, ROUTING_DIR, context, program);
+    std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>> buffers;
+    SMI_Comm comm=SmiInit_bandwidth_0(rank, rank_count, ROUTING_DIR, context, program, buffers);
 
      // Create device buffers
     hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check_0 = context.MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
