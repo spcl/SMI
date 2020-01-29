@@ -80,8 +80,8 @@ SMI_Comm SmiInit_{{ name }}(
 
     //move created buffers to the vector given my the user
     {% for channel in range(program.channel_count) %}
-    buffers.push_back(std::move(routing_table_device_ck_s_{{channel}});
-    buffers.push_back(std::move(routing_table_device_ck_r_{{channel}});
+    buffers.push_back(std::move(routing_table_device_ck_s_{{channel}}));
+    buffers.push_back(std::move(routing_table_device_ck_r_{{channel}}));
     {% endfor %}
 
     // return the communicator
