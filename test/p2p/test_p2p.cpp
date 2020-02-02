@@ -3,7 +3,7 @@
     Test must be executed with 8 ranks
  */
 
-#define TEST_TIMEOUT 10
+#define TEST_TIMEOUT 20
 
 #include <gtest/gtest.h>
 #include <stdio.h>
@@ -17,17 +17,13 @@
 #include <cmath>
 #include <thread>
 #include <future>
+#include <hlslib/intel/OpenCL.h>
 #include "smi_generated_host.c"
 #define ROUTING_DIR "smi-routes/"
 using namespace std;
 std::string program_path;
 int rank_count, my_rank;
 
-cl::Platform  platform;
-cl::Device device;
-cl::Context context;
-cl::Program program;
-std::vector<cl::Buffer> buffers;
 SMI_Comm comm;    
 //https://github.com/google/googletest/issues/348#issuecomment-492785854
 #define ASSERT_DURATION_LE(secs, stmt) { \
@@ -45,22 +41,20 @@ SMI_Comm comm;
 }
 
 
-bool runAndReturn(cl::CommandQueue &queue, cl::Kernel &kernel, cl::Buffer &check,int my_rank, int recv_rank)
+bool runAndReturn(hlslib::ocl::Kernel &kernel, hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> &check, int my_rank, int recv_rank)
 {
     //only rank 0 and the recv rank start the app kernels
     MPI_Barrier(MPI_COMM_WORLD);
     if(my_rank==0 || my_rank==recv_rank)
     {
-        queue.enqueueTask(kernel);
-
-        queue.finish();
+        kernel.ExecuteTask();
     }
     MPI_Barrier(MPI_COMM_WORLD);
     if(my_rank==recv_rank)
     {
         //check
         char res;
-        queue.enqueueReadBuffer(check,CL_TRUE,0,1,&res);
+        check.CopyToHost(&res);
         return res==1;
     }
     else
@@ -76,15 +70,12 @@ TEST(P2P, CharMessages)
 {
 
     MPI_Barrier(MPI_COMM_WORLD);
-    //float messages
 
     //create the program
-    cl::Kernel kernel;
-    cl::CommandQueue queue;
-    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
-    IntelFPGAOCLUtils::createKernel(program,"test_char",kernel);
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_char");
 
-    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
+
     std::vector<int> message_lengths={1,128,1024,100000};
     std::vector<int> receivers={1,4,7};
     int runs=2;
@@ -95,16 +86,18 @@ TEST(P2P, CharMessages)
         {
             if(my_rank==0)
             {
+                cl::Kernel cl_kernel = kernel.kernel();
                 char dest=(char)recv_rank;
-                kernel.setArg(0,sizeof(int),&ml);
-                kernel.setArg(1,sizeof(char),&dest);
-                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+                cl_kernel.setArg(0,sizeof(int),&ml);
+                cl_kernel.setArg(1,sizeof(char),&dest);
+                cl_kernel.setArg(2,sizeof(SMI_Comm),&comm);
             }
             else
             {
-                kernel.setArg(0,sizeof(cl_mem),&check);
-                kernel.setArg(1,sizeof(int),&ml);
-                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+                cl::Kernel cl_kernel = kernel.kernel();
+                cl_kernel.setArg(0,sizeof(cl_mem),&check.devicePtr());
+                cl_kernel.setArg(1,sizeof(int),&ml);    
+                cl_kernel.setArg(2,sizeof(SMI_Comm),&comm);
             }
 
             for(int i=0;i<runs;i++)
@@ -116,7 +109,7 @@ TEST(P2P, CharMessages)
                 // but end the function if it exceeds 3 seconds
                 //source https://github.com/google/googletest/issues/348#issuecomment-492785854
                 ASSERT_DURATION_LE(TEST_TIMEOUT, {
-                  ASSERT_TRUE(runAndReturn(queue,kernel,check,my_rank,recv_rank));
+                  ASSERT_TRUE(runAndReturn(kernel,check,my_rank,recv_rank));
                 });
             }
         }
@@ -127,15 +120,12 @@ TEST(P2P, ShortMessages)
 {
 
     MPI_Barrier(MPI_COMM_WORLD);
-    //float messages
 
     //create the program
-    cl::Kernel kernel;
-    cl::CommandQueue queue;
-    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
-    IntelFPGAOCLUtils::createKernel(program,"test_short",kernel);
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_short");
 
-    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
+
     std::vector<int> message_lengths={1,128,1024,100000};
     std::vector<int> receivers={1,4,7};
     int runs=2;
@@ -146,16 +136,18 @@ TEST(P2P, ShortMessages)
         {
             if(my_rank==0)
             {
+                cl::Kernel cl_kernel = kernel.kernel();
                 char dest=(char)recv_rank;
-                kernel.setArg(0,sizeof(int),&ml);
-                kernel.setArg(1,sizeof(char),&dest);
-                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+                cl_kernel.setArg(0,sizeof(int),&ml);
+                cl_kernel.setArg(1,sizeof(char),&dest);
+                cl_kernel.setArg(2,sizeof(SMI_Comm),&comm);
             }
             else
             {
-                kernel.setArg(0,sizeof(cl_mem),&check);
-                kernel.setArg(1,sizeof(int),&ml);
-                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+                cl::Kernel cl_kernel = kernel.kernel();
+                cl_kernel.setArg(0,sizeof(cl_mem),&check.devicePtr());
+                cl_kernel.setArg(1,sizeof(int),&ml);    
+                cl_kernel.setArg(2,sizeof(SMI_Comm),&comm);
             }
 
             for(int i=0;i<runs;i++)
@@ -166,7 +158,7 @@ TEST(P2P, ShortMessages)
                 // but end the function if it exceeds 3 seconds
                 //source https://github.com/google/googletest/issues/348#issuecomment-492785854
                 ASSERT_DURATION_LE(TEST_TIMEOUT, {
-                  ASSERT_TRUE(runAndReturn(queue,kernel,check,my_rank,recv_rank));
+                  ASSERT_TRUE(runAndReturn(kernel,check,my_rank,recv_rank));
                 });
             }
         }
@@ -176,12 +168,9 @@ TEST(P2P, IntegerMessages)
 {
     //with this test we evaluate the correcteness of integer messages transmission
   
-    cl::Kernel kernel;
-    cl::CommandQueue queue;
-    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
-    IntelFPGAOCLUtils::createKernel(program,"test_int",kernel);
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_int");
 
-    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
     std::vector<int> message_lengths={1,128,1024,100000};
     std::vector<int> receivers={1,4,7};
     int runs=2;
@@ -192,16 +181,18 @@ TEST(P2P, IntegerMessages)
         {
             if(my_rank==0)
             {
+                cl::Kernel cl_kernel = kernel.kernel();
                 char dest=(char)recv_rank;
-                kernel.setArg(0,sizeof(int),&ml);
-                kernel.setArg(1,sizeof(char),&dest);
-                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+                cl_kernel.setArg(0,sizeof(int),&ml);
+                cl_kernel.setArg(1,sizeof(char),&dest);
+                cl_kernel.setArg(2,sizeof(SMI_Comm),&comm);
             }
             else
             {
-                kernel.setArg(0,sizeof(cl_mem),&check);
-                kernel.setArg(1,sizeof(int),&ml);
-                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+                cl::Kernel cl_kernel = kernel.kernel();
+                cl_kernel.setArg(0,sizeof(cl_mem),&check.devicePtr());
+                cl_kernel.setArg(1,sizeof(int),&ml);    
+                cl_kernel.setArg(2,sizeof(SMI_Comm),&comm);
             }
 
             for(int i=0;i<runs;i++)
@@ -214,7 +205,7 @@ TEST(P2P, IntegerMessages)
                 // but end the function if it exceeds 3 seconds
                 //source https://github.com/google/googletest/issues/348#issuecomment-492785854
                 ASSERT_DURATION_LE(TEST_TIMEOUT, {
-                  ASSERT_TRUE(runAndReturn(queue,kernel,check,my_rank,recv_rank));
+                  ASSERT_TRUE(runAndReturn(kernel,check,my_rank,recv_rank));
                 });
             }
         }
@@ -226,13 +217,9 @@ TEST(P2P, FloatMessages)
     MPI_Barrier(MPI_COMM_WORLD);
     //float messages
 
-    //create the program
-    cl::Kernel kernel;
-    cl::CommandQueue queue;
-    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
-    IntelFPGAOCLUtils::createKernel(program,"test_float",kernel);
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_float");
 
-    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
     std::vector<int> message_lengths={1,128,1024,100000};
     std::vector<int> receivers={1,4,7};
     int runs=2;
@@ -243,16 +230,18 @@ TEST(P2P, FloatMessages)
         {
             if(my_rank==0)
             {
+                cl::Kernel cl_kernel = kernel.kernel();
                 char dest=(char)recv_rank;
-                kernel.setArg(0,sizeof(int),&ml);
-                kernel.setArg(1,sizeof(char),&dest);
-                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+                cl_kernel.setArg(0,sizeof(int),&ml);
+                cl_kernel.setArg(1,sizeof(char),&dest);
+                cl_kernel.setArg(2,sizeof(SMI_Comm),&comm);
             }
             else
             {
-                kernel.setArg(0,sizeof(cl_mem),&check);
-                kernel.setArg(1,sizeof(int),&ml);
-                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+                cl::Kernel cl_kernel = kernel.kernel();
+                cl_kernel.setArg(0,sizeof(cl_mem),&check.devicePtr());
+                cl_kernel.setArg(1,sizeof(int),&ml);    
+                cl_kernel.setArg(2,sizeof(SMI_Comm),&comm);
             }
 
             for(int i=0;i<runs;i++)
@@ -265,7 +254,7 @@ TEST(P2P, FloatMessages)
                 // but end the function if it exceeds 3 seconds
                 //source https://github.com/google/googletest/issues/348#issuecomment-492785854
                 ASSERT_DURATION_LE(TEST_TIMEOUT, {
-                  ASSERT_TRUE(runAndReturn(queue,kernel,check,my_rank,recv_rank));
+                  ASSERT_TRUE(runAndReturn(kernel,check,my_rank,recv_rank));
                 });
             }
         }
@@ -276,15 +265,12 @@ TEST(P2P, DoubleMessages)
 {
 
     MPI_Barrier(MPI_COMM_WORLD);
-    //float messages
+    //double messages
 
     //create the program
-    cl::Kernel kernel;
-    cl::CommandQueue queue;
-    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
-    IntelFPGAOCLUtils::createKernel(program,"test_double",kernel);
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_double");
 
-    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
     std::vector<int> message_lengths={1,128,1024,100000};
     std::vector<int> receivers={1,4,7};
     int runs=2;
@@ -295,16 +281,18 @@ TEST(P2P, DoubleMessages)
         {
             if(my_rank==0)
             {
+                cl::Kernel cl_kernel = kernel.kernel();
                 char dest=(char)recv_rank;
-                kernel.setArg(0,sizeof(int),&ml);
-                kernel.setArg(1,sizeof(char),&dest);
-                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+                cl_kernel.setArg(0,sizeof(int),&ml);
+                cl_kernel.setArg(1,sizeof(char),&dest);
+                cl_kernel.setArg(2,sizeof(SMI_Comm),&comm);
             }
             else
             {
-                kernel.setArg(0,sizeof(cl_mem),&check);
-                kernel.setArg(1,sizeof(int),&ml);
-                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+                cl::Kernel cl_kernel = kernel.kernel();
+                cl_kernel.setArg(0,sizeof(cl_mem),&check.devicePtr());
+                cl_kernel.setArg(1,sizeof(int),&ml);    
+                cl_kernel.setArg(2,sizeof(SMI_Comm),&comm);
             }
 
             for(int i=0;i<runs;i++)
@@ -317,7 +305,7 @@ TEST(P2P, DoubleMessages)
                 // but end the function if it exceeds 3 seconds
                 //source https://github.com/google/googletest/issues/348#issuecomment-492785854
                 ASSERT_DURATION_LE(TEST_TIMEOUT, {
-                  ASSERT_TRUE(runAndReturn(queue,kernel,check,my_rank,recv_rank));
+                  ASSERT_TRUE(runAndReturn(kernel,check,my_rank,recv_rank));
                 });
             }
         }
@@ -328,12 +316,9 @@ TEST(P2P, IntegerMessagesAD1)
 {
     //with this test we evaluate the correcteness of integer messages transmission
   
-    cl::Kernel kernel;
-    cl::CommandQueue queue;
-    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
-    IntelFPGAOCLUtils::createKernel(program,"test_int_ad_1",kernel);
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_int_ad_1");
 
-    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
     std::vector<int> message_lengths={1,128,1024,100000};
     std::vector<int> receivers={1,4,7};
     int runs=2;
@@ -344,16 +329,18 @@ TEST(P2P, IntegerMessagesAD1)
         {
             if(my_rank==0)
             {
+                cl::Kernel cl_kernel = kernel.kernel();
                 char dest=(char)recv_rank;
-                kernel.setArg(0,sizeof(int),&ml);
-                kernel.setArg(1,sizeof(char),&dest);
-                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+                cl_kernel.setArg(0,sizeof(int),&ml);
+                cl_kernel.setArg(1,sizeof(char),&dest);
+                cl_kernel.setArg(2,sizeof(SMI_Comm),&comm);
             }
             else
             {
-                kernel.setArg(0,sizeof(cl_mem),&check);
-                kernel.setArg(1,sizeof(int),&ml);
-                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+                cl::Kernel cl_kernel = kernel.kernel();
+                cl_kernel.setArg(0,sizeof(cl_mem),&check.devicePtr());
+                cl_kernel.setArg(1,sizeof(int),&ml);    
+                cl_kernel.setArg(2,sizeof(SMI_Comm),&comm);
             }
 
             for(int i=0;i<runs;i++)
@@ -366,7 +353,7 @@ TEST(P2P, IntegerMessagesAD1)
                 // but end the function if it exceeds 3 seconds
                 //source https://github.com/google/googletest/issues/348#issuecomment-492785854
                 ASSERT_DURATION_LE(TEST_TIMEOUT, {
-                  ASSERT_TRUE(runAndReturn(queue,kernel,check,my_rank,recv_rank));
+                  ASSERT_TRUE(runAndReturn(kernel,check,my_rank,recv_rank));
                 });
             }
         }
@@ -376,12 +363,9 @@ TEST(P2P, IntegerMessagesAD2)
 {
     //with this test we evaluate the correcteness of integer messages transmission
   
-    cl::Kernel kernel;
-    cl::CommandQueue queue;
-    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
-    IntelFPGAOCLUtils::createKernel(program,"test_int_ad_2",kernel);
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_int_ad_2");
 
-    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
     std::vector<int> message_lengths={1,128,1024,100000};
     std::vector<int> receivers={1,4,7};
     int runs=2;
@@ -392,16 +376,18 @@ TEST(P2P, IntegerMessagesAD2)
         {
             if(my_rank==0)
             {
+                cl::Kernel cl_kernel = kernel.kernel();
                 char dest=(char)recv_rank;
-                kernel.setArg(0,sizeof(int),&ml);
-                kernel.setArg(1,sizeof(char),&dest);
-                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+                cl_kernel.setArg(0,sizeof(int),&ml);
+                cl_kernel.setArg(1,sizeof(char),&dest);
+                cl_kernel.setArg(2,sizeof(SMI_Comm),&comm);
             }
             else
             {
-                kernel.setArg(0,sizeof(cl_mem),&check);
-                kernel.setArg(1,sizeof(int),&ml);
-                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+                cl::Kernel cl_kernel = kernel.kernel();
+                cl_kernel.setArg(0,sizeof(cl_mem),&check.devicePtr());
+                cl_kernel.setArg(1,sizeof(int),&ml);    
+                cl_kernel.setArg(2,sizeof(SMI_Comm),&comm);
             }
 
             for(int i=0;i<runs;i++)
@@ -414,7 +400,7 @@ TEST(P2P, IntegerMessagesAD2)
                 // but end the function if it exceeds 3 seconds
                 //source https://github.com/google/googletest/issues/348#issuecomment-492785854
                 ASSERT_DURATION_LE(TEST_TIMEOUT, {
-                  ASSERT_TRUE(runAndReturn(queue,kernel,check,my_rank,recv_rank));
+                  ASSERT_TRUE(runAndReturn(kernel,check,my_rank,recv_rank));
                 });
             }
         }
@@ -425,12 +411,9 @@ TEST(P2P, IntegerMessagesAD2)
 TEST(P2P, CharMessagesAD1)
 {
     //with this test we evaluate the correcteness of char messages transmission
-    cl::Kernel kernel;
-    cl::CommandQueue queue;
-    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
-    IntelFPGAOCLUtils::createKernel(program,"test_char_ad_1",kernel);
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_char_ad_1");
 
-    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
     std::vector<int> message_lengths={1,128,1024,100000};
     std::vector<int> receivers={1,4,7};
     int runs=2;
@@ -441,16 +424,18 @@ TEST(P2P, CharMessagesAD1)
         {
             if(my_rank==0)
             {
+                cl::Kernel cl_kernel = kernel.kernel();
                 char dest=(char)recv_rank;
-                kernel.setArg(0,sizeof(int),&ml);
-                kernel.setArg(1,sizeof(char),&dest);
-                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+                cl_kernel.setArg(0,sizeof(int),&ml);
+                cl_kernel.setArg(1,sizeof(char),&dest);
+                cl_kernel.setArg(2,sizeof(SMI_Comm),&comm);
             }
             else
             {
-                kernel.setArg(0,sizeof(cl_mem),&check);
-                kernel.setArg(1,sizeof(int),&ml);
-                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+                cl::Kernel cl_kernel = kernel.kernel();
+                cl_kernel.setArg(0,sizeof(cl_mem),&check.devicePtr());
+                cl_kernel.setArg(1,sizeof(int),&ml);    
+                cl_kernel.setArg(2,sizeof(SMI_Comm),&comm);
             }
 
             for(int i=0;i<runs;i++)
@@ -458,7 +443,7 @@ TEST(P2P, CharMessagesAD1)
                 if(my_rank==0)  //remove emulated channels
                     system("rm emulated_chan* 2> /dev/null;");
                 ASSERT_DURATION_LE(TEST_TIMEOUT, {
-                  ASSERT_TRUE(runAndReturn(queue,kernel,check,my_rank,recv_rank));
+                  ASSERT_TRUE(runAndReturn(kernel,check,my_rank,recv_rank));
                 });
             }
         }
@@ -467,12 +452,9 @@ TEST(P2P, CharMessagesAD1)
 TEST(P2P, ShortMessagesAD1)
 {
     //with this test we evaluate the correcteness of char messages transmission
-    cl::Kernel kernel;
-    cl::CommandQueue queue;
-    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
-    IntelFPGAOCLUtils::createKernel(program,"test_short_ad_1",kernel);
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_short_ad_1");
 
-    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
     std::vector<int> message_lengths={1,128,1024,100000};
     std::vector<int> receivers={1,4,7};
     int runs=2;
@@ -483,16 +465,18 @@ TEST(P2P, ShortMessagesAD1)
         {
             if(my_rank==0)
             {
+                cl::Kernel cl_kernel = kernel.kernel();
                 char dest=(char)recv_rank;
-                kernel.setArg(0,sizeof(int),&ml);
-                kernel.setArg(1,sizeof(char),&dest);
-                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+                cl_kernel.setArg(0,sizeof(int),&ml);
+                cl_kernel.setArg(1,sizeof(char),&dest);
+                cl_kernel.setArg(2,sizeof(SMI_Comm),&comm);
             }
             else
             {
-                kernel.setArg(0,sizeof(cl_mem),&check);
-                kernel.setArg(1,sizeof(int),&ml);
-                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+                cl::Kernel cl_kernel = kernel.kernel();
+                cl_kernel.setArg(0,sizeof(cl_mem),&check.devicePtr());
+                cl_kernel.setArg(1,sizeof(int),&ml);    
+                cl_kernel.setArg(2,sizeof(SMI_Comm),&comm);
             }
 
             for(int i=0;i<runs;i++)
@@ -500,7 +484,7 @@ TEST(P2P, ShortMessagesAD1)
                 if(my_rank==0)  //remove emulated channels
                     system("rm emulated_chan* 2> /dev/null;");
                 ASSERT_DURATION_LE(TEST_TIMEOUT, {
-                  ASSERT_TRUE(runAndReturn(queue,kernel,check,my_rank,recv_rank));
+                  ASSERT_TRUE(runAndReturn(kernel,check,my_rank,recv_rank));
                 });
             }
         }
@@ -509,12 +493,9 @@ TEST(P2P, ShortMessagesAD1)
 TEST(P2P, FloatrMessagesAD1)
 {
     //with this test we evaluate the correcteness of char messages transmission
-    cl::Kernel kernel;
-    cl::CommandQueue queue;
-    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
-    IntelFPGAOCLUtils::createKernel(program,"test_float_ad_1",kernel);
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_float_ad_1");
 
-    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
     std::vector<int> message_lengths={1,128,1024,100000};
     std::vector<int> receivers={1,4,7};
     int runs=2;
@@ -525,16 +506,18 @@ TEST(P2P, FloatrMessagesAD1)
         {
             if(my_rank==0)
             {
+                cl::Kernel cl_kernel = kernel.kernel();
                 char dest=(char)recv_rank;
-                kernel.setArg(0,sizeof(int),&ml);
-                kernel.setArg(1,sizeof(char),&dest);
-                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+                cl_kernel.setArg(0,sizeof(int),&ml);
+                cl_kernel.setArg(1,sizeof(char),&dest);
+                cl_kernel.setArg(2,sizeof(SMI_Comm),&comm);
             }
             else
             {
-                kernel.setArg(0,sizeof(cl_mem),&check);
-                kernel.setArg(1,sizeof(int),&ml);
-                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+                cl::Kernel cl_kernel = kernel.kernel();
+                cl_kernel.setArg(0,sizeof(cl_mem),&check.devicePtr());
+                cl_kernel.setArg(1,sizeof(int),&ml);    
+                cl_kernel.setArg(2,sizeof(SMI_Comm),&comm);
             }
 
             for(int i=0;i<runs;i++)
@@ -542,7 +525,7 @@ TEST(P2P, FloatrMessagesAD1)
                 if(my_rank==0)  //remove emulated channels
                     system("rm emulated_chan* 2> /dev/null;");
                 ASSERT_DURATION_LE(TEST_TIMEOUT, {
-                  ASSERT_TRUE(runAndReturn(queue,kernel,check,my_rank,recv_rank));
+                  ASSERT_TRUE(runAndReturn(kernel,check,my_rank,recv_rank));
                 });
             }
         }
@@ -551,12 +534,9 @@ TEST(P2P, FloatrMessagesAD1)
 TEST(P2P, DoubleMessagesAD1)
 {
     //with this test we evaluate the correcteness of char messages transmission
-    cl::Kernel kernel;
-    cl::CommandQueue queue;
-    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
-    IntelFPGAOCLUtils::createKernel(program,"test_double_ad_1",kernel);
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_double_ad_1");
 
-    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
     std::vector<int> message_lengths={1,128,1024,100000};
     std::vector<int> receivers={1,4,7};
     int runs=2;
@@ -567,16 +547,18 @@ TEST(P2P, DoubleMessagesAD1)
         {
             if(my_rank==0)
             {
+                cl::Kernel cl_kernel = kernel.kernel();
                 char dest=(char)recv_rank;
-                kernel.setArg(0,sizeof(int),&ml);
-                kernel.setArg(1,sizeof(char),&dest);
-                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+                cl_kernel.setArg(0,sizeof(int),&ml);
+                cl_kernel.setArg(1,sizeof(char),&dest);
+                cl_kernel.setArg(2,sizeof(SMI_Comm),&comm);
             }
             else
             {
-                kernel.setArg(0,sizeof(cl_mem),&check);
-                kernel.setArg(1,sizeof(int),&ml);
-                kernel.setArg(2,sizeof(SMI_Comm),&comm);
+                cl::Kernel cl_kernel = kernel.kernel();
+                cl_kernel.setArg(0,sizeof(cl_mem),&check.devicePtr());
+                cl_kernel.setArg(1,sizeof(int),&ml);    
+                cl_kernel.setArg(2,sizeof(SMI_Comm),&comm);
             }
 
             for(int i=0;i<runs;i++)
@@ -584,12 +566,13 @@ TEST(P2P, DoubleMessagesAD1)
                 if(my_rank==0)  //remove emulated channels
                     system("rm emulated_chan* 2> /dev/null;");
                 ASSERT_DURATION_LE(TEST_TIMEOUT, {
-                  ASSERT_TRUE(runAndReturn(queue,kernel,check,my_rank,recv_rank));
+                  ASSERT_TRUE(runAndReturn(kernel,check,my_rank,recv_rank));
                 });
             }
         }
     }
 }
+
 int main(int argc, char *argv[])
 {
 
@@ -626,7 +609,10 @@ int main(int argc, char *argv[])
         program_path = replace(program_path, "<type>", std::string("0"));
     else
         program_path = replace(program_path, "<type>", std::string("1"));
-    comm=SmiInit_p2p_rank0(my_rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga,buffers);
+
+    auto program =  hlslib::ocl::GlobalContext().MakeProgram(program_path);
+    std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>> buffers;
+    comm=SmiInit_p2p_rank0(my_rank, rank_count, ROUTING_DIR, hlslib::ocl::GlobalContext(), program, buffers);
 
 
     result = RUN_ALL_TESTS();
