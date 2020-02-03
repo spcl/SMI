@@ -3,7 +3,7 @@
     Test must be executed with 8 ranks
  */
 
-#define TEST_TIMEOUT 20
+#define TEST_TIMEOUT 30
 
 #include <gtest/gtest.h>
 #include <stdio.h>
@@ -76,7 +76,7 @@ TEST(P2P, CharMessages)
     hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_char");
 
 
-    std::vector<int> message_lengths={1,128,1024,100000};
+    std::vector<int> message_lengths={1,128,1024,10000};
     std::vector<int> receivers={1,4,7};
     int runs=2;
     for(int recv_rank:receivers)    //consider different receivers
@@ -126,7 +126,7 @@ TEST(P2P, ShortMessages)
     hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_short");
 
 
-    std::vector<int> message_lengths={1,128,1024,100000};
+    std::vector<int> message_lengths={1,128,1024,10000};
     std::vector<int> receivers={1,4,7};
     int runs=2;
     for(int recv_rank:receivers)    //consider different receivers
@@ -171,7 +171,7 @@ TEST(P2P, IntegerMessages)
     hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
     hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_int");
 
-    std::vector<int> message_lengths={1,128,1024,100000};
+    std::vector<int> message_lengths={1,128,1024,10000};
     std::vector<int> receivers={1,4,7};
     int runs=2;
     for(int recv_rank:receivers)    //consider different receivers
@@ -220,7 +220,7 @@ TEST(P2P, FloatMessages)
     hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
     hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_float");
 
-    std::vector<int> message_lengths={1,128,1024,100000};
+    std::vector<int> message_lengths={1,128,1024,10000};
     std::vector<int> receivers={1,4,7};
     int runs=2;
     for(int recv_rank:receivers)    //consider different receivers
@@ -271,7 +271,7 @@ TEST(P2P, DoubleMessages)
     hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
     hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_double");
 
-    std::vector<int> message_lengths={1,128,1024,100000};
+    std::vector<int> message_lengths={1,128,1024,10000};
     std::vector<int> receivers={1,4,7};
     int runs=2;
     for(int recv_rank:receivers)    //consider different receivers
@@ -319,7 +319,7 @@ TEST(P2P, IntegerMessagesAD1)
     hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
     hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_int_ad_1");
 
-    std::vector<int> message_lengths={1,128,1024,100000};
+    std::vector<int> message_lengths={1,128,1024,10000};
     std::vector<int> receivers={1,4,7};
     int runs=2;
     for(int recv_rank:receivers)    //consider different receivers
@@ -366,7 +366,7 @@ TEST(P2P, IntegerMessagesAD2)
     hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
     hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_int_ad_2");
 
-    std::vector<int> message_lengths={1,128,1024,100000};
+    std::vector<int> message_lengths={1,128,1024,10000};
     std::vector<int> receivers={1,4,7};
     int runs=2;
     for(int recv_rank:receivers)    //consider different receivers
@@ -414,7 +414,7 @@ TEST(P2P, CharMessagesAD1)
     hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
     hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_char_ad_1");
 
-    std::vector<int> message_lengths={1,128,1024,100000};
+    std::vector<int> message_lengths={1,128,1024,10000};
     std::vector<int> receivers={1,4,7};
     int runs=2;
     for(int recv_rank:receivers)    //consider different receivers
@@ -455,7 +455,7 @@ TEST(P2P, ShortMessagesAD1)
     hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
     hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_short_ad_1");
 
-    std::vector<int> message_lengths={1,128,1024,100000};
+    std::vector<int> message_lengths={1,128,1024,10000};
     std::vector<int> receivers={1,4,7};
     int runs=2;
     for(int recv_rank:receivers)    //consider different receivers
@@ -496,7 +496,7 @@ TEST(P2P, FloatrMessagesAD1)
     hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
     hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_float_ad_1");
 
-    std::vector<int> message_lengths={1,128,1024,100000};
+    std::vector<int> message_lengths={1,128,1024,10000};
     std::vector<int> receivers={1,4,7};
     int runs=2;
     for(int recv_rank:receivers)    //consider different receivers
@@ -537,7 +537,7 @@ TEST(P2P, DoubleMessagesAD1)
     hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
     hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_double_ad_1");
 
-    std::vector<int> message_lengths={1,128,1024,100000};
+    std::vector<int> message_lengths={1,128,1024,10000};
     std::vector<int> receivers={1,4,7};
     int runs=2;
     for(int recv_rank:receivers)    //consider different receivers

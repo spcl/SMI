@@ -27,7 +27,7 @@ using namespace std;
 std::string program_path;
 int rank_count, my_rank;
 
-]
+
 SMI_Comm comm;    
 //https://github.com/google/googletest/issues/348#issuecomment-492785854
 #define ASSERT_DURATION_LE(secs, stmt) { \
