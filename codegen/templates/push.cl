@@ -9,6 +9,8 @@ void {{ utils.impl_name_port_type("SMI_Push_flush", op) }}(SMI_Channel *chan, vo
     chan->packet_element_id++;
 
     // send the network packet if it full or we reached the message size
+    // Note: in this version of the library (with changes in the Pop due to higher II) we can not use
+    // the Push_flush with immediate set to true
     if (chan->packet_element_id == chan->elements_per_packet || immediate || chan->processed_elements == chan->message_size)
     {
         SET_HEADER_NUM_ELEMS(chan->net.header, chan->packet_element_id);

@@ -26,11 +26,13 @@ void {{ utils.impl_name_port_type("SMI_Pop", op) }}(SMI_Channel *chan, void *dat
     }
 
     chan->packet_element_id++;
-    if (chan->packet_element_id == GET_HEADER_NUM_ELEMS(chan->net.header))
+    // Note: inspecting the number of valid data items contained in the message header, could cause an II > 1
+    // This performs a similar check but will prevent the use of Immediate Push (Push
+    if (chan->packet_element_id == chan->elements_per_packet || chan->processed_elements == chan->message_size)
     {
         chan->packet_element_id = 0;
     }
-    // TODO: This is used to prevent this funny compiler to re-oder the two *_channel_intel operations
+    // TODO: This could be used if needed to prevent this funny compiler to re-oder the two *_channel_intel operations
     // mem_fence(CLK_CHANNEL_MEM_FENCE);
     #if defined P2P_RENDEZVOUS
     //echange tokens
