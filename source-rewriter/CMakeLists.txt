@@ -16,5 +16,5 @@ set(SOURCES
 )
 
 add_executable(rewriter ${SOURCES})
-target_link_libraries(rewriter clangRewrite clangAST clangTooling clangBasic clangLex clangFrontend)
+target_link_libraries(rewriter clangRewrite clangAST clangTooling clangBasic clangLex clangFrontend LLVM)
 target_include_directories(rewriter PRIVATE ${CLANG_INCLUDE_DIRS})
