@@ -150,11 +150,12 @@ int main(int argc, char *argv[])
             fut_0.wait();
             fut_1.wait();
         }
-        std::pair<double, double> timings_0 = fut_0.get();
-        std::pair<double, double> timings_1 = fut_1.get();
+
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
         if(rank==recv_rank)
         {
+            std::pair<double, double> timings_0 = fut_0.get();
+            std::pair<double, double> timings_1 = fut_1.get();
             if (timings_0.first>timings_1.first)
                 times.push_back(timings_0.first * 1e6);
             else
