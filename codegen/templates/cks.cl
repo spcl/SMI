@@ -45,10 +45,7 @@ __kernel void smi_kernel_cks_{{ channel.index }}(__global volatile char *restric
 
         if (valid)
         {
-            // next time read from the next sender if we reach the max contiguous reader
-            sender_id = (contiguous_reads == READS_LIMIT - 1) ? ((sender_id == num_sender-1) ? 0 :sender_id +1) : sender_id;
-            // increase contiguous reads and reset if necessary
-            contiguous_reads = (contiguous_reads == READS_LIMIT - 1)?0:contiguous_reads+1;
+            contiguous_reads++;
             char idx = external_routing_table[GET_HEADER_DST(message.header)];
             switch (idx)
             {
@@ -68,10 +65,14 @@ __kernel void smi_kernel_cks_{{ channel.index }}(__global volatile char *restric
                 {% endfor %}
             }
         }
-        else{
-            //go to the next sender
-            sender_id = (sender_id == num_sender-1) ? 0 : sender_id + 1;
+        if (!valid || contiguous_reads == READS_LIMIT)
+        {
             contiguous_reads = 0;
+            sender_id++;
+            if (sender_id == num_sender)
+            {
+                sender_id = 0;
+            }
         }
     }
 }
