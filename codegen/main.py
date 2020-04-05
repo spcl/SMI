@@ -7,7 +7,7 @@ from common import write_nodefile
 from program import CHANNELS_PER_FPGA, Channel, Program, ProgramMapping
 from rewrite import copy_files, rewrite
 from routing import create_routing_context
-from routing_table import RoutingTable, ckr_routing_table, cks_routing_table
+from routing_table import RoutingTable, ckr_routing_table, cks_routing_tables
 from serialization import parse_program, parse_routing_file, serialize_program
 
 
@@ -123,10 +123,11 @@ def route(routing_file, dest_dir, metadata):
 
     for fpga in ctx.fpgas:
         for channel in fpga.channels:
-            cks_table = cks_routing_table(ctx.routes, ctx.fpgas, channel)
-            write_table(channel, "cks", cks_table, dest_dir)
             ckr_table = ckr_routing_table(channel, CHANNELS_PER_FPGA, fpga.program)
             write_table(channel, "ckr", ckr_table, dest_dir)
+        tables = cks_routing_tables(fpga, ctx.fpgas, ctx.routes)
+        for (channel, table) in tables.items():
+            write_table(channel, "cks", table, dest_dir)
 
     with open(os.path.join(dest_dir, "hostfile"), "w") as f:
         write_nodefile(ctx.fpgas, f)
