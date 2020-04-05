@@ -2,7 +2,7 @@ from typing import List
 
 import bitstring
 
-from ops import KEY_CKR_DATA, KEY_CKR_CONTROL
+from ops import KEY_CKR_CONTROL, KEY_CKR_DATA
 from program import Channel, FPGA, Program
 
 CKS_TARGET_QSFP = 0
@@ -11,6 +11,35 @@ CKS_TARGET_CKR = 1
 
 class NoRouteFound(BaseException):
     pass
+
+
+class RoutingTable:
+    def serialize(self, bytes=1) -> bytes:
+        stream = bitstring.BitStream()
+        bitcount = bytes * 8
+        for target in self.get_data():
+            stream.append("uintle:{}={}".format(bitcount, target))
+        return stream.bytes
+
+    def get_data(self):
+        raise NotImplementedError()
+
+
+class CKSRoutingTable(RoutingTable):
+    def __init__(self, data):  # max_ranks, max_ports):
+        # self.ranks = [[None] * max_ports for _ in range(max_ranks)]
+        self.data = data
+
+    def get_data(self):
+        return self.data
+
+
+class CKRRoutingTable(RoutingTable):
+    def __init__(self, data: List[int]):
+        self.data = data
+
+    def get_data(self):
+        return self.data
 
 
 def closest_path_to_fpga(paths, channel: Channel, target: FPGA):
@@ -43,12 +72,12 @@ def get_output_target(paths, channel: Channel, target: FPGA):
         return CKS_TARGET_QSFP
 
 
-def cks_routing_table(paths, fpgas: List[FPGA], channel: Channel) -> List[int]:
+def cks_routing_table(paths, fpgas: List[FPGA], channel: Channel) -> CKSRoutingTable:
     table = []
     for fpga in fpgas:
         target = get_output_target(paths, channel, fpga)
         table.append(target)
-    return table
+    return CKSRoutingTable(table)
 
 
 def get_input_target(channel: Channel, logical_port: int, program: Program,
@@ -74,17 +103,10 @@ def get_input_target(channel: Channel, logical_port: int, program: Program,
     return channels_per_fpga + allocations.index((logical_port, key))
 
 
-def ckr_routing_table(channel: Channel, channels_per_fpga: int, program: Program) -> List[int]:
+def ckr_routing_table(channel: Channel, channels_per_fpga: int,
+                      program: Program) -> CKRRoutingTable:
     table = []
     for port in range(program.logical_port_count):
         table.append(get_input_target(channel, port, program, channels_per_fpga, KEY_CKR_DATA))
         table.append(get_input_target(channel, port, program, channels_per_fpga, KEY_CKR_CONTROL))
-    return table
-
-
-def serialize_to_array(table: List[int], bytes=1):
-    stream = bitstring.BitStream()
-    bitcount = bytes * 8
-    for target in table:
-        stream.append("uintle:{}={}".format(bitcount, target))
-    return stream.bytes
+    return CKRRoutingTable(table)

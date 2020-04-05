@@ -19,16 +19,16 @@ def test_cks_table():
     graph, routes, fpgas = (ctx.graph, ctx.routes, ctx.fpgas)
 
     a = get_channel(graph, "N0:F0", 0)
-    assert cks_routing_table(routes, fpgas, a) == [1, 0, 2]
+    assert cks_routing_table(routes, fpgas, a).get_data() == [1, 0, 2]
 
     b = get_channel(graph, "N0:F0", 1)
-    assert cks_routing_table(routes, fpgas, b) == [1, 2, 0]
+    assert cks_routing_table(routes, fpgas, b).get_data() == [1, 2, 0]
 
     c = get_channel(graph, "N0:F1", 0)
-    assert cks_routing_table(routes, fpgas, c) == [0, 1, 0]
+    assert cks_routing_table(routes, fpgas, c).get_data() == [0, 1, 0]
 
     d = get_channel(graph, "N1:F0", 0)
-    assert cks_routing_table(routes, fpgas, d) == [0, 0, 1]
+    assert cks_routing_table(routes, fpgas, d).get_data() == [0, 0, 1]
 
 
 def test_ckr_table():
@@ -41,10 +41,13 @@ def test_ckr_table():
     ])
     fpga = FPGA("n", "f", program)
 
-    assert ckr_routing_table(fpga.channels[0], CHANNELS_PER_FPGA, program) == [0, 3, 4, 0, 0, 5, 1, 0, 2, 0]
-    assert ckr_routing_table(fpga.channels[1], CHANNELS_PER_FPGA, program) == [0, 3, 1, 0, 0, 1, 4, 0, 2, 0]
-    assert ckr_routing_table(fpga.channels[2], CHANNELS_PER_FPGA, program) == [0, 3, 1, 0, 0, 1, 2, 0, 4, 0]
-    assert ckr_routing_table(fpga.channels[3], CHANNELS_PER_FPGA, program) == [0, 4, 1, 0, 0, 1, 2, 0, 3, 0]
+    def get_table(index):
+        return ckr_routing_table(fpga.channels[index], CHANNELS_PER_FPGA, program).get_data()
+
+    assert get_table(0) == [0, 3, 4, 0, 0, 5, 1, 0, 2, 0]
+    assert get_table(1) == [0, 3, 1, 0, 0, 1, 4, 0, 2, 0]
+    assert get_table(2) == [0, 3, 1, 0, 0, 1, 2, 0, 4, 0]
+    assert get_table(3) == [0, 4, 1, 0, 0, 1, 2, 0, 3, 0]
 
 
 def test_ckr_no_route():
