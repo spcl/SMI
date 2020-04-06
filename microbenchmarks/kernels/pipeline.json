@@ -1,0 +1,21 @@
+{
+    "fpgas": {
+      "fpga-0001:acl0": "pipeline",
+      "fpga-0001:acl1": "pipeline",
+      "fpga-0002:acl0": "pipeline",
+      "fpga-0002:acl1": "pipeline",
+      "fpga-0003:acl0": "pipeline",
+      "fpga-0003:acl1": "pipeline",
+      "fpga-0004:acl0": "pipeline",
+      "fpga-0004:acl1": "pipeline"
+    },
+    "connections": {
+      "fpga-0001:acl0:ch1": "fpga-0001:acl1:ch0",
+      "fpga-0001:acl1:ch1": "fpga-0002:acl0:ch0",
+      "fpga-0002:acl0:ch1": "fpga-0002:acl1:ch0",
+      "fpga-0002:acl1:ch1": "fpga-0003:acl0:ch0",
+      "fpga-0003:acl0:ch1": "fpga-0003:acl1:ch0",
+      "fpga-0003:acl1:ch1": "fpga-0004:acl0:ch0",
+      "fpga-0004:acl0:ch1": "fpga-0004:acl1:ch0"
+    }
+  }
