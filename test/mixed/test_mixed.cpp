@@ -25,6 +25,7 @@
 using namespace std;
 std::string program_path;
 int rank_count, my_rank;
+hlslib::ocl::Context *context;
 
 SMI_Comm comm;
 //https://github.com/google/googletest/issues/348#issuecomment-492785854
@@ -70,8 +71,8 @@ TEST(Gather, IntegerMessages)
 {
     //with this test we evaluate the correcteness of integer messages transmission
 
-    hlslib::ocl::Buffer<int, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<int, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_int");
+    hlslib::ocl::Buffer<int, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<int, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_int");
 
 
     std::vector<int> starts={1,100,300};
@@ -125,9 +126,10 @@ int main(int argc, char *argv[])
     //create environemnt
     int fpga=my_rank%2;
     program_path = replace(program_path, "<rank>", std::to_string(my_rank));
-    auto program =  hlslib::ocl::GlobalContext().MakeProgram(program_path);
+    context = new hlslib::ocl::Context();
+    auto program =  context->MakeProgram(program_path);
     std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>> buffers;
-    comm=SmiInit_mixed(my_rank, rank_count, ROUTING_DIR, hlslib::ocl::GlobalContext(), program, buffers);
+    comm=SmiInit_mixed(my_rank, rank_count, ROUTING_DIR, *context, program, buffers);
 
 
     result = RUN_ALL_TESTS();
