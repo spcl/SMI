@@ -26,6 +26,7 @@
 using namespace std;
 std::string program_path;
 int rank_count, my_rank;
+hlslib::ocl::Context *context;
 
 
 SMI_Comm comm;    
@@ -75,8 +76,8 @@ TEST(Reduce, CharMax)
 {
     //with this test we evaluate the correcteness of integer messages transmission
 
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_char_max");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_char_max");
 
     std::vector<int> message_lengths={1,128, 300};
     std::vector<int> roots={1,4,7};
@@ -113,8 +114,8 @@ TEST(Reduce, ShortMin)
 {
     //with this test we evaluate the correcteness of integer messages transmission
 
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_short_min");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_short_min");
 
     std::vector<int> message_lengths={1,128, 300};
     std::vector<int> roots={1,4,7};
@@ -148,8 +149,8 @@ TEST(Reduce, IntAdd)
 {
     //with this test we evaluate the correcteness of integer messages transmission
 
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_int_add");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_int_add");
 
     std::vector<int> message_lengths={1,128, 300};
     std::vector<int> roots={1,4,7};
@@ -183,8 +184,8 @@ TEST(Reduce, IntAdd)
 TEST(Reduce, IntMax)
 {
 
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_int_max");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_int_max");
 
     std::vector<int> message_lengths={1,128, 300};
     std::vector<int> roots={1,4,7};
@@ -217,8 +218,8 @@ TEST(Reduce, IntMax)
 
 TEST(Reduce, FloatAdd)
 {
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_float_add");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_float_add");
 
     std::vector<int> message_lengths={1,128, 300};
     std::vector<int> roots={1,4,7};
@@ -251,8 +252,8 @@ TEST(Reduce, FloatAdd)
 TEST(Reduce, DoubleAdd)
 {
 
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_double_add");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_double_add");
 
     std::vector<int> message_lengths={1,128, 300};
     std::vector<int> roots={1,4,7};
@@ -285,8 +286,8 @@ TEST(Reduce, DoubleAdd)
 TEST(Reduce, IntMaxAD)
 {
 
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_int_max_ad");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_int_max_ad");
 
     std::vector<int> message_lengths={1,128, 300};
     std::vector<int> roots={1,4,7};
@@ -319,8 +320,8 @@ TEST(Reduce, IntMaxAD)
 TEST(Reduce, FloatMinAD)
 {
 
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_float_min");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_float_min");
 
     std::vector<int> message_lengths={1,128, 300};
     std::vector<int> roots={1,4,7};
@@ -379,9 +380,11 @@ int main(int argc, char *argv[])
     //create environemnt
     int fpga=my_rank%2;
     program_path = replace(program_path, "<rank>", std::to_string(my_rank));
-    auto program =  hlslib::ocl::GlobalContext().MakeProgram(program_path);
+    context = new hlslib::ocl::Context();
+
+    auto program =  context->MakeProgram(program_path);
     std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>> buffers;
-    comm=SmiInit_reduce(my_rank, rank_count, ROUTING_DIR, hlslib::ocl::GlobalContext(), program, buffers);
+    comm=SmiInit_reduce(my_rank, rank_count, ROUTING_DIR, *context,  program, buffers);
 
 
     result = RUN_ALL_TESTS();
