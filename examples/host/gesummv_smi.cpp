@@ -1,7 +1,6 @@
 /**
  *  ATTENTION: helpers modified to have better performance (volatile, N %64 ==0 ...)
-            THIS WORKS ONLY IN THE CONSIDERED SETUP OVER FPGA-14
-            (or in general, in the case in which two FPGA are directly connected each other using channel 0)
+
  */
 
 #include <stdio.h>
@@ -167,42 +166,41 @@ int main(int argc, char *argv[])
     generate_float_matrix(B,n,m);
 
 
-    cl::Platform  platform;
-    cl::Device device;
-    cl::Context context;
-    cl::Program program;
-    std::vector<cl::Buffer> buffers;
-    SMI_Comm comm=SmiInit_gesummv_rank0(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga,buffers);
+    hlslib::ocl::Context context(fpga);
+    auto program = context.MakeProgram(program_path);
+    std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>> buffers;
+    SMI_Comm comm=SmiInit_gesummv_rank0(rank, rank_count, ROUTING_DIR, context, program, buffers);
 
-    std::vector<cl::Kernel> kernels;
-    std::vector<cl::CommandQueue> queues;
-    std::vector<std::string> kernel_names;
-    if(rank==0)
-        kernel_names={"gemv", "axpy", "kernel_read_matrix_A_0", "kernel_read_vector_x_0",
-                "kernel_read_vector_y_0", "kernel_write_vector_0"};
-    else
-        kernel_names={"gemv", "kernel_read_matrix_A_0", "kernel_read_vector_x_0",
-                "kernel_read_vector_y_0"};      
-    const int num_kernels=kernel_names.size();      
-    IntelFPGAOCLUtils::createCommandQueues(context,device,queues, num_kernels);
-    IntelFPGAOCLUtils::createKernels(program,kernel_names,kernels);
 
     int tile_size=128;
     const int w=64;
+    int one=1;
+    int zero=0;
+    float fzero=0,fone=1;
+
     cout << "Executing with tile size " << tile_size<<endl;
 
+    // Create device buffers
+    size_t elem_per_module=n*m/2;
+    hlslib::ocl::Buffer<float, hlslib::ocl::Access::readWrite> input_x = context.MakeBuffer<float, hlslib::ocl::Access::readWrite>(hlslib::ocl::MemoryBank::bank2, m);
+    hlslib::ocl::Buffer<float, hlslib::ocl::Access::readWrite> output_y = context.MakeBuffer<float, hlslib::ocl::Access::readWrite>(hlslib::ocl::MemoryBank::bank3, n);
+    hlslib::ocl::Buffer<float, hlslib::ocl::Access::readWrite> input_M_0 = context.MakeBuffer<float, hlslib::ocl::Access::readWrite>(hlslib::ocl::MemoryBank::bank0, elem_per_module);
+    hlslib::ocl::Buffer<float, hlslib::ocl::Access::readWrite> input_M_1 = context.MakeBuffer<float, hlslib::ocl::Access::readWrite>(hlslib::ocl::MemoryBank::bank1, elem_per_module);
+
+
+     // Create kernels
+    int x_repetitions=ceil((float)(n)/tile_size);
+    std::vector<hlslib::ocl::Kernel> kernels;
+    kernels.emplace_back(program.MakeKernel("kernel_read_matrix_A_0", input_M_0, input_M_1,n,m,m));
+    kernels.emplace_back(program.MakeKernel("kernel_read_vector_x_0", input_x, m, tile_size, x_repetitions));
+    kernels.emplace_back(program.MakeKernel("kernel_read_vector_y_0", output_y, zero, zero, zero));
+
+    hlslib::ocl::Kernel *gemv, *axpy;
 
     //Copy data
-    cl::Buffer input_x(context, CL_MEM_READ_ONLY|CL_CHANNEL_3_INTELFPGA, m *sizeof(float));
-    cl::Buffer output_y(context, CL_MEM_READ_WRITE|CL_CHANNEL_4_INTELFPGA, n * sizeof(float));
-    size_t elem_per_module=n*m/2;
-    cl::Buffer input_M_0(context, CL_MEM_READ_ONLY|CL_CHANNEL_1_INTELFPGA, elem_per_module*sizeof(float));
-    cl::Buffer input_M_1(context, CL_MEM_READ_ONLY|CL_CHANNEL_2_INTELFPGA, elem_per_module*sizeof(float));
-
     cout << "Copying data to device..." <<endl;
-    if(rank==0)
-    {
-        
+    if(rank==0){
+
         //prepare data
         //copy the matrix interleaving it into two modules
         size_t offset=0;
@@ -213,65 +211,22 @@ int main(int argc, char *argv[])
             for(int j=0;j<loop_it;j++)
             {
                 //write to the different banks
-                queues[0].enqueueWriteBuffer(input_M_0, CL_FALSE,offset, (w/2)*sizeof(float),&(A[i*m+j*w]));
-                queues[0].enqueueWriteBuffer(input_M_1, CL_FALSE,offset, (w/2)*sizeof(float),&(A[i*m+j*w+32]));
+                kernels[0].commandQueue().enqueueWriteBuffer(input_M_0.devicePtr(), CL_FALSE,offset, (w/2)*sizeof(float),&(A[i*m+j*w]));
+                kernels[0].commandQueue().enqueueWriteBuffer(input_M_1.devicePtr(), CL_FALSE,offset, (w/2)*sizeof(float),&(A[i*m+j*w+32]));
 
                 offset+=increment;
             }
         }
-        queues[0].finish();
-        queues[0].enqueueWriteBuffer(input_x,CL_TRUE,0,m*sizeof(float),x);
-        queues[0].finish();
+        kernels[0].commandQueue().finish();
 
-        cout << "Rank 0 data copied" <<std::endl;
-        //gemv_A
-        int one=1;
-        int zero=0;
-        float fzero=0,fone=1;
-        int x_repetitions=ceil((float)(n)/tile_size);
+        input_x.CopyFromHost(0,m,x);
 
-        //gemv
-        kernels[0].setArg(0, sizeof(int),&one);
-        kernels[0].setArg(1, sizeof(int),&n);
-        kernels[0].setArg(2, sizeof(int),&m);
-        kernels[0].setArg(3, sizeof(float),&alpha);
-        kernels[0].setArg(4, sizeof(float),&fzero);
-
-        //axpy
-        kernels[1].setArg(0, sizeof(float),&fone);
-        kernels[1].setArg(1, sizeof(int),&n);
-        kernels[1].setArg(2, sizeof(SMI_Comm),&comm);
-
-        //read_matrix_A
-        kernels[2].setArg(0, sizeof(cl_mem),&input_M_0);
-        kernels[2].setArg(1, sizeof(cl_mem),&input_M_1);
-        kernels[2].setArg(2, sizeof(int),&n);
-        kernels[2].setArg(3, sizeof(int),&m);
-        kernels[2].setArg(4, sizeof(int),&m);
-
-
-        //read_vector_x
-        kernels[3].setArg(0, sizeof(cl_mem),&input_x);
-        kernels[3].setArg(1, sizeof(int),&m);
-        kernels[3].setArg(2, sizeof(int),&tile_size);
-        kernels[3].setArg(3, sizeof(int),&x_repetitions);
-
-        //read_vector_y
-        kernels[4].setArg(0, sizeof(cl_mem),&output_y);
-        kernels[4].setArg(1, sizeof(int),&zero);
-        kernels[4].setArg(2, sizeof(int),&zero);
-        kernels[4].setArg(3, sizeof(int),&zero);
-
-
-
-        //write_vector
-        kernels[5].setArg(0, sizeof(cl_mem),&output_y);
-        kernels[5].setArg(1, sizeof(int),&n);
-        kernels[5].setArg(2, sizeof(int),&tile_size);
-
+        kernels.emplace_back(program.MakeKernel("gemv", one, n, m, alpha, fzero));
+        kernels.emplace_back(program.MakeKernel("axpy", fone, n, comm));
+        kernels.emplace_back(program.MakeKernel("kernel_write_vector_0", output_y, n, tile_size));
     }
-    else
-    {
+    else{
+
         //copy the matrix interleaving it into two modules
         size_t offset=0;
         size_t increment=w/2*sizeof(float);
@@ -281,50 +236,16 @@ int main(int argc, char *argv[])
             for(int j=0;j<loop_it;j++)
             {
                 //write to the different banks
-                queues[0].enqueueWriteBuffer(input_M_0, CL_FALSE,offset, (w/2)*sizeof(float),&(B[i*m+j*w]));
-                queues[0].enqueueWriteBuffer(input_M_1, CL_FALSE,offset, (w/2)*sizeof(float),&(B[i*m+j*w+32]));
-
+                kernels[0].commandQueue().enqueueWriteBuffer(input_M_0.devicePtr(), CL_FALSE,offset, (w/2)*sizeof(float),&(B[i*m+j*w]));
+                kernels[0].commandQueue().enqueueWriteBuffer(input_M_1.devicePtr(), CL_FALSE,offset, (w/2)*sizeof(float),&(B[i*m+j*w+32]));
                 offset+=increment;
             }
         }
-        queues[0].finish();
-        queues[0].enqueueWriteBuffer(input_x,CL_TRUE,0,m*sizeof(float),x);
-        queues[0].finish();
+        kernels[0].commandQueue().finish();
 
-        cout << "Rank 1 data copied"<<endl;
-        //gemv_A
-        int one=1;
-        int zero=0;
-        float fzero=0;
-        int x_repetitions=ceil((float)(n)/tile_size);
+        input_x.CopyFromHost(0,m,x);
 
-        kernels[0].setArg(0, sizeof(int),&one);
-        kernels[0].setArg(1, sizeof(int),&n);
-        kernels[0].setArg(2, sizeof(int),&m);
-        kernels[0].setArg(3, sizeof(float),&beta);
-        kernels[0].setArg(4, sizeof(float),&fzero);
-        kernels[0].setArg(5, sizeof(SMI_Comm),&comm);
-
-
-        //read_matrix_B
-        kernels[1].setArg(0, sizeof(cl_mem),&input_M_0);
-        kernels[1].setArg(1, sizeof(cl_mem),&input_M_1);
-        kernels[1].setArg(2, sizeof(int),&n);
-        kernels[1].setArg(3, sizeof(int),&m);
-        kernels[1].setArg(4, sizeof(int),&m);
-
-
-        //read_vector_x
-        kernels[2].setArg(0, sizeof(cl_mem),&input_x);
-        kernels[2].setArg(1, sizeof(int),&m);
-        kernels[2].setArg(2, sizeof(int),&tile_size);
-        kernels[2].setArg(3, sizeof(int),&x_repetitions);
-
-        //read_vector_y useless
-        kernels[3].setArg(0, sizeof(cl_mem),&output_y);
-        kernels[3].setArg(1, sizeof(int),&zero);
-        kernels[3].setArg(2, sizeof(int),&zero);
-        kernels[3].setArg(3, sizeof(int),&zero);
+        kernels.emplace_back(program.MakeKernel("gemv", one, n, m, beta, fzero, comm));
 
     }
 
@@ -337,60 +258,49 @@ int main(int argc, char *argv[])
     //Program startup
     for(int i=0;i<runs;i++)
     {
-        cl::Event events[6]; //this defination must stay here
         // wait for other nodes
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
 
-        //ATTENTION: If you are executing on the same host
-        //since the PCIe is shared that could be problems in taking times
-        //This mini sleep should resolve
-        if(rank==0)
-            usleep(10000);
-        //Start computation
-        for(int i=0;i<num_kernels;i++)
-            queues[i].enqueueTask(kernels[i],nullptr,&events[i]);
-        for(int i=0;i<kernel_names.size();i++)
-            queues[i].finish();
+        std::future<std::pair<double, double>>  futures[6];
+
+        //start all the kernels
+        for(int i=0;i<kernels.size();i++){
+            futures[i]=kernels[i].ExecuteTaskAsync();
+        }
 
         //wait
+        for(int i=0;i<kernels.size();i++){
+            futures[i].wait();
+        }
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
 
-        //take times
-        //compute execution time using OpenCL profiling
-        ulong min_start=4294967295, max_end=0;
-        ulong end;
-        ulong start;
-        for(int i=0;i<num_kernels;i++)
-        {
-            events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
-            events[i].getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
-            if(i==0)
-                min_start=start;
-            if(start<min_start)
-                min_start=start;
-            if(end>max_end)
-                max_end=end;
+        if(rank ==0){
+            //save execution time
+            double max_time = 0;
+            for(int i=0;i<kernels.size();i++){
+                std::pair<double, double> timings=futures[i].get();
+                if (timings.first > max_time)
+                    max_time = timings.first;
+            }
+            times.push_back(max_time * 1e6);
         }
-         times.push_back((double)((max_end-min_start)/1000.0f));
-
 
     }
     //Program ends
     timestamp_t endt=current_time_usecs();
-   
+
     CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-    
+
     if(rank ==0)
     {
-         queues[0].enqueueReadBuffer(output_y,CL_FALSE,0,n*sizeof(float),fpga_res_y);
+        output_y.CopyToHost(0,n,fpga_res_y);
+
         //check: we can do this since no-one overwrites the input data
         timestamp_t comp_start=current_time_usecs();
         cblas_sgemv(CblasRowMajor,CblasNoTrans,n,m,beta,B,m,x,1,0,y,1);
         cblas_sgemv(CblasRowMajor,CblasNoTrans,n,m,alpha,A,m,x,1,1,y,1);
         timestamp_t cpu_time=current_time_usecs()-comp_start;
 
-
-        //forse meglio passare a norma
         bool ok=true;
 
         for(int i=0;i<n;i++)
@@ -402,14 +312,13 @@ int main(int argc, char *argv[])
             }
         }
 
-
         if(ok )
             std::cout <<"OK!!!" <<std::endl;
         else
             std::cout <<"ERROR!!!" <<std::endl;
 
        //print times
-         //compute the average and standard deviation of times
+       //compute the average and standard deviation of times
         double mean=0;
         for(auto t:times)
             mean+=t;
@@ -421,7 +330,7 @@ int main(int argc, char *argv[])
             stddev+=((t-mean)*(t-mean));
         stddev=sqrt(stddev/runs);
         double conf_interval_99=2.58*stddev/sqrt(runs);
-        
+
         cout << "Computation time (usec): " << mean << " (sttdev: " << stddev<<")"<<endl;
         cout << "Conf interval 99: "<<conf_interval_99<<endl;
         cout << "Conf interval 99 within " <<(conf_interval_99/mean)*100<<"% from mean" <<endl;
