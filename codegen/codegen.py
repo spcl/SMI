@@ -43,7 +43,7 @@ def channel_name(src: Channel, out: bool, graph: Graph) -> str:
 
 
 def generate_program_host(programs: List[Tuple[str, Program]]) -> str:
-    template = read_template_file("host.cl")
+    template = read_template_file("host_hlslib.cl")
     return template.render(programs=programs)
 
 

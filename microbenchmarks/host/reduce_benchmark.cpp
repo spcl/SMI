@@ -12,6 +12,7 @@
 #include <cmath>
 #include <utils/ocl_utils.hpp>
 #include "smi_generated_host.c"
+#include <hlslib/intel/OpenCL.h>
 #define ROUTING_DIR "smi-routes/"
 
 using namespace std;
@@ -83,24 +84,17 @@ int main(int argc, char *argv[])
     gethostname(hostname, HOST_NAME_MAX);
     std::cout << "Rank" << rank<<" executing on host:" <<hostname << " program: "<<program_path<<std::endl;
 
-    cl::Platform  platform;
-    cl::Device device;
-    cl::Context context;
-    cl::Program program;
-    std::vector<cl::Buffer> buffers;
-    SMI_Comm comm=SmiInit_reduce(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga,buffers);
+    hlslib::ocl::Context context(fpga);
+    auto program = context.MakeProgram(program_path);
+    std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>> buffers;
+    SMI_Comm comm=SmiInit_reduce(rank, rank_count, ROUTING_DIR, context, program, buffers);
 
-    cl::Kernel kernel;
-    cl::CommandQueue queue;
-    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
-    IntelFPGAOCLUtils::createKernel(program,"app",kernel);
+    // Create device buffer
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context.MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
 
-    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
-   
-    kernel.setArg(0,sizeof(int),&n);
-    kernel.setArg(1,sizeof(char),&root);
-    kernel.setArg(2,sizeof(cl_mem),&check);
-    kernel.setArg(3,sizeof(SMI_Comm),&comm);
+    // Create kernel
+    hlslib::ocl::Kernel kernel = program.MakeKernel("app", n, root, check, comm);
+
     std::vector<double> times;
     for(int i=0;i<runs;i++)
     {
@@ -108,23 +102,18 @@ int main(int argc, char *argv[])
         // wait for other nodes
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
 
-        queue.enqueueTask(kernel,nullptr,&events);
-        queue.finish();
+        std::pair<double, double> timings = kernel.ExecuteTask();
 
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
         if(rank==root)
         {
-            ulong end, start;
-            events.getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
-            events.getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
-            double time= (double)((end-start)/1000.0f);
-            times.push_back(time);
+            times.push_back(timings.first * 1e6);
             char res;
-            queue.enqueueReadBuffer(check,CL_TRUE,0,1,&res);
+            check.CopyToHost(&res);
             if(res==1)
-                cout << "Result is Ok!"<<endl;
+                cout << "Rank: " << rank<<" Result is Ok!"<<endl;
             else
-                cout << "Error!!!!"<<endl;
+                cout << "Rank: " << rank<<" Error!!!!"<<endl;
         }
     }
     CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));

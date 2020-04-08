@@ -19,6 +19,7 @@
 #include <cmath>
 #include <utils/ocl_utils.hpp>
 #include <utils/utils.hpp>
+#include <hlslib/intel/OpenCL.h>
 #include "smi_generated_host.c"
 #define ROUTING_DIR "smi-routes/"
 
@@ -69,6 +70,10 @@ int main(int argc, char *argv[])
                 break;
             case 'r':
                 recv_rank=atoi(optarg);
+                if(recv_rank==0){
+                    cerr <<  "Receiving rank can not be 0" <<endl;
+                    exit(-1);
+                }
                 break;
             default:
                 cerr << "Usage: "<< argv[0]<<"-m <emulator/hardware> -b <binary file> -n <length> -r <rank on which run the receiver> -i <number of runs> "<<endl;
@@ -118,53 +123,27 @@ int main(int argc, char *argv[])
     gethostname(hostname, 256);
     std::cout << "Rank" << rank<<" executing on host:" <<hostname << " program: "<<program_path<<std::endl;
 
-    cl::Platform  platform;
-    cl::Device device;
-    cl::Context context;
-    cl::Program program;
-    std::vector<cl::Buffer> buffers;
-    SMI_Comm comm=SmiInit_injection_rate_0(rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga,buffers);
-    cl::Kernel kernel;
-    cl::CommandQueue queue;
-    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
-    IntelFPGAOCLUtils::createKernel(program,"app",kernel);
+    hlslib::ocl::Context context(fpga);
+    auto program = context.MakeProgram(program_path);
+    std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>> buffers;
+    SMI_Comm comm=SmiInit_injection_rate_0(rank, rank_count, ROUTING_DIR, context, program, buffers);
+
+    //create kernel
+    hlslib::ocl::Kernel app = (rank==0)?program.MakeKernel("app", n, recv_rank,  comm) : program.MakeKernel("app", n,comm) ;
 
     std::vector<double> times;
-    if(rank==0)
-    {
-        kernel.setArg(0,sizeof(int),&n);
-        kernel.setArg(1,sizeof(char),&recv_rank);
-        kernel.setArg(2,sizeof(SMI_Comm),&comm);
-    }
-    else
-    {
-        kernel.setArg(0,sizeof(int),&n);
-        kernel.setArg(1,sizeof(SMI_Comm),&comm);
-    }
     for(int i=0;i<runs;i++)
     {
-        cl::Event event;
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-        timestamp_t start=current_time_usecs();
-
+        std::pair<double, double> timings;
         if(rank==0 || rank==recv_rank)
-        {
-            queue.enqueueTask(kernel,nullptr,&event);
-            queue.finish();
-        }
-        timestamp_t end=current_time_usecs();
+            timings = app.ExecuteTask();
 
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
         if(rank==0)
-        {
-            ulong end, start;
-            event.getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
-            event.getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
-
-            double time= (double)((end-start)/1000.0f);
-            times.push_back(time);
-        }
+            times.push_back(timings.first * 1e6);
     }
+
     if(rank==0)
     {   //compute means
         double mean=0;

@@ -19,17 +19,15 @@
 #include <cmath>
 #include <thread>
 #include <future>
+#include <hlslib/intel/OpenCL.h>
 #include "smi_generated_host.c"
 #define ROUTING_DIR "smi-routes/"
 using namespace std;
 std::string program_path;
 int rank_count, my_rank;
+hlslib::ocl::Context *context;
 
-cl::Platform  platform;
-cl::Device device;
-cl::Context context;
-cl::Program program;
-std::vector<cl::Buffer> buffers;
+
 SMI_Comm comm;    
 //https://github.com/google/googletest/issues/348#issuecomment-492785854
 #define ASSERT_DURATION_LE(secs, stmt) { \
@@ -47,40 +45,34 @@ SMI_Comm comm;
 }
 
 
-bool runAndReturn(cl::CommandQueue &queue, cl::Kernel &kernel, cl::Buffer &check, int root)
+bool runAndReturn(hlslib::ocl::Kernel &kernel, hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> &check, int root)
 {
     //only rank 0 and the recv rank start the app kernels
     MPI_Barrier(MPI_COMM_WORLD);
     
-    queue.enqueueTask(kernel);
-
-    queue.finish();
+    kernel.ExecuteTask();
     
     MPI_Barrier(MPI_COMM_WORLD);
     //check
     if(my_rank!=root)
     {
         char res;
-        queue.enqueueReadBuffer(check,CL_TRUE,0,1,&res);
+        check.CopyToHost(&res);
         return res==1;
     }
     else
         return true;
 }
 
-TEST(Gather, MPIinit)
+TEST(Scatter, MPIinit)
 {
     ASSERT_EQ(rank_count,8);
 }
 
 TEST(Scatter, CharMessages)
 {
-    cl::Kernel kernel;
-    cl::CommandQueue queue;
-    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
-    IntelFPGAOCLUtils::createKernel(program,"test_char",kernel);
-
-    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_char");
     std::vector<int> message_lengths={16};
     std::vector<int> roots={0,1,3};
     int runs=2;
@@ -89,17 +81,18 @@ TEST(Scatter, CharMessages)
 
         for(int ml:message_lengths)     //consider different message lengths
         {
-            kernel.setArg(0,sizeof(int),&ml);
-            kernel.setArg(1,sizeof(char),&root);
-            kernel.setArg(2,sizeof(cl_mem),&check);
-            kernel.setArg(3,sizeof(SMI_Comm),&comm);
+            cl::Kernel cl_kernel = kernel.kernel();
+            cl_kernel.setArg(0,sizeof(int),&ml);
+            cl_kernel.setArg(1,sizeof(char),&root);
+            cl_kernel.setArg(2,sizeof(cl_mem),&check.devicePtr());
+            cl_kernel.setArg(3,sizeof(SMI_Comm),&comm);
 
             for(int i=0;i<runs;i++)
             {
                 if(my_rank==0)  //remove emulated channels
                     system("rm emulated_chan* 2> /dev/null;");
                 ASSERT_DURATION_LE(TEST_TIMEOUT, {
-                  ASSERT_TRUE(runAndReturn(queue,kernel,check,root));
+                  ASSERT_TRUE(runAndReturn(kernel,check,root));
                 });
 
             }
@@ -108,12 +101,9 @@ TEST(Scatter, CharMessages)
 }
 TEST(Scatter, IntegerMessages)
 {
-    cl::Kernel kernel;
-    cl::CommandQueue queue;
-    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
-    IntelFPGAOCLUtils::createKernel(program,"test_int",kernel);
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_int");
 
-    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
     std::vector<int> message_lengths={1,16,200};
     std::vector<int> roots={0,1,3};
     int runs=2;
@@ -122,10 +112,11 @@ TEST(Scatter, IntegerMessages)
 
         for(int ml:message_lengths)     //consider different message lengths
         {
-            kernel.setArg(0,sizeof(int),&ml);
-            kernel.setArg(1,sizeof(char),&root);
-            kernel.setArg(2,sizeof(cl_mem),&check);
-            kernel.setArg(3,sizeof(SMI_Comm),&comm);
+            cl::Kernel cl_kernel = kernel.kernel();
+            cl_kernel.setArg(0,sizeof(int),&ml);
+            cl_kernel.setArg(1,sizeof(char),&root);
+            cl_kernel.setArg(2,sizeof(cl_mem),&check.devicePtr());
+            cl_kernel.setArg(3,sizeof(SMI_Comm),&comm);
 
             for(int i=0;i<runs;i++)
             {
@@ -133,7 +124,7 @@ TEST(Scatter, IntegerMessages)
                     system("rm emulated_chan* 2> /dev/null;");
 
                 ASSERT_DURATION_LE(TEST_TIMEOUT, {
-                  ASSERT_TRUE(runAndReturn(queue,kernel,check,root));
+                  ASSERT_TRUE(runAndReturn(kernel,check,root));
                 });
 
             }
@@ -145,12 +136,9 @@ TEST(Scatter, IntegerMessages)
 TEST(Scatter, FloatMessages)
 {
 
-    cl::Kernel kernel;
-    cl::CommandQueue queue;
-    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
-    IntelFPGAOCLUtils::createKernel(program,"test_float",kernel);
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_float");
 
-    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
     std::vector<int> message_lengths={1,16,200};
     std::vector<int> roots={0,1,3};
     int runs=2;
@@ -159,10 +147,11 @@ TEST(Scatter, FloatMessages)
 
         for(int ml:message_lengths)     //consider different message lengths
         {
-            kernel.setArg(0,sizeof(int),&ml);
-            kernel.setArg(1,sizeof(char),&root);
-            kernel.setArg(2,sizeof(cl_mem),&check);
-            kernel.setArg(3,sizeof(SMI_Comm),&comm);
+            cl::Kernel cl_kernel = kernel.kernel();
+            cl_kernel.setArg(0,sizeof(int),&ml);
+            cl_kernel.setArg(1,sizeof(char),&root);
+            cl_kernel.setArg(2,sizeof(cl_mem),&check.devicePtr());
+            cl_kernel.setArg(3,sizeof(SMI_Comm),&comm);
 
             for(int i=0;i<runs;i++)
             {
@@ -170,7 +159,7 @@ TEST(Scatter, FloatMessages)
                     system("rm emulated_chan* 2> /dev/null;");
 
                 ASSERT_DURATION_LE(TEST_TIMEOUT, {
-                  ASSERT_TRUE(runAndReturn(queue,kernel,check,root));
+                  ASSERT_TRUE(runAndReturn(kernel,check,root));
                 });
 
             }
@@ -179,14 +168,11 @@ TEST(Scatter, FloatMessages)
 }
 TEST(Scatter, DoubleMessages)
 {
-    //with this test we evaluate the correcteness of double messages transmission
+    //with this test we evaluate the correctness of double messages transmission
 
-    cl::Kernel kernel;
-    cl::CommandQueue queue;
-    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
-    IntelFPGAOCLUtils::createKernel(program,"test_double",kernel);
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_double");
 
-    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
     std::vector<int> message_lengths={1,16,200};
     std::vector<int> roots={0,1,3};
     int runs=2;
@@ -195,10 +181,11 @@ TEST(Scatter, DoubleMessages)
 
         for(int ml:message_lengths)     //consider different message lengths
         {
-            kernel.setArg(0,sizeof(int),&ml);
-            kernel.setArg(1,sizeof(char),&root);
-            kernel.setArg(2,sizeof(cl_mem),&check);
-            kernel.setArg(3,sizeof(SMI_Comm),&comm);
+            cl::Kernel cl_kernel = kernel.kernel();
+            cl_kernel.setArg(0,sizeof(int),&ml);
+            cl_kernel.setArg(1,sizeof(char),&root);
+            cl_kernel.setArg(2,sizeof(cl_mem),&check.devicePtr());
+            cl_kernel.setArg(3,sizeof(SMI_Comm),&comm);
 
             for(int i=0;i<runs;i++)
             {
@@ -210,7 +197,7 @@ TEST(Scatter, DoubleMessages)
                 // but end the function if it exceeds 3 seconds
                 //source https://github.com/google/googletest/issues/348#issuecomment-492785854
                 ASSERT_DURATION_LE(TEST_TIMEOUT, {
-                  ASSERT_TRUE(runAndReturn(queue,kernel,check,root));
+                  ASSERT_TRUE(runAndReturn(kernel,check,root));
                 });
 
             }
@@ -242,7 +229,11 @@ int main(int argc, char *argv[])
     //create environemnt
     int fpga=my_rank%2;
     program_path = replace(program_path, "<rank>", std::to_string(my_rank));
-    comm=SmiInit_scatter(my_rank, rank_count, program_path.c_str(), ROUTING_DIR, platform, device, context, program, fpga,buffers);
+    context = new hlslib::ocl::Context();
+
+    auto program =  context->MakeProgram(program_path);
+    std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>> buffers;
+    comm=SmiInit_scatter(my_rank, rank_count, ROUTING_DIR, *context, program, buffers);
 
 
     result = RUN_ALL_TESTS();

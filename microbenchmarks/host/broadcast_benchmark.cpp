@@ -12,6 +12,7 @@
 #include <utils/ocl_utils.hpp>
 #include <utils/utils.hpp>
 #include "smi_generated_host.c"
+#include <hlslib/intel/OpenCL.h>
 #define ROUTING_DIR "smi-routes/"
 
 
@@ -69,7 +70,7 @@ int main(int argc, char *argv[])
                 exit(-1);
         }
 
-    cout << "Performing broadcast wit  "<<n<<" elements, root: "<<(char)root<<endl;
+    cout << "Performing broadcast with  "<<n<<" elements, root: "<<(char)root<<endl;
     int rank_count;
     CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &rank_count));
     CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
@@ -87,50 +88,33 @@ int main(int argc, char *argv[])
     gethostname(hostname, HOST_NAME_MAX);
     std::cout << "Rank" << rank<<" executing on host:" <<hostname << " program: "<<program_path<<std::endl;
 
-    cl::Platform  platform;
-    cl::Device device;
-    cl::Context context;
-    cl::Program program;
-    std::vector<cl::Buffer> buffers;
-    SMI_Comm comm=SmiInit_broadcast(rank,rank_count,program_path.c_str(),ROUTING_DIR,platform,device,context,program,fpga,buffers);
+    hlslib::ocl::Context context(fpga);
+    auto program = context.MakeProgram(program_path);
+    std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>> buffers;
+    SMI_Comm comm=SmiInit_broadcast(rank, rank_count, ROUTING_DIR, context, program, buffers);
 
-    //create the app
-    cl::Kernel kernel;
-    cl::CommandQueue queue;
-    IntelFPGAOCLUtils::createCommandQueue(context,device,queue);
-    IntelFPGAOCLUtils::createKernel(program,"app",kernel);
+    // Create device buffer
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context.MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
 
-    cl::Buffer check(context,CL_MEM_WRITE_ONLY,1);
-
-    kernel.setArg(0,sizeof(cl_mem),&check);
-    kernel.setArg(1,sizeof(int),&n);
-    kernel.setArg(2,sizeof(char),&root);
-    kernel.setArg(3,sizeof(SMI_Comm),&comm);
-
+    // Create kernel
+    hlslib::ocl::Kernel kernel = program.MakeKernel("app", check, n, root, comm);
 
     std::vector<double> times;
     for(int i=0;i<runs;i++)
     {
-        cl::Event event;
-        CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-
-        queue.enqueueTask(kernel,nullptr,&event);
-        queue.finish();
-
 
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-        if(rank==0)
-        {
-            ulong end, start;
-            event.getProfilingInfo<ulong>(CL_PROFILING_COMMAND_START,&start);
-            event.getProfilingInfo<ulong>(CL_PROFILING_COMMAND_END,&end);
-            double time= (double)((end-start)/1000.0f);
-            times.push_back(time);
-        }
+
+        std::pair<double, double> timings = kernel.ExecuteTask();
+
+        CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+        if(rank==root)
+            times.push_back(timings.first * 1e6);
+
         if(rank!=root)
         {
             char res;
-            queue.enqueueReadBuffer(check,CL_TRUE,0,1,&res);
+            check.CopyToHost(&res);
             if(res==1)
                 cout << "Rank: " << rank<<" Result is Ok!"<<endl;
             else
@@ -139,7 +123,7 @@ int main(int argc, char *argv[])
     }
     CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
 
-    if(rank==0)
+    if(rank==root)
     {
 
        //check
