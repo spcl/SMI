@@ -14,6 +14,47 @@ class NoRouteFound(BaseException):
     pass
 
 
+class RoutingTarget:
+    def serialize(self):
+        raise NotImplementedError()
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__)
+
+
+class CKRTarget(RoutingTarget):
+    def serialize(self):
+        return CKS_TARGET_CKR
+
+    def __repr__(self):
+        return "CKR"
+
+
+class QSFPTarget(RoutingTarget):
+    def serialize(self):
+        return CKS_TARGET_QSFP
+
+    def __repr__(self):
+        return "QSFP"
+
+
+class CKSTarget(RoutingTarget):
+    def __init__(self, source: Channel, target: Channel):
+        assert source.fpga == target.fpga
+        self.source = source
+        self.target = target
+
+    def serialize(self):
+        return 2 + self.source.target_index(self.target.index)
+
+    def __eq__(self, other):
+        return super().__eq__(other) and (self.source, self.target) == (other.source, other.target)
+
+    def __repr__(self):
+        fpga = self.source.fpga.key()
+        return f"{fpga}:{self.source.index} -> {self.target.index}"
+
+
 class RoutingTable:
     def serialize(self, bytes=1) -> bytes:
         stream = bitstring.BitStream()
@@ -28,16 +69,16 @@ class RoutingTable:
 
 class CKSRoutingTable(RoutingTable):
     def __init__(self, max_ranks, max_ports):
-        self.data = [[CKS_TARGET_QSFP] * max_ports for _ in range(max_ranks)]
+        self.data: List[List[RoutingTarget]] = [[QSFPTarget] * max_ports for _ in range(max_ranks)]
 
-    def set_target(self, rank, port, target):
+    def set_target(self, rank: int, port: int, target: RoutingTarget):
         self.data[rank][port] = target
 
-    def get_target(self, rank, port):
+    def get_target(self, rank: int, port: int) -> RoutingTarget:
         return self.data[rank][port]
 
     def get_data(self):
-        return list(itertools.chain.from_iterable(self.data))
+        return [target.serialize() for target in itertools.chain.from_iterable(self.data)]
 
 
 class CKRRoutingTable(RoutingTable):
@@ -82,7 +123,7 @@ def closest_path_to_fpga(paths, channel: Channel, target: FPGA):
     return min(connections, key=lambda c: len(c))
 
 
-def get_output_target(paths, channel: Channel, target: FPGA):
+def get_output_target(paths, channel: Channel, target: FPGA) -> RoutingTarget:
     """
     0 -> local QSFP
     1 -> CK_R
@@ -91,13 +132,13 @@ def get_output_target(paths, channel: Channel, target: FPGA):
     4 -> ...
     """
     if target == channel.fpga:
-        return CKS_TARGET_CKR
+        return CKRTarget()
 
     path = closest_path_to_fpga(paths, channel, target)[1:]  # skip the channel itself
     if path[0].fpga == channel.fpga:
-        return 2 + channel.target_index(path[0].index)
+        return CKSTarget(channel, path[0])
     else:
-        return CKS_TARGET_QSFP
+        return QSFPTarget()
 
 
 def closest_paths_to_fpga(paths, channel: Channel, target: FPGA):
@@ -108,9 +149,9 @@ def closest_paths_to_fpga(paths, channel: Channel, target: FPGA):
 
 
 def get_output_target_balanced(paths, channel: Channel, target: FPGA, occupancy) -> Tuple[
-    int, Union[Channel, None]]:
+    RoutingTarget, Union[Channel, None]]:
     if target == channel.fpga:
-        return (CKS_TARGET_CKR, None)
+        return (CKRTarget(), None)
 
     closest_paths = closest_paths_to_fpga(paths, channel, target)
     channel_candidates = {}
@@ -128,9 +169,9 @@ def get_output_target_balanced(paths, channel: Channel, target: FPGA, occupancy)
     target_channel = best_channels[0][0]
     assert target_channel.fpga == channel.fpga
     if target_channel == channel:
-        return (CKS_TARGET_QSFP, target_channel)
+        return (QSFPTarget(), target_channel)
     else:
-        return (2 + channel.target_index(target_channel.index), target_channel)
+        return (CKSTarget(channel, target_channel), target_channel)
 
 
 def cks_routing_tables(fpga: FPGA, fpgas: List[FPGA], paths) -> Dict[Channel, CKSRoutingTable]:

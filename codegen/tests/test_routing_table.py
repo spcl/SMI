@@ -1,9 +1,38 @@
+from contextlib import contextmanager
+
 import pytest
 from conftest import get_fpga, get_routing_ctx
 
 from ops import Pop, Push
 from program import CHANNELS_PER_FPGA, FPGA, Program
-from routing_table import NoRouteFound, ckr_routing_table, cks_routing_tables
+from routing_table import CKRTarget, CKSTarget, NoRouteFound, QSFPTarget, ckr_routing_table, \
+    cks_routing_tables
+
+CKR = CKRTarget()
+QSFP = QSFPTarget()
+ACTIVE_FPGA = None
+
+
+def cks(source, target):
+    assert ACTIVE_FPGA is not None
+    return CKSTarget(ACTIVE_FPGA.channels[source], ACTIVE_FPGA.channels[target])
+
+
+@contextmanager
+def active_fpga(fpga):
+    global ACTIVE_FPGA
+
+    ACTIVE_FPGA = fpga
+    yield
+    ACTIVE_FPGA = None
+
+
+def check_fpga_tables(fpga, tables, expected):
+    assert len(expected) == len(tables)
+    assert len(tables) == CHANNELS_PER_FPGA
+
+    for (index, channel) in enumerate(fpga.channels):
+        assert tables[channel].data == expected[index]
 
 
 def test_cks_table_1():
@@ -20,10 +49,14 @@ def test_cks_table_1():
 
     fa = get_fpga(fpgas, "N0:FA")
     tables = cks_routing_tables(fa, fpgas, routes)
-    assert tables[fa.channels[0]].get_data() == [1, 1, 2, 2]
-    assert tables[fa.channels[1]].get_data() == [1, 1, 0, 4]
-    assert tables[fa.channels[2]].get_data() == [1, 1, 3, 3]
-    assert tables[fa.channels[3]].get_data() == [1, 1, 0, 0]
+
+    with active_fpga(fa):
+        check_fpga_tables(fa, tables, [
+            [[CKR, CKR], [cks(0, 1), cks(0, 1)]],
+            [[CKR, CKR], [QSFP, cks(1, 3)]],
+            [[CKR, CKR], [cks(2, 1), cks(2, 1)]],
+            [[CKR, CKR], [QSFP, QSFP]]
+        ])
 
 
 def test_cks_table_2():
@@ -40,10 +73,13 @@ def test_cks_table_2():
 
     fa = get_fpga(fpgas, "N0:FA")
     tables = cks_routing_tables(fa, fpgas, routes)
-    assert tables[fa.channels[0]].get_data() == [1, 1, 0, 0]
-    assert tables[fa.channels[1]].get_data() == [1, 1, 2, 4]
-    assert tables[fa.channels[2]].get_data() == [1, 1, 2, 2]
-    assert tables[fa.channels[3]].get_data() == [1, 1, 0, 0]
+    with active_fpga(fa):
+        check_fpga_tables(fa, tables, [
+            [[CKR, CKR], [QSFP, QSFP]],
+            [[CKR, CKR], [cks(1, 0), cks(1, 3)]],
+            [[CKR, CKR], [cks(2, 0), cks(2, 0)]],
+            [[CKR, CKR], [QSFP, QSFP]]
+        ])
 
 
 def test_ckr_table():
