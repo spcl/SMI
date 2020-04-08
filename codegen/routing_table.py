@@ -51,8 +51,7 @@ class CKSTarget(RoutingTarget):
         return super().__eq__(other) and (self.source, self.target) == (other.source, other.target)
 
     def __repr__(self):
-        fpga = self.source.fpga.key()
-        return f"{fpga}:{self.source.index} -> {self.target.index}"
+        return f"{self.source.index}->{self.target.index}"
 
 
 class RoutingTable:
@@ -191,7 +190,8 @@ def cks_routing_tables(fpga: FPGA, fpgas: List[FPGA], paths) -> Dict[Channel, CK
             for port in range(program.logical_port_count):
                 tables[channel].set_target(target_fpga.rank, port, target)
 
-        # balance QSFPs, ignoring inter-CK hops
+    # balance QSFPs, ignoring inter-CK hops
+    for target_fpga in fpgas:
         for channel in fpga.channels:
             for (op, _) in program.get_channel_allocations_with_prefix(channel.index, "cks"):
                 target, occupy_channel = get_output_target_balanced(paths, channel, target_fpga,
