@@ -32,8 +32,8 @@ if(PythonInterp_FOUND)
     smi_target(kmeans_smi "${CMAKE_CURRENT_SOURCE_DIR}/kernels/kmeans_smi.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/kmeans_smi.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/kmeans_smi.cl" 8)
 
     #gesummv
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lopenblas")
     smi_target(gesummv_smi "${CMAKE_CURRENT_SOURCE_DIR}/kernels/gesummv_smi.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/gesummv_smi.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/gesummv_rank0.cl;${CMAKE_CURRENT_SOURCE_DIR}/kernels/gesummv_rank1.cl" 2)
+    target_link_libraries(gesummv_smi_host openblas)
 
     #onchip versions
     fpga_target(gesummv_onchip "${CMAKE_CURRENT_SOURCE_DIR}/host/gesummv_onchip.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/gesummv_onchip.cl" OFF)
