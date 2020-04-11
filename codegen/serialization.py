@@ -49,13 +49,16 @@ def parse_program(input: str) -> Program:
         parse_operations(prog["operations"]),
         prog.get("consecutive_reads"),
         prog.get("max_ranks"),
-        """prog.get("p2p_rendezvous") TODO: fix"""
+        prog.get("p2p_rendezvous")
     )
 
 
 def serialize_program(program: Program) -> str:
     return json.dumps({
-        "operations": [serialize_smi_operation(op) for op in program.operations]
+        "operations": [serialize_smi_operation(op) for op in program.operations],
+        "consecutive_reads": program.consecutive_read_limit,
+        "max_ranks": program.max_ranks,
+        "p2p_rendezvous": program.p2p_rendezvous
     })
 
 

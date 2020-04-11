@@ -3,12 +3,17 @@
 {%- macro smi_cks(program, channel, channel_count, target_index) -%}
 __kernel void smi_kernel_cks_{{ channel.index }}(__global volatile char *restrict rt, const char num_ranks)
 {
-    char external_routing_table[MAX_RANKS];
+    {% set logical_ports = program.logical_port_count %}
+    char external_routing_table[MAX_RANKS][{{ logical_ports }} /* logical port count */];
+    
+    #pragma loop_coalesce
     for (int i = 0; i < MAX_RANKS; i++)
     {
-        if (i < num_ranks)
-        {
-            external_routing_table[i] = rt[i];
+        for (int j = 0; j < {{ logical_ports }}; j++){
+            if (i < num_ranks)
+            {
+                external_routing_table[i][j] = rt[i*{{ logical_ports }} + j];
+            }
         }
     }
 
@@ -46,7 +51,7 @@ __kernel void smi_kernel_cks_{{ channel.index }}(__global volatile char *restric
         if (valid)
         {
             contiguous_reads++;
-            char idx = external_routing_table[GET_HEADER_DST(message.header)];
+            char idx = external_routing_table[GET_HEADER_DST(message.header)][GET_HEADER_PORT(message.header)];
             switch (idx)
             {
                 case 0:

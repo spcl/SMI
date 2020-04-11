@@ -41,6 +41,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lgtest")
 
 #p2p
 smi_target(test_p2p "${CMAKE_CURRENT_SOURCE_DIR}/p2p/p2p.json" "${CMAKE_CURRENT_SOURCE_DIR}/p2p/test_p2p.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/p2p/p2p_rank0.cl;${CMAKE_CURRENT_SOURCE_DIR}/p2p/p2p_rank1.cl" 8)
+target_link_libraries(test_p2p_host gtest)
 
 add_test(
    NAME p2p
@@ -51,6 +52,7 @@ add_test(
 
 #broadcast
 smi_target(test_broadcast "${CMAKE_CURRENT_SOURCE_DIR}/broadcast/broadcast.json" "${CMAKE_CURRENT_SOURCE_DIR}/broadcast/test_broadcast.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/broadcast/broadcast.cl" 8)
+target_link_libraries(test_broadcast_host gtest)
 
 add_test(
   NAME broadcast
@@ -60,6 +62,7 @@ add_test(
 
 #reduce
 smi_target(test_reduce "${CMAKE_CURRENT_SOURCE_DIR}/reduce/reduce.json" "${CMAKE_CURRENT_SOURCE_DIR}/reduce/test_reduce.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/reduce/reduce.cl" 8)
+target_link_libraries(test_reduce_host gtest)
 
 add_test(
    NAME reduce
@@ -69,6 +72,7 @@ add_test(
 
 
 smi_target(test_scatter "${CMAKE_CURRENT_SOURCE_DIR}/scatter/scatter.json" "${CMAKE_CURRENT_SOURCE_DIR}/scatter/test_scatter.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/scatter/scatter.cl" 8)
+target_link_libraries(test_scatter_host gtest)
 
 add_test(
    NAME scatter
@@ -77,6 +81,7 @@ add_test(
  )
 
 smi_target(test_gather "${CMAKE_CURRENT_SOURCE_DIR}/gather/gather.json" "${CMAKE_CURRENT_SOURCE_DIR}/gather/test_gather.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/gather/gather.cl" 8)
+target_link_libraries(test_gather_host gtest)
 
 add_test(
    NAME gather
@@ -86,9 +91,19 @@ add_test(
 
 
 smi_target(test_mixed "${CMAKE_CURRENT_SOURCE_DIR}/mixed/mixed.json" "${CMAKE_CURRENT_SOURCE_DIR}/mixed/test_mixed.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/mixed/mixed.cl" 8)
+target_link_libraries(test_mixed_host gtest)
 
 add_test(
    NAME mixed
    COMMAND  env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 test_mixed_host
    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_mixed/"
+ )
+
+smi_target(test_balanced_routing "${CMAKE_CURRENT_SOURCE_DIR}/balanced_routing/balanced_routing.json" "${CMAKE_CURRENT_SOURCE_DIR}/balanced_routing/test_balanced_routing.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/balanced_routing/balanced_routing.cl" 8)
+target_link_libraries(test_balanced_routing_host gtest)
+
+add_test(
+   NAME balanced_routing
+   COMMAND  env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 test_balanced_routing
+   WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_balanced_routing/"
  )

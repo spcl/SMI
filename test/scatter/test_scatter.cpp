@@ -25,12 +25,9 @@
 using namespace std;
 std::string program_path;
 int rank_count, my_rank;
+hlslib::ocl::Context *context;
 
-cl::Platform  platform;
-cl::Device device;
-cl::Context context;
-cl::Program program;
-std::vector<cl::Buffer> buffers;
+
 SMI_Comm comm;    
 //https://github.com/google/googletest/issues/348#issuecomment-492785854
 #define ASSERT_DURATION_LE(secs, stmt) { \
@@ -74,8 +71,8 @@ TEST(Scatter, MPIinit)
 
 TEST(Scatter, CharMessages)
 {
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_char");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_char");
     std::vector<int> message_lengths={16};
     std::vector<int> roots={0,1,3};
     int runs=2;
@@ -104,8 +101,8 @@ TEST(Scatter, CharMessages)
 }
 TEST(Scatter, IntegerMessages)
 {
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_int");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_int");
 
     std::vector<int> message_lengths={1,16,200};
     std::vector<int> roots={0,1,3};
@@ -139,8 +136,8 @@ TEST(Scatter, IntegerMessages)
 TEST(Scatter, FloatMessages)
 {
 
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_float");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_float");
 
     std::vector<int> message_lengths={1,16,200};
     std::vector<int> roots={0,1,3};
@@ -173,8 +170,8 @@ TEST(Scatter, DoubleMessages)
 {
     //with this test we evaluate the correctness of double messages transmission
 
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_double");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_double");
 
     std::vector<int> message_lengths={1,16,200};
     std::vector<int> roots={0,1,3};
@@ -232,9 +229,11 @@ int main(int argc, char *argv[])
     //create environemnt
     int fpga=my_rank%2;
     program_path = replace(program_path, "<rank>", std::to_string(my_rank));
-    auto program =  hlslib::ocl::GlobalContext().MakeProgram(program_path);
+    context = new hlslib::ocl::Context();
+
+    auto program =  context->MakeProgram(program_path);
     std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>> buffers;
-    comm=SmiInit_scatter(my_rank, rank_count, ROUTING_DIR, hlslib::ocl::GlobalContext(), program, buffers);
+    comm=SmiInit_scatter(my_rank, rank_count, ROUTING_DIR, *context, program, buffers);
 
 
     result = RUN_ALL_TESTS();

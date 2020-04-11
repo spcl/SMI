@@ -3,7 +3,7 @@
     Test must be executed with 8 ranks
  */
 
-#define TEST_TIMEOUT 30
+#define TEST_TIMEOUT 60
 
 #include <gtest/gtest.h>
 #include <stdio.h>
@@ -23,6 +23,7 @@
 using namespace std;
 std::string program_path;
 int rank_count, my_rank;
+hlslib::ocl::Context *context;
 
 SMI_Comm comm;    
 //https://github.com/google/googletest/issues/348#issuecomment-492785854
@@ -72,8 +73,8 @@ TEST(P2P, CharMessages)
     MPI_Barrier(MPI_COMM_WORLD);
 
     //create the program
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_char");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_char");
 
 
     std::vector<int> message_lengths={1,128,1024,10000};
@@ -122,8 +123,8 @@ TEST(P2P, ShortMessages)
     MPI_Barrier(MPI_COMM_WORLD);
 
     //create the program
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_short");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_short");
 
 
     std::vector<int> message_lengths={1,128,1024,10000};
@@ -168,8 +169,8 @@ TEST(P2P, IntegerMessages)
 {
     //with this test we evaluate the correcteness of integer messages transmission
   
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_int");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_int");
 
     std::vector<int> message_lengths={1,128,1024,10000};
     std::vector<int> receivers={1,4,7};
@@ -217,8 +218,8 @@ TEST(P2P, FloatMessages)
     MPI_Barrier(MPI_COMM_WORLD);
     //float messages
 
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_float");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_float");
 
     std::vector<int> message_lengths={1,128,1024,10000};
     std::vector<int> receivers={1,4,7};
@@ -268,8 +269,8 @@ TEST(P2P, DoubleMessages)
     //double messages
 
     //create the program
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_double");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_double");
 
     std::vector<int> message_lengths={1,128,1024,10000};
     std::vector<int> receivers={1,4,7};
@@ -316,8 +317,8 @@ TEST(P2P, IntegerMessagesAD1)
 {
     //with this test we evaluate the correcteness of integer messages transmission
   
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_int_ad_1");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_int_ad_1");
 
     std::vector<int> message_lengths={1,128,1024,10000};
     std::vector<int> receivers={1,4,7};
@@ -363,8 +364,8 @@ TEST(P2P, IntegerMessagesAD2)
 {
     //with this test we evaluate the correcteness of integer messages transmission
   
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_int_ad_2");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_int_ad_2");
 
     std::vector<int> message_lengths={1,128,1024,10000};
     std::vector<int> receivers={1,4,7};
@@ -411,8 +412,8 @@ TEST(P2P, IntegerMessagesAD2)
 TEST(P2P, CharMessagesAD1)
 {
     //with this test we evaluate the correcteness of char messages transmission
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_char_ad_1");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_char_ad_1");
 
     std::vector<int> message_lengths={1,128,1024,10000};
     std::vector<int> receivers={1,4,7};
@@ -452,8 +453,8 @@ TEST(P2P, CharMessagesAD1)
 TEST(P2P, ShortMessagesAD1)
 {
     //with this test we evaluate the correcteness of char messages transmission
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_short_ad_1");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_short_ad_1");
 
     std::vector<int> message_lengths={1,128,1024,10000};
     std::vector<int> receivers={1,4,7};
@@ -493,8 +494,8 @@ TEST(P2P, ShortMessagesAD1)
 TEST(P2P, FloatrMessagesAD1)
 {
     //with this test we evaluate the correcteness of char messages transmission
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_float_ad_1");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_float_ad_1");
 
     std::vector<int> message_lengths={1,128,1024,10000};
     std::vector<int> receivers={1,4,7};
@@ -534,8 +535,8 @@ TEST(P2P, FloatrMessagesAD1)
 TEST(P2P, DoubleMessagesAD1)
 {
     //with this test we evaluate the correcteness of char messages transmission
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_double_ad_1");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_double_ad_1");
 
     std::vector<int> message_lengths={1,128,1024,10000};
     std::vector<int> receivers={1,4,7};
@@ -610,9 +611,10 @@ int main(int argc, char *argv[])
     else
         program_path = replace(program_path, "<type>", std::string("1"));
 
-    auto program =  hlslib::ocl::GlobalContext().MakeProgram(program_path);
+    context = new hlslib::ocl::Context();
+    auto program =  context->MakeProgram(program_path);
     std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>> buffers;
-    comm=SmiInit_p2p_rank0(my_rank, rank_count, ROUTING_DIR, hlslib::ocl::GlobalContext(), program, buffers);
+    comm=SmiInit_p2p_rank0(my_rank, rank_count, ROUTING_DIR, *context, program, buffers);
 
 
     result = RUN_ALL_TESTS();

@@ -25,6 +25,7 @@
 using namespace std;
 std::string program_path;
 int rank_count, my_rank;
+hlslib::ocl::Context *context; //global context
 
 SMI_Comm comm;
 
@@ -72,8 +73,8 @@ TEST(Gather, CharMessages)
 {
     //with this test we evaluate the correcteness of integer messages transmission
 
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_char");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_char");
 
     std::vector<int> message_lengths={1,16,128};
     std::vector<int> roots={0,1,3};
@@ -113,8 +114,8 @@ TEST(Gather, ShortMessages)
 {
     //with this test we evaluate the correcteness of integer messages transmission
 
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_short");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_short");
 
     std::vector<int> message_lengths={1,16,128};
     std::vector<int> roots={0,1,3};
@@ -153,8 +154,8 @@ TEST(Gather, IntegerMessages)
 {
     //with this test we evaluate the correcteness of integer messages transmission
 
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_int");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_int");
 
     std::vector<int> message_lengths={1,16,128};
     std::vector<int> roots={0,1,3};
@@ -194,8 +195,8 @@ TEST(Gather, FloatMessages)
 {
     //with this test we evaluate the correcteness of integer messages transmission
 
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = hlslib::ocl::GlobalContext().MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
-    hlslib::ocl::Kernel kernel = hlslib::ocl::GlobalContext().CurrentlyLoadedProgram().MakeKernel("test_float");
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Kernel kernel = context->CurrentlyLoadedProgram().MakeKernel("test_float");
 
     std::vector<int> message_lengths={1,16,128};
     std::vector<int> roots={0,1,3};
@@ -256,9 +257,10 @@ int main(int argc, char *argv[])
        program_path = replace(program_path, "<rank>", std::to_string(my_rank));
 
     program_path = replace(program_path, "<rank>", std::to_string(my_rank));
-    auto program =  hlslib::ocl::GlobalContext().MakeProgram(program_path);
+    context = new hlslib::ocl::Context();
+    auto program =  context->MakeProgram(program_path);
     std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>> buffers;
-    comm=SmiInit_gather(my_rank, rank_count, ROUTING_DIR, hlslib::ocl::GlobalContext(), program, buffers);
+    comm=SmiInit_gather(my_rank, rank_count, ROUTING_DIR, *context, program, buffers);
 
 
     result = RUN_ALL_TESTS();
