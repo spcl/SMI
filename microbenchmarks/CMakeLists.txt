@@ -14,6 +14,7 @@ if(PythonInterp_FOUND)
     smi_target(multi_collectives "${CMAKE_CURRENT_SOURCE_DIR}/kernels/multi_collectives.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/multi_collectives_benchmark.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/multi_collectives.cl" 8)
     smi_target(pipeline "${CMAKE_CURRENT_SOURCE_DIR}/kernels/pipeline.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/pipeline_benchmark.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/pipeline.cl" 8 8 8 OFF)
     smi_target(pipeline_double_rail "${CMAKE_CURRENT_SOURCE_DIR}/kernels/pipeline_double_rail.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/pipeline_double_rail_benchmark.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/pipeline_double_rail.cl" 8 8 8 OFF)
+    smi_target(pipeline_vectorized_double_rail "${CMAKE_CURRENT_SOURCE_DIR}/kernels/pipeline_vectorized_double_rail.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/pipeline_vectorized_double_rail_benchmark.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/pipeline_vectorized_double_rail.cl" 8 8 8 OFF)
 
 
     #MPMD

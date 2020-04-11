@@ -29,7 +29,7 @@ __kernel void app(__global char* mem, const int N,SMI_Comm comm)
 	    if(my_rank > 0){
 		    SMI_Pop(&chan_rcv1, &data1);
 		    SMI_Pop(&chan_rcv2, &data2);
-		    printf("Rank %d received data %d\n",my_rank,i);
+		    // printf("Rank %d received data %d\n",my_rank,i);
 		    data1++;
 		    data2++;
 	    }
@@ -40,12 +40,12 @@ __kernel void app(__global char* mem, const int N,SMI_Comm comm)
         if(my_rank < num_ranks -1){
 		    SMI_Push(&chan_send1, &data1);
 		    SMI_Push(&chan_send2, &data2);
-		    printf("Rank %d sent data %d\n",my_rank,i);
+		    // printf("Rank %d sent data %d\n",my_rank,i);
         }
 	    else{
 		    check1 &= (data1==expected1);
 		    check2 &= (data2==expected2);
-		    printf("Last rank received %d (exp: %d), and %d (exp %d)\n",data1,expected1,data2,expected2);
+		    // printf("Last rank received %d (exp: %d), and %d (exp %d)\n",data1,expected1,data2,expected2);
 		    expected1++;
 		    expected2++;
 	    }
