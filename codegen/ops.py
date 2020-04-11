@@ -28,7 +28,7 @@ class SmiOperation:
     def __init__(self, logical_port: int, data_type: str = "int", buffer_size: int = None):
         self.logical_port = logical_port
         self.data_type = data_type
-        self.buffer_size = buffer_size or 64
+        self.buffer_size = buffer_size or 128
 
     def get_channel(self, key: str) -> str:
         inv_map = {v: k for k, v in OP_MAPPING.items()}
