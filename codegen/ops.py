@@ -15,7 +15,10 @@ DATA_TYPE_SIZE = {
     "short":    2,
     "int":      4,
     "float":    4,
-    "double":   8
+    "double":   8,
+    "float2":   8,
+    "float4":   16,
+    "double2":  16
 }
 
 PACKET_PAYLOAD_SIZE = 28
@@ -108,6 +111,9 @@ class Reduce(SmiOperation):
     Maps data type to SHIFT_REG.
     """
     SHIFT_REG = {
+        "double2": 4,
+        "float2": 4,
+        "float4": 4,
         "double": 4,
         "float": 4,
         "int": 1,
@@ -127,16 +133,25 @@ class Reduce(SmiOperation):
         ("int", "add"): "0",
         ("float", "add"): "0",
         ("double", "add"): "0",
+        ("float2", "add"): "0",
+        ("float4", "add"): "0",
+        ("double", "add"): "0",
         ("char", "max"): "CHAR_MIN",
         ("short", "max"): "SHRT_MIN",
         ("int", "max"): "INT_MIN",
         ("float", "max"): "FLT_MIN",
         ("double", "max"): "DBL_MIN",
+        ("float2", "max"): "FLT_MIN",
+        ("float4", "max"): "FLT_MIN",
+        ("double2", "max"): "DBL_MIN",
         ("char", "min"): "CHAR_MAX",
         ("short", "min"): "SHRT_MAX",
         ("int", "min"): "INT_MAX",
         ("float", "min"): "FLT_MAX",
-        ("double", "min"): "DBL_MAX"
+        ("double", "min"): "DBL_MAX",
+        ("float2", "min"): "FLT_MAX",
+        ("float4", "min"): "FLT_MAX",
+        ("double2", "min"): "DBL_MAX"
 
     }
 

@@ -12,7 +12,10 @@ typedef enum{
     SMI_FLOAT = 2,
     SMI_DOUBLE = 3,
     SMI_CHAR = 4,
-    SMI_SHORT = 5
+    SMI_SHORT = 5,
+    SMI_FLOAT2 = 6,
+    SMI_FLOAT4 = 7,
+    SMI_DOUBLE2 = 8
 }SMI_Datatype;
 
 #endif

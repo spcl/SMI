@@ -56,6 +56,9 @@ std::string formatDataType(DataType dataType)
         case DataType::Int: return "int";
         case DataType::Float: return "float";
         case DataType::Double: return "double";
+        case DataType::Float2: return "float2";
+        case DataType::Float4: return "float4";
+        case DataType::Double2: return "double2";
     }
 
     assert(false);
@@ -71,7 +74,7 @@ std::string renamePortDataType(const std::string& callName, const OperationMetad
 DataType extractDataType(CallExpr* expr, int argumentIndex)
 {
     size_t arg = extractIntArg(expr, argumentIndex);
-    assert(arg >= 1 && arg <= 5);
+    assert(arg >= 1 && arg <= 8);
 
     switch (arg)
     {
@@ -80,6 +83,9 @@ DataType extractDataType(CallExpr* expr, int argumentIndex)
         case 3: return DataType::Double;
         case 4: return DataType::Char;
         case 5: return DataType::Short;
+        case 6: return DataType::Float2;
+        case 7: return DataType::Float4;
+        case 8: return DataType::Double2;
         default:
             assert(false);
     }

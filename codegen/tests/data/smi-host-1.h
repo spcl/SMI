@@ -1,4 +1,5 @@
 #define __HOST_PROGRAM__
+#include <hlslib/intel/OpenCL.h>
 #include <utils/smi_utils.hpp>
 #include <vector>
 #include <smi/communicator.h>

@@ -13,7 +13,10 @@ enum class DataType {
     Short,
     Int,
     Float,
-    Double
+    Double,
+    Float2,
+    Float4,
+    Double2
 };
 
 class OperationMetadata
