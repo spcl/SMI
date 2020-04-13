@@ -99,7 +99,7 @@ add_test(
    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_mixed/"
  )
 
-smi_target(test_balanced_routing "${CMAKE_CURRENT_SOURCE_DIR}/balanced_routing/balanced_routing.json" "${CMAKE_CURRENT_SOURCE_DIR}/balanced_routing/test_balanced_routing.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/balanced_routing/balanced_routing.cl" 8)
+smi_target(test_balanced_routing "${CMAKE_CURRENT_SOURCE_DIR}/balanced_routing/balanced_routing.json" "${CMAKE_CURRENT_SOURCE_DIR}/balanced_routing/test_balanced_routing.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/balanced_routing/balanced_routing.cl" 8 8 8 OFF)
 target_link_libraries(test_balanced_routing_host gtest)
 
 add_test(
