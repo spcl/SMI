@@ -83,7 +83,7 @@ function(smi_target TARGET_NAME CONNECTION_FILE HOST_SOURCE KERNELS NUM_RANKS)
         list(APPEND FPGA_GENERATED_SOURCES ${SMI_GENERATED_PATH})
 
         add_custom_target(${KERNEL_TARGET}
-            COMMAND python
+            COMMAND python3
                 ${SMI_SCRIPT} codegen-device
                 --include '${CMAKE_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR}'
                 --consecutive-read-limit '${OPT_CONSECUTIVE_READS}'
@@ -123,7 +123,7 @@ function(smi_target TARGET_NAME CONNECTION_FILE HOST_SOURCE KERNELS NUM_RANKS)
     # generate routing
     set(ROUTING_TARGET ${TARGET_NAME}_${KERNEL_NAME}_routing)
     add_custom_target(${ROUTING_TARGET}
-            COMMAND python
+            COMMAND python3
                 ${SMI_SCRIPT} route
                 ${CONNECTION_FILE}
                 ${WORKDIR}/smi-routes
@@ -138,7 +138,7 @@ function(smi_target TARGET_NAME CONNECTION_FILE HOST_SOURCE KERNELS NUM_RANKS)
     set(HOST_GENERATED_TARGET ${TARGET_NAME}_${KERNEL_NAME}_codegen_host)
     set(SMI_HOST_GENERATED_PATH ${WORKDIR}/smi_generated_host.c)
     add_custom_target(${HOST_GENERATED_TARGET}
-            COMMAND python
+            COMMAND python3
                 ${SMI_SCRIPT} codegen-host
                 ${SMI_HOST_GENERATED_PATH}
                 ${PROGRAM_METADATA}

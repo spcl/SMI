@@ -15,7 +15,7 @@ SMI_Comm SmiInit_{{ name }}(
 {
 
     const int ports = {{ program.logical_port_count }};
-    const int cks_table_size = ranks_count;
+    const int cks_table_size = ranks_count * ports;
     const int ckr_table_size = ports * 2;
     // load routing tables
     std::vector<std::vector<char>> routing_tables_ckr({{ program.channel_count}}, std::vector<char>(ckr_table_size));
