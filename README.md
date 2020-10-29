@@ -73,6 +73,10 @@ The applications presents in the repository are the following. For the details p
 - `gesummv_smi`: gesummv, smi implementation: composed by a two programs (`gesummv_rank0` and `gesummv_rank1`);
 - `gesummv_onchip`: on chip version of the gesummv application.
 
+**Unit tests**
+
+To enable unit tests, please execute `cmake` with the following flag `-DENABLE_TESTS=ON`
+
 
 **Please Note**: all the host programs have been written by considering the target architecture used in the paper, which is characterized by a set of nodes each one having 2 FPGAs.
 If you are using a different setup, please adjust the host programs.
