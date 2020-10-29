@@ -14,7 +14,7 @@ from serialization import parse_smi_operation
 
 sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 
-from program import Channel, ProgramMapping, Program, FPGA
+from program import Channel, ProgramMapping, Program
 from routing import create_routing_context
 
 PYTEST_DIR = os.path.dirname(__file__)
@@ -63,13 +63,6 @@ def get_channel(graph: Graph, key: str, index: int) -> Union[Channel, None]:
     for channel in graph.nodes:
         if channel.fpga.key() == key and channel.index == index:
             return channel
-    return None
-
-
-def get_fpga(fpgas: List[FPGA], key: str) -> Union[FPGA, None]:
-    for fpga in fpgas:
-        if fpga.key() == key:
-            return fpga
     return None
 
 

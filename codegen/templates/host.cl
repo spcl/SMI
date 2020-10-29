@@ -45,7 +45,7 @@ SMI_Comm SmiInit_{{ name }}(
 
     // create buffers for CKS/CKR
     const int ports = {{ program.logical_port_count }};
-    const int cks_table_size = ranks_count * ports;
+    const int cks_table_size = ranks_count;
     const int ckr_table_size = ports * 2;
     {% for channel in range(program.channel_count) %}
     cl::Buffer routing_table_ck_s_{{ channel }}(context, CL_MEM_READ_ONLY, cks_table_size);

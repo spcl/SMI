@@ -12,9 +12,6 @@ if(PythonInterp_FOUND)
     smi_target(scatter "${CMAKE_CURRENT_SOURCE_DIR}/kernels/scatter.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/scatter_benchmark.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/scatter.cl" 8)
     smi_target(gather "${CMAKE_CURRENT_SOURCE_DIR}/kernels/gather.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/gather_benchmark.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/gather.cl" 8)
     smi_target(multi_collectives "${CMAKE_CURRENT_SOURCE_DIR}/kernels/multi_collectives.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/multi_collectives_benchmark.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/multi_collectives.cl" 8)
-    smi_target(pipeline "${CMAKE_CURRENT_SOURCE_DIR}/kernels/pipeline.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/pipeline_benchmark.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/pipeline.cl" 8 8 8 OFF)
-    smi_target(pipeline_double_rail "${CMAKE_CURRENT_SOURCE_DIR}/kernels/pipeline_double_rail.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/pipeline_double_rail_benchmark.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/pipeline_double_rail.cl" 8 8 8 OFF)
-
 
     #MPMD
     smi_target(bandwidth "${CMAKE_CURRENT_SOURCE_DIR}/kernels/bandwidth.json" "${CMAKE_CURRENT_SOURCE_DIR}/host/bandwidth_benchmark.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/bandwidth_0.cl;${CMAKE_CURRENT_SOURCE_DIR}/kernels/bandwidth_1.cl" 8)

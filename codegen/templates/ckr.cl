@@ -6,8 +6,6 @@ __kernel void smi_kernel_ckr_{{ channel.index }}(__global volatile char *restric
     // rt contains intertwined (dp0, cp0, dp1, cp1, ...)
 {% set logical_ports = program.logical_port_count %}
     char external_routing_table[{{ logical_ports }} /* logical port count */][2];
-    
-    #pragma loop_coalesce
     for (int i = 0; i < {{ logical_ports }}; i++)
     {
         for (int j = 0; j < 2; j++)

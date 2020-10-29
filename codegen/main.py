@@ -1,14 +1,15 @@
 import os
+from typing import List
 
 import click
 
 from codegen import generate_program_device, generate_program_host
 from common import write_nodefile
-from program import CHANNELS_PER_FPGA, Channel, Program, ProgramMapping
+from program import Channel, CHANNELS_PER_FPGA, Program, ProgramMapping
 from rewrite import copy_files, rewrite
 from routing import create_routing_context
-from routing_table import RoutingTable, ckr_routing_table, cks_routing_tables
-from serialization import parse_program, parse_routing_file, serialize_program
+from routing_table import serialize_to_array, cks_routing_table, ckr_routing_table
+from serialization import serialize_program, parse_routing_file, parse_program
 
 
 def prepare_directory(path):
@@ -22,8 +23,8 @@ def write_file(path, content, binary=False):
         f.write(content)
 
 
-def write_table(channel: Channel, prefix: str, table: RoutingTable, output_folder):
-    bytes = table.serialize()
+def write_table(channel: Channel, prefix: str, table: List[int], output_folder):
+    bytes = serialize_to_array(table)
     filename = "{}-rank{}-channel{}".format(prefix, channel.fpga.rank, channel.index)
 
     write_file(os.path.join(output_folder, filename), bytes, binary=True)
@@ -80,8 +81,7 @@ def codegen_device(routing_file, rewriter, src_dir, dest_dir, device_src,
 
     fpgas = ctx.fpgas
     if fpgas:
-        write_file(device_src,
-                   generate_program_device(fpgas[0], fpgas, ctx.graph, CHANNELS_PER_FPGA))
+        write_file(device_src, generate_program_device(fpgas[0], fpgas, ctx.graph, CHANNELS_PER_FPGA))
 
     write_file(output_program, serialize_program(program))
 
@@ -123,11 +123,10 @@ def route(routing_file, dest_dir, metadata):
 
     for fpga in ctx.fpgas:
         for channel in fpga.channels:
+            cks_table = cks_routing_table(ctx.routes, ctx.fpgas, channel)
+            write_table(channel, "cks", cks_table, dest_dir)
             ckr_table = ckr_routing_table(channel, CHANNELS_PER_FPGA, fpga.program)
             write_table(channel, "ckr", ckr_table, dest_dir)
-        tables = cks_routing_tables(fpga, ctx.fpgas, ctx.routes)
-        for (channel, table) in tables.items():
-            write_table(channel, "cks", table, dest_dir)
 
     with open(os.path.join(dest_dir, "hostfile"), "w") as f:
         write_nodefile(ctx.fpgas, f)
