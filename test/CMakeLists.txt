@@ -26,18 +26,11 @@ add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/googletest-src
                  ${CMAKE_CURRENT_BINARY_DIR}/googletest-build
                  EXCLUDE_FROM_ALL)
 
-# The gtest/gtest_main targets carry header search path
-# dependencies automatically when using CMake 2.8.11 or
-# later. Otherwise we have to add them here ourselves.
-if (CMAKE_VERSION VERSION_LESS 2.8.11)
-  include_directories("${gtest_SOURCE_DIR}/include")
-endif()
+#include the gtest header directories
+include_directories("${gtest_SOURCE_DIR}/include")
 
 # Now simply link against gtest or gtest_main as needed. Eg
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
-include_directories("${gtest_SOURCE_DIR}/include")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lgtest")
-
+link_libraries(gtest_main)
 
 #p2p
 smi_target(test_p2p "${CMAKE_CURRENT_SOURCE_DIR}/p2p/p2p.json" "${CMAKE_CURRENT_SOURCE_DIR}/p2p/test_p2p.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/p2p/p2p_rank0.cl;${CMAKE_CURRENT_SOURCE_DIR}/p2p/p2p_rank1.cl" 8)

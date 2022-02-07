@@ -14,6 +14,7 @@
 
 */
 
+#include "smi_generated_device.cl"
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 

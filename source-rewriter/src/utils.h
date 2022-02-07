@@ -1,6 +1,6 @@
 #pragma once
 
-#include <clang/AST/AST.h>
+#include <clang/AST/Decl.h>
 
 bool isKernelFunction(clang::FunctionDecl* decl);
 

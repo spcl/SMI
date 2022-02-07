@@ -14,6 +14,7 @@
 
 #include <smi.h>
 
+#include "smi_generated_device.cl"
 
 __kernel void sequential_collectives(const int N, char root, __global volatile char *mem, SMI_Comm comm)
 {

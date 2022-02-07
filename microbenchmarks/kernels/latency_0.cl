@@ -15,7 +15,7 @@
 
 #include <smi.h>
 
-
+#include "smi_generated_device.cl"
 
 __kernel void app(const int N, char dest_rank,SMI_Comm comm)
 {

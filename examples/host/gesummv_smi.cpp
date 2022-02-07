@@ -16,6 +16,11 @@
 #include "smi_generated_host.c"
 #define ROUTING_DIR "smi-routes/"
 
+#if !defined(CL_CHANNEL_1_INTELFPGA)
+// include this header if channel macros are not defined in cl.hpp (versions >=19.0)
+#include "CL/cl_ext_intelfpga.h"
+#endif
+
 using namespace std;
 float *A,*B,*x,*y;
 float *fpga_res_y;

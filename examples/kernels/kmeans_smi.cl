@@ -3,6 +3,7 @@
 */
 
 #include <smi.h>
+#include "smi_generated_device.cl"
 #include "kmeans.h"
 
 // Every channel is set to twice the size it needs to be

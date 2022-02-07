@@ -7,7 +7,7 @@
 
 #include <smi.h>
 
-
+#include "smi_generated_device.cl"
 
 __kernel void app(const int N, const char dst, SMI_Comm comm)
 {

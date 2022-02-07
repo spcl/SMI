@@ -8,6 +8,7 @@
     The last, broadcasts the value
 */
 #include <smi.h>
+#include "smi_generated_device.cl"
 __kernel void test_int(int start, const SMI_Comm comm,__global int *mem)
 {
     unsigned int my_rank=SMI_Comm_rank(comm);

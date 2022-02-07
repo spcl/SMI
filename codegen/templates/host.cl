@@ -104,7 +104,7 @@ SMI_Comm SmiInit_{{ name }}(
     const int num_kernels = kernel_names.size();
     for (int i = num_kernels - 1; i >= 0; i--)
     {
-        queues[i].enqueueTask(kernels[i]);
+        queues[i].enqueueNDRangeKernel(kernels[i], cl::NullRange, cl::NDRange(1));
         queues[i].flush();
     }
 
