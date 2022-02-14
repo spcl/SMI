@@ -196,7 +196,7 @@ endfunction()
 #used for non SMI target
 function(fpga_target TARGET_NAME HOST_SOURCE KERNEL GENERATE_KERNEL)
 
-    set(PGA_SOURCES)               # list of transformed user device files (one per program)
+    set(FPGA_SOURCES)               # list of transformed user device files (one per program)
     set(FPGA_GENERATED_SOURCES)     # list of generated device files (one per program)
 
     set(WORKDIR ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME})
