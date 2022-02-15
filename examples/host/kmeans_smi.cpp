@@ -56,7 +56,7 @@ int main(int argc, char **argv) {
   std::string mode_str(argv[1]);
   std::string kernel_path;
   if (mode_str == "emulator") {
-    setenv("CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA", "1", false);
+    setenv("CL_CONFIG_CPU_EMULATE_DEVICES", "1", false);
     emulator = true;
     // In emulation mode, each rank has its own kernel file
     kernel_path =

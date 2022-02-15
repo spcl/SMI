@@ -38,7 +38,7 @@ To test a primitive, in the `test` folder of the Cmake folder:
 
 3. execute the test program from the respective working directory `test_<primitive>/`
 
-    `env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 ./test_<primitive>_host`
+    `env  CL_CONFIG_CPU_EMULATE_DEVICES=8 mpirun -np 8 ./test_<primitive>_host`
 
     or simply use the integration with `ctest`
 

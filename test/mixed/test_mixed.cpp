@@ -3,7 +3,7 @@
     Test must be executed with 8 ranks
 
     Once built, execute it with:
-         env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 ./test_gather.exe "./gather_emulator_<rank>.aocx"
+         env  CL_CONFIG_CPU_EMULATE_DEVICES=8 mpirun -np 8 ./test_gather.exe "./gather_emulator_<rank>.aocx"
  */
 
 
@@ -103,7 +103,7 @@ TEST(Gather, IntegerMessages)
 
 int main(int argc, char *argv[])
 {
-//        std::cerr << "Usage: [env CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 " << argv[0] << " <fpga binary file>" << std::endl;
+//        std::cerr << "Usage: [env CL_CONFIG_CPU_EMULATE_DEVICES=8 mpirun -np 8 " << argv[0] << " <fpga binary file>" << std::endl;
 
     int result = 0;
 

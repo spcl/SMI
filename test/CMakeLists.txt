@@ -38,7 +38,7 @@ target_link_libraries(test_p2p_host gtest)
 
 add_test(
    NAME p2p
-   COMMAND  env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 test_p2p_host
+   COMMAND  env  CL_CONFIG_CPU_EMULATE_DEVICES=8 mpirun -np 8 test_p2p_host
    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_p2p/"
  )
 
@@ -49,7 +49,7 @@ target_link_libraries(test_broadcast_host gtest)
 
 add_test(
   NAME broadcast
-  COMMAND  env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 test_broadcast_host
+  COMMAND  env  CL_CONFIG_CPU_EMULATE_DEVICES=8 mpirun -np 8 test_broadcast_host
   WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_broadcast/"
 )
 
@@ -59,7 +59,7 @@ target_link_libraries(test_reduce_host gtest)
 
 add_test(
    NAME reduce
-   COMMAND  env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 test_reduce_host
+   COMMAND  env  CL_CONFIG_CPU_EMULATE_DEVICES=8 mpirun -np 8 test_reduce_host
    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_reduce/"
  )
 
@@ -69,7 +69,7 @@ target_link_libraries(test_scatter_host gtest)
 
 add_test(
    NAME scatter
-   COMMAND  env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 test_scatter_host
+   COMMAND  env  CL_CONFIG_CPU_EMULATE_DEVICES=8 mpirun -np 8 test_scatter_host
    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_scatter/"
  )
 
@@ -78,7 +78,7 @@ target_link_libraries(test_gather_host gtest)
 
 add_test(
    NAME gather
-   COMMAND  env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 test_gather_host
+   COMMAND  env  CL_CONFIG_CPU_EMULATE_DEVICES=8 mpirun -np 8 test_gather_host
    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_gather/"
  )
 
@@ -88,6 +88,6 @@ target_link_libraries(test_mixed_host gtest)
 
 add_test(
    NAME mixed
-   COMMAND  env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 test_mixed_host
+   COMMAND  env  CL_CONFIG_CPU_EMULATE_DEVICES=8 mpirun -np 8 test_mixed_host
    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_mixed/"
  )
