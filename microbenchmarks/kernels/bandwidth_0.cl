@@ -8,6 +8,8 @@
 
 #include <smi.h>
 
+#include "smi_generated_device.cl"
+
 __kernel void app(const int N, const char dest_rank, const SMI_Comm comm)
 {
 

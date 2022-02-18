@@ -94,7 +94,7 @@ make stencil_smi_emulator -j
 make stencil_smi_host
 cd stencil_smi
 # Execute the program
-env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 ./stencil_smi_host emulator <num-timesteps>
+env  CL_CONFIG_CPU_EMULATE_DEVICES=8 mpirun -np 8 ./stencil_smi_host emulator <num-timesteps>
 ```
 
 To generate the report, from the `examples` directory in the CMake folder, the user must execute:

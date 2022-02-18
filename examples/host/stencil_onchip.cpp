@@ -4,6 +4,7 @@
 #include <vector>
 #include "hlslib/intel/OpenCL.h"
 #include "stencil.h"
+#include <utils/ocl_utils.hpp>
 
 // Convert from C to C++
 using Data_t = DTYPE;
@@ -78,9 +79,10 @@ int main(int argc, char **argv) {
   std::string kernel_path;
   if (mode_str == "emulator") {
     emulator = true;
-    kernel_path = "stencil_spatial_tiling_emulator.aocx";
+    kernel_path = "emulator/stencil_onchip.aocx";
   } else if (mode_str == "hardware") {
-    kernel_path = "stencil_spatial_tiling_hardware.aocx";
+    // TODO: find the right path
+    kernel_path = "stencil_onchip.aocx";
     emulator = false;
   } else {
     std::cout << kUsage;
@@ -105,10 +107,15 @@ int main(int argc, char **argv) {
 
   // Create OpenCL kernels
   std::cout << "Creating OpenCL context...\n" << std::flush;
-  hlslib::ocl::Context context;
+  hlslib::ocl::Context *context;
+  if (emulator) {
+      context = new hlslib::ocl::Context(VENDOR_STRING_EMULATION, 0);
+  } else {
+      context = new hlslib::ocl::Context(VENDOR_STRING, 0);
+  }
   std::cout << "Allocating device memory...\n" << std::flush;
   std::cout << "Creating program from binary...\n" << std::flush;
-  auto program = context.MakeProgram(kernel_path);
+  auto program = context->MakeProgram(kernel_path);
   std::cout << "Creating kernels...\n" << std::flush;
   std::vector<hlslib::ocl::Kernel> kernels;
   std::vector<hlslib::ocl::Buffer<Data_t, hlslib::ocl::Access::readWrite>>
@@ -119,7 +126,7 @@ int main(int argc, char **argv) {
   for (int i = 0; i < kPX; ++i) {
     for (int j = 0; j < kPY; ++j) {
       auto device_buffer =
-          context.MakeBuffer<Data_t, hlslib::ocl::Access::readWrite>(
+          context->MakeBuffer<Data_t, hlslib::ocl::Access::readWrite>(
               banks[(i * kPY + j) % banks.size()], 2 * kXLocal * kYLocal);
       const std::string suffix("_" + std::to_string(i) + "_" +
                                std::to_string(j));

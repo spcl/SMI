@@ -5,6 +5,7 @@
 #include "hlslib/intel/OpenCL.h"
 #include "kmeans.h"
 #include "common.h"
+#include <utils/ocl_utils.hpp>
 #define __HOST_PROGRAM__
 
 #include <smi/communicator.h>
@@ -56,7 +57,7 @@ int main(int argc, char **argv) {
   std::string mode_str(argv[1]);
   std::string kernel_path;
   if (mode_str == "emulator") {
-    setenv("CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA", "1", false);
+    setenv("CL_CONFIG_CPU_EMULATE_DEVICES", "1", false);
     emulator = true;
     // In emulation mode, each rank has its own kernel file
     kernel_path =
@@ -167,17 +168,22 @@ int main(int argc, char **argv) {
 
   try {
 
-    MPIStatus(mpi_rank, "Creating OpenCL context...\n");
-    hlslib::ocl::Context context(emulator ? 0 : (mpi_rank % kDevicesPerNode));
+    MPIStatus(mpi_rank, "Creating OpenCL conext...\n");
+    hlslib::ocl::Context *context;
+    if (emulator) {
+        context = new hlslib::ocl::Context(VENDOR_STRING_EMULATION, 0);
+    } else {
+        context = new hlslib::ocl::Context(VENDOR_STRING, (mpi_rank % kDevicesPerNode));
+    }
 
     MPIStatus(mpi_rank, "Allocating and copying device memory...\n");
-    auto points_device = context.MakeBuffer<Data_t, hlslib::ocl::Access::read>(
+    auto points_device = context->MakeBuffer<Data_t, hlslib::ocl::Access::read>(
         points.cbegin(), points.cend());
     auto centroids_device_read =
-        context.MakeBuffer<Data_t, hlslib::ocl::Access::read>(centroids.cbegin(),
+        context->MakeBuffer<Data_t, hlslib::ocl::Access::read>(centroids.cbegin(),
                                                               centroids.cend());
     auto centroids_device_write =
-        context.MakeBuffer<Data_t, hlslib::ocl::Access::write>(centroids.cbegin(),
+        context->MakeBuffer<Data_t, hlslib::ocl::Access::write>(centroids.cbegin(),
                                                                centroids.cend());
     std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>>
         routing_tables_cks_device(kChannelsPerRank);
@@ -185,15 +191,15 @@ int main(int argc, char **argv) {
         routing_tables_ckr_device(kChannelsPerRank);
     for (int i = 0; i < kChannelsPerRank; ++i) {
       routing_tables_cks_device[i] =
-          context.MakeBuffer<char, hlslib::ocl::Access::read>(
+          context->MakeBuffer<char, hlslib::ocl::Access::read>(
               routing_tables_cks[i].cbegin(), routing_tables_cks[i].cend());
       routing_tables_ckr_device[i] =
-          context.MakeBuffer<char, hlslib::ocl::Access::read>(
+          context->MakeBuffer<char, hlslib::ocl::Access::read>(
               routing_tables_ckr[i].cbegin(), routing_tables_ckr[i].cend());
     }
 
     MPIStatus(mpi_rank, "Creating program from binary...\n");
-    auto program = context.MakeProgram(kernel_path);
+    auto program = context->MakeProgram(kernel_path);
 
     MPIStatus(mpi_rank, "Starting communication kernels...\n");
     std::vector<hlslib::ocl::Kernel> comm_kernels;
@@ -251,7 +257,7 @@ int main(int argc, char **argv) {
 
     //for (auto &k : kernels) {
     for(int i=0;i<3;i++){
-      //futures.emplace_back(k.ExecuteTaskAsync()); //HLSLIB
+      //futures.emplace_back(k.ExecuteTaskFork()); //HLSLIB
         cl::CommandQueue queue=kernels[i].commandQueue();
         queue.enqueueTask(kernels[i].kernel(),nullptr, &events[i]);
         //queue.flush();
@@ -264,7 +270,7 @@ int main(int argc, char **argv) {
     }*/
     //for (auto &k : kernels) {
     for(int i=0;i<3;i++){
-      //futures.emplace_back(k.ExecuteTaskAsync()); HLSLIB
+      //futures.emplace_back(k.ExecuteTaskFork()); HLSLIB
         //cl::CommandQueue queue=k.commandQueue();
         //queue.finish();
         events[i].wait();

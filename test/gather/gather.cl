@@ -5,6 +5,8 @@
 
 #include <smi.h>
 
+#include "smi_generated_device.cl"
+
 __kernel void test_char(const int N, char root, __global char *mem, SMI_Comm comm)
 {
     SMI_GatherChannel  __attribute__((register)) chan= SMI_Open_gather_channel(N,N, SMI_CHAR,0, root,comm);

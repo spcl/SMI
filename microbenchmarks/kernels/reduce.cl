@@ -6,6 +6,8 @@
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 #include <smi.h>
 
+#include "smi_generated_device.cl"
+
 __kernel void app(const int N, char root, __global volatile char *mem, SMI_Comm comm)
 {
     unsigned int my_rank=SMI_Comm_rank(comm);

@@ -1,5 +1,6 @@
 
 #include <smi.h>
+#include "smi_generated_device.cl"
 #include "stencil.h"
 
 #if PX * PY != 8

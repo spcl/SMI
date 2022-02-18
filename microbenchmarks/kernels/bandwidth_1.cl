@@ -9,6 +9,8 @@
 
 #include <smi.h>
 
+#include "smi_generated_device.cl"
+
 __kernel void app(__global char *mem, const int N, SMI_Comm comm)
 {
     SMI_Channel chan=SMI_Open_receive_channel_ad(N, SMI_DOUBLE, 0, 0, comm, 2048);

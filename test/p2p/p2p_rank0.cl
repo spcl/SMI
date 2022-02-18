@@ -4,6 +4,7 @@
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
 #include <smi.h>
+#include "smi_generated_device.cl"
 
 __kernel void test_char(const int N, const char dest_rank, const SMI_Comm comm)
 {

@@ -15,12 +15,12 @@
 #include <algorithm>
 #include <stdarg.h>
 #include <unistd.h>
+#include <fstream>
 
-#include "CL/cl.hpp"
-#if !defined(CL_CHANNEL_1_INTELFPGA)
-// include this header if channel macros are not defined in cl.hpp (versions >=19.0)
-#include "CL/cl_ext_intelfpga.h"
-#endif
+#include "CL/cl2.hpp"
+
+#define VENDOR_STRING "Intel(R) FPGA SDK for OpenCL(TM)"
+#define VENDOR_STRING_EMULATION "Intel(R) FPGA Emulation Platform for OpenCL(TM)"
 
 /**
  * @brief The IntelFPGAOCLUtils class contains a set of basic utilities for interacting
@@ -39,14 +39,21 @@ public:
     {
 	cl_int status;
 
-	bool found=findPlatform("Intel(R) FPGA SDK for OpenCL(TM)",platform);
+	bool found=findPlatform(VENDOR_STRING,platform);
+	bool emulation = false;
 	if(!found) {
-	    std::cerr<< "ERROR: Unable to find Intel(R) FPGA OpenCL platform" <<std::endl;
-	    return false;
+		// try to find emulation platform 
+		found=findPlatform(VENDOR_STRING_EMULATION,platform);
+		if(!found) {
+			std::cerr<< "ERROR: Unable to find Intel(R) FPGA OpenCL (Emulation) platform" <<std::endl;  
+			return false;
+		} else {
+			emulation = true;
+		}
 	}
 	//get the first device of type accelerator
 	std::vector<cl::Device> devices;
-	status=platform.getDevices(CL_DEVICE_TYPE_ACCELERATOR,&devices);
+	status=platform.getDevices(CL_DEVICE_TYPE_ALL,&devices);
 	checkError(status, __FILE__,__LINE__, "Query for device failed");
         if(device_id>devices.size())
             checkError(status, __FILE__,__LINE__, "Device id not present");
@@ -55,7 +62,7 @@ public:
 	// Create the context
 	context=cl::Context({device});
 	//create the program
-	createProgramFromBinary(context, program,program_path.c_str(),device);
+	createProgramFromBinary(context, program,program_path.c_str(),device, emulation);
 	return true;
 
     }
@@ -198,7 +205,7 @@ private:
     /**
      * @brief createProgramFromBinary loads the program froma  binary file
      */
-    static void createProgramFromBinary(cl::Context &context, cl::Program &program, const char *binary_file_name, cl::Device &device) {
+    static void createProgramFromBinary(cl::Context &context, cl::Program &program, const char *binary_file_name, cl::Device &device, bool build) {
 	// Early exit for potentially the most common way to fail: AOCX does not exist.
 	if(!fileExists(binary_file_name)) {
 	    std::cerr<< "AOCX file '"<<binary_file_name<<"' does not exist"<<std::endl;
@@ -206,21 +213,20 @@ private:
 	}
 
 	// Load the binary.
-	size_t binary_size;
-	unsigned char *binary=loadBinaryFile(binary_file_name, &binary_size);
-	if(binary == NULL) {
-	    checkError(CL_INVALID_PROGRAM,__FILE__,__LINE__, "Failed to load binary file");
-	}
+	std::vector<unsigned char> buf = loadBinaryFile(binary_file_name);
 
+	//create the vector with the binaries to pass to the constructor of cl::Program
+	cl::Program::Binaries binaries{buf};
 	std::vector<cl::Device> dev;
 	dev.push_back(device);
-	//create the vector with the binaries to pass to the constructor of cl::Program
-	std::vector<std::pair<const void*, size_t>> binaries;
-	binaries.push_back(std::make_pair(binary,binary_size));
-        std::vector<cl_int> status(1);
-        program=cl::Program(context,{device},binaries,&status);
+        cl_int status;
+        program=cl::Program(context,dev,binaries,NULL,&status);
+        checkError(status, __FILE__,__LINE__, "Failed to create program with binary");
 
-        checkError(status[0], __FILE__,__LINE__, "Failed to create program with binary");
+	if (build) {
+		// build Program to support CPU Emulation
+		checkError(program.build(), __FILE__,__LINE__, "Failed to build program");
+	}
     }
 
     static bool fileExists(const char *file_name) {
@@ -228,33 +234,21 @@ private:
     }
 
     // Loads a file in binary form.
-    static unsigned char *loadBinaryFile(const char *file_name, size_t *size) {
+    static std::vector<unsigned char> loadBinaryFile(const char *file_name) {
 	// Open the File
-	FILE* fp;
-	fp = fopen(file_name, "rb");
-	if(fp == 0) {
-	    return NULL;
-	}
+        std::ifstream aocxStream(file_name, std::ifstream::binary);
+        if (!aocxStream.is_open()) {
+	    checkError(CL_INVALID_PROGRAM,__FILE__,__LINE__, "Failed to load binary file");
+        }
 
-	// Get the size of the file
-	fseek(fp, 0, SEEK_END);
-	*size = ftell(fp);
-
-	// Allocate space for the binary
-	unsigned char *binary = new unsigned char[*size];
-
-	// Go back to the file start
-	rewind(fp);
-
-	// Read the file into the binary
-	if(fread((void*)binary, *size, 1, fp) == 0) {
-	    delete[] binary;
-	    fclose(fp);
-	    return NULL;
-	}
-	fclose(fp);
-
-	return binary;
+        // Read in file contents and create program from binaries
+        aocxStream.seekg(0, aocxStream.end);
+        long file_size = aocxStream.tellg();
+        aocxStream.seekg(0, aocxStream.beg);
+        std::vector<unsigned char> buf(file_size);
+        aocxStream.read(reinterpret_cast<char *>(buf.data()), file_size);
+	
+	return buf;
     }
 
     /**

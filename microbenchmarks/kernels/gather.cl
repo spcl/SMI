@@ -5,6 +5,7 @@
 
 #include <smi.h>
 
+#include "smi_generated_device.cl"
 
 __kernel void app(const int N, char root, __global char *mem, SMI_Comm comm)
 {

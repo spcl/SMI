@@ -37,6 +37,7 @@ if(PythonInterp_FOUND)
 
     #onchip versions
     fpga_target(gesummv_onchip "${CMAKE_CURRENT_SOURCE_DIR}/host/gesummv_onchip.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/gesummv_onchip.cl" OFF)
+    target_link_libraries(gesummv_onchip_host openblas)
     fpga_target(stencil_onchip "${CMAKE_CURRENT_SOURCE_DIR}/host/stencil_onchip.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/kernels/stencil_onchip.cl" ON)
 
 endif()

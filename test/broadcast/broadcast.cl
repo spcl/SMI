@@ -5,6 +5,7 @@
 
 #include <smi.h>
 
+#include "smi_generated_device.cl"
 
 __kernel void test_int(__global char* mem, const int N, char root,SMI_Comm comm)
 {

@@ -3,7 +3,7 @@
     Test must be executed with 8 ranks
 
     Once built, execute it with:
-         env  CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 ./test_gather.exe "./gather_emulator_<rank>.aocx"
+         env  CL_CONFIG_CPU_EMULATE_DEVICES=8 mpirun -np 8 ./test_gather.exe "./gather_emulator_<rank>.aocx"
  */
 
 #define TEST_TIMEOUT 15
@@ -207,15 +207,19 @@ TEST(Scatter, DoubleMessages)
 
 int main(int argc, char *argv[])
 {
-//      std::cerr << "Usage: [env CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 " << argv[0] << " <fpga binary file>" << std::endl;
+//      std::cerr << "Usage: [env CL_CONFIG_CPU_EMULATE_DEVICES=8 mpirun -np 8 " << argv[0] << " <fpga binary file>" << std::endl;
     int result = 0;
+    bool emulation;
 
     ::testing::InitGoogleTest(&argc, argv);
     //delete listeners for all the rank except 0
-    if(argc==2)
+    if(argc==2) {
+        emulation = false;
         program_path =argv[1];
-    else
+    } else {
+        emulation = true;
         program_path = "emulator_<rank>/scatter.aocx";
+    }
     ::testing::TestEventListeners& listeners =
             ::testing::UnitTest::GetInstance()->listeners();
     CHECK_MPI(MPI_Init(&argc, &argv));
@@ -229,7 +233,11 @@ int main(int argc, char *argv[])
     //create environemnt
     int fpga=my_rank%2;
     program_path = replace(program_path, "<rank>", std::to_string(my_rank));
-    context = new hlslib::ocl::Context();
+    if (emulation) {
+        context = new hlslib::ocl::Context(VENDOR_STRING_EMULATION, 0);
+    } else {
+        context = new hlslib::ocl::Context(VENDOR_STRING, 0);
+    }
 
     auto program =  context->MakeProgram(program_path);
     std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>> buffers;

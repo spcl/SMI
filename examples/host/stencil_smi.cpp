@@ -8,6 +8,7 @@
 #include "common.h"
 #define __HOST_PROGRAM__
 #include "hlslib/intel/OpenCL.h"
+#include <utils/ocl_utils.hpp>
 #include "stencil.h"
 #include <smi/communicator.h>
 
@@ -24,7 +25,7 @@ constexpr int kXLocal = kX / kPX;
 constexpr int kYLocal = kY / kPY;
 constexpr auto kDevicesPerNode = SMI_DEVICES_PER_NODE;
 constexpr auto kUsage =
-    "Usage: ./stencil_smi_interleaved <[emulator/hardware]> <num timesteps>\n";
+    "Usage: ./stencil_smi <[emulator/hardware]> <num timesteps>\n";
 
 using AlignedVec_t =
     std::vector<Data_t, hlslib::ocl::AlignedAllocator<Data_t, 64>>;
@@ -143,10 +144,10 @@ int main(int argc, char **argv) {
   std::string mode_str(argv[1]);
   std::string kernel_path;
   if (mode_str == "emulator") {
-    setenv("CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA", "1", false);
+    setenv("CL_CONFIG_CPU_EMULATE_DEVICES", "1", false);
     emulator = true;
     // In emulation mode, each rank has its own kernel file
-    kernel_path = ("emulator_" + std::to_string(mpi_rank) + "/stencil_smi_interleaved.aocx");
+    kernel_path = ("emulator_" + std::to_string(mpi_rank) + "/stencil_smi.aocx");
   } else if (mode_str == "hardware") {
     kernel_path = "stencil_smi/stencil_smi.aocx";
     emulator = false;
@@ -205,9 +206,14 @@ int main(int argc, char **argv) {
 
   MPIStatus(mpi_rank, "Creating OpenCL context...\n");
   try {
-    hlslib::ocl::Context context(emulator ? 0 : (mpi_rank % kDevicesPerNode));
+    hlslib::ocl::Context *context;
+    if (emulator) {
+        context = new hlslib::ocl::Context(VENDOR_STRING_EMULATION, 0);
+    } else {
+        context = new hlslib::ocl::Context(VENDOR_STRING, (mpi_rank % kDevicesPerNode));
+    }
     MPIStatus(mpi_rank, "Creating program from binary...\n");
-    auto program = context.MakeProgram(kernel_path);
+    auto program = context->MakeProgram(kernel_path);
 
     MPI_Barrier(MPI_COMM_WORLD);
 
@@ -219,7 +225,7 @@ int main(int argc, char **argv) {
         device_buffers;
     for (int b = 0; b < kMemoryBanks; ++b) {
       auto device_buffer =
-          context.MakeBuffer<Data_t, hlslib::ocl::Access::readWrite>(
+          context->MakeBuffer<Data_t, hlslib::ocl::Access::readWrite>(
               banks[b % banks.size()], 2 * kXLocal * kYLocal / kMemoryBanks);
       device_buffer.CopyFromHost(0, kXLocal * kYLocal / kMemoryBanks,
                                  interleaved_host[b].cbegin());
@@ -234,10 +240,10 @@ int main(int argc, char **argv) {
         routing_tables_ckr_device(kChannelsPerRank);
     for (int i = 0; i < kChannelsPerRank; ++i) {
       routing_tables_cks_device[i] =
-          context.MakeBuffer<char, hlslib::ocl::Access::read>(
+          context->MakeBuffer<char, hlslib::ocl::Access::read>(
               routing_tables_cks[i].cbegin(), routing_tables_cks[i].cend());
       routing_tables_ckr_device[i] =
-          context.MakeBuffer<char, hlslib::ocl::Access::read>(
+          context->MakeBuffer<char, hlslib::ocl::Access::read>(
               routing_tables_ckr[i].cbegin(), routing_tables_ckr[i].cend());
     }
 

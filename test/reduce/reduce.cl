@@ -4,6 +4,9 @@
 */
 
 #include <smi.h>
+
+#include "smi_generated_device.cl"
+
 __kernel void test_float_add(const int N, char root, __global volatile char *mem, SMI_Comm comm)
 {
     unsigned int my_rank=SMI_Comm_rank(comm);

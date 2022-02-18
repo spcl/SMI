@@ -15,6 +15,11 @@
 #include <utils/utils.hpp>
 #define TILE_SIZE 128 //define this as used in the opencl kernel
 
+#if !defined(CL_CHANNEL_1_INTELFPGA)
+// include this header if channel macros are not defined in cl.hpp (versions >=19.0)
+#include "CL/cl_ext_intelfpga.h"
+#endif
+
 using namespace std;
 float *A,*B,*x,*y;
 float *fpga_res_y;
@@ -150,7 +155,7 @@ void testStreamed(std::string program_path,int n, int m, float alpha, float beta
         comp_start=current_time_usecs();
         asm volatile("": : :"memory");
         for(int i=0;i<kernel_names.size();i++)
-            queues[i].enqueueTask(kernels[i],nullptr,&events[i]);
+            queues[i].enqueueNDRangeKernel(kernels[i],cl::NullRange,cl::NDRange(1));
         for(int i=0;i<kernel_names.size();i++)
             queues[i].finish();
 

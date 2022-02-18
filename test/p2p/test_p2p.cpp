@@ -580,7 +580,7 @@ int main(int argc, char *argv[])
 
     if(argc<1)
     {
-        std::cerr << "Usage: [env CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=8 mpirun -np 8 " << argv[0] << " [<fpga binary file with <rank> and <type> flags>]" << std::endl;
+        std::cerr << "Usage: [env CL_CONFIG_CPU_EMULATE_DEVICES=8 mpirun -np 8 " << argv[0] << " [<fpga binary file with <rank> and <type> flags>]" << std::endl;
         return -1;
     }
 
@@ -588,10 +588,14 @@ int main(int argc, char *argv[])
 
     ::testing::InitGoogleTest(&argc, argv);
     //delete listeners for all the rank except 0
-    if(argc==2)
+
+    bool emulation = false;
+    if(argc==2) {
         program_path =argv[1];
-    else
+    } else {
         program_path = "emulator_<rank>/p2p_rank<type>.aocx";
+        emulation = true;
+    }
 
     ::testing::TestEventListeners& listeners =
             ::testing::UnitTest::GetInstance()->listeners();
@@ -611,8 +615,15 @@ int main(int argc, char *argv[])
     else
         program_path = replace(program_path, "<type>", std::string("1"));
 
-    context = new hlslib::ocl::Context();
+    if (emulation) {
+        context = new hlslib::ocl::Context(VENDOR_STRING_EMULATION, 0);
+    } else {
+        context = new hlslib::ocl::Context(VENDOR_STRING, 0);
+    }
     auto program =  context->MakeProgram(program_path);
+    if (emulation) {
+        //program.build();
+    }
     std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>> buffers;
     comm=SmiInit_p2p_rank0(my_rank, rank_count, ROUTING_DIR, *context, program, buffers);
 
