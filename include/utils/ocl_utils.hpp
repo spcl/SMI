@@ -19,6 +19,9 @@
 
 #include "CL/cl2.hpp"
 
+#define VENDOR_STRING "Intel(R) FPGA SDK for OpenCL(TM)"
+#define VENDOR_STRING_EMULATION "Intel(R) FPGA Emulation Platform for OpenCL(TM)"
+
 /**
  * @brief The IntelFPGAOCLUtils class contains a set of basic utilities for interacting
  * with the Intel FPGA ecosystem
@@ -36,11 +39,11 @@ public:
     {
 	cl_int status;
 
-	bool found=findPlatform("Intel(R) FPGA SDK for OpenCL(TM)",platform);
+	bool found=findPlatform(VENDOR_STRING,platform);
 	bool emulation = false;
 	if(!found) {
 		// try to find emulation platform 
-		found=findPlatform("Intel(R) FPGA Emulation Platform for OpenCL(TM)",platform);	
+		found=findPlatform(VENDOR_STRING_EMULATION,platform);
 		if(!found) {
 			std::cerr<< "ERROR: Unable to find Intel(R) FPGA OpenCL (Emulation) platform" <<std::endl;  
 			return false;

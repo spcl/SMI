@@ -84,13 +84,18 @@ int main(int argc, char *argv[])
     gethostname(hostname, HOST_NAME_MAX);
     std::cout << "Rank" << rank<<" executing on host:" <<hostname << " program: "<<program_path<<std::endl;
 
-    hlslib::ocl::Context context(fpga);
-    auto program = context.MakeProgram(program_path);
+    hlslib::ocl::Context *context;
+    if (emulator) {
+        context = new hlslib::ocl::Context(VENDOR_STRING_EMULATION, fpga);
+    } else {
+        context = new hlslib::ocl::Context(VENDOR_STRING, fpga);
+    }
+    auto program = context->MakeProgram(program_path);
     std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>> buffers;
-    SMI_Comm comm=SmiInit_reduce(rank, rank_count, ROUTING_DIR, context, program, buffers);
+    SMI_Comm comm=SmiInit_reduce(rank, rank_count, ROUTING_DIR, *context, program, buffers);
 
     // Create device buffer
-    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context.MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
+    hlslib::ocl::Buffer<char, hlslib::ocl::Access::readWrite> check = context->MakeBuffer<char, hlslib::ocl::Access::readWrite>(1);
 
     // Create kernel
     hlslib::ocl::Kernel kernel = program.MakeKernel("app", n, root, check, comm);

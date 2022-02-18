@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
             case 'r':
                 runs=atoi(optarg);
                 break;
-            case'k':
+            case 'k':
                 {
                     rank=atoi(optarg);
                     if(rank!=0 && rank!=1)
@@ -171,10 +171,15 @@ int main(int argc, char *argv[])
     generate_float_matrix(B,n,m);
 
 
-    hlslib::ocl::Context context(fpga);
-    auto program = context.MakeProgram(program_path);
+    hlslib::ocl::Context *context;
+    if (emulator) {
+        context = new hlslib::ocl::Context(VENDOR_STRING_EMULATION, fpga);
+    } else {
+        context = new hlslib::ocl::Context(VENDOR_STRING, fpga);
+    }
+    auto program = context->MakeProgram(program_path);
     std::vector<hlslib::ocl::Buffer<char, hlslib::ocl::Access::read>> buffers;
-    SMI_Comm comm=SmiInit_gesummv_rank0(rank, rank_count, ROUTING_DIR, context, program, buffers);
+    SMI_Comm comm=SmiInit_gesummv_rank0(rank, rank_count, ROUTING_DIR, *context, program, buffers);
 
 
     int tile_size=128;
@@ -187,10 +192,10 @@ int main(int argc, char *argv[])
 
     // Create device buffers
     size_t elem_per_module=n*m/2;
-    hlslib::ocl::Buffer<float, hlslib::ocl::Access::readWrite> input_x = context.MakeBuffer<float, hlslib::ocl::Access::readWrite>(hlslib::ocl::MemoryBank::bank2, m);
-    hlslib::ocl::Buffer<float, hlslib::ocl::Access::readWrite> output_y = context.MakeBuffer<float, hlslib::ocl::Access::readWrite>(hlslib::ocl::MemoryBank::bank3, n);
-    hlslib::ocl::Buffer<float, hlslib::ocl::Access::readWrite> input_M_0 = context.MakeBuffer<float, hlslib::ocl::Access::readWrite>(hlslib::ocl::MemoryBank::bank0, elem_per_module);
-    hlslib::ocl::Buffer<float, hlslib::ocl::Access::readWrite> input_M_1 = context.MakeBuffer<float, hlslib::ocl::Access::readWrite>(hlslib::ocl::MemoryBank::bank1, elem_per_module);
+    hlslib::ocl::Buffer<float, hlslib::ocl::Access::readWrite> input_x = context->MakeBuffer<float, hlslib::ocl::Access::readWrite>(hlslib::ocl::MemoryBank::bank2, m);
+    hlslib::ocl::Buffer<float, hlslib::ocl::Access::readWrite> output_y = context->MakeBuffer<float, hlslib::ocl::Access::readWrite>(hlslib::ocl::MemoryBank::bank3, n);
+    hlslib::ocl::Buffer<float, hlslib::ocl::Access::readWrite> input_M_0 = context->MakeBuffer<float, hlslib::ocl::Access::readWrite>(hlslib::ocl::MemoryBank::bank0, elem_per_module);
+    hlslib::ocl::Buffer<float, hlslib::ocl::Access::readWrite> input_M_1 = context->MakeBuffer<float, hlslib::ocl::Access::readWrite>(hlslib::ocl::MemoryBank::bank1, elem_per_module);
 
 
      // Create kernels
