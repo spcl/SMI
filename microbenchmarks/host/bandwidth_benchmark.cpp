@@ -10,12 +10,11 @@
 #include <iostream>
 #include <fstream>
 #include <unistd.h>
-#include <utils/ocl_utils.hpp>
 #include <utils/utils.hpp>
 #include <limits.h>
 #include <cmath>
 #include "smi_generated_host.c"
-#include <hlslib/intel/OpenCL.h>
+// #include <hlslib/intel/OpenCL.h>
 #define ROUTING_DIR "smi-routes/"
 using namespace std;
 int main(int argc, char *argv[])
@@ -77,11 +76,13 @@ int main(int argc, char *argv[])
                 cerr << "Usage: "<< argv[0]<<" -m <emulator/hardware> -b <binary file> -k <KB> -r <rank on which run the receiver> -i <number of runs>"<<endl;
                 exit(-1);
         }
-    if(rank == 0)
-    cout << "Performing bandwidth test with "<<n<<" elements per app"<<endl;
+    
     int rank_count;
     CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &rank_count));
     CHECK_MPI(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
+    if(rank == 0)
+        cout << "Performing bandwidth test with "<<n<<" elements per app"<<endl;
+
     fpga = rank % 2;
     if(binary_file_provided)
     {
@@ -138,28 +139,36 @@ int main(int argc, char *argv[])
     for(int i=0;i<runs;i++)
     {
 
-        cl::Event events[2];
+        cl::Event ev_0, ev_1;
+        if(rank==0)  //remove emulated channels
+            system("rm emulated_chan* 2> /dev/null;");
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
         //only rank 0 and the recv rank start the app kernels
         std::future<std::pair<double, double>>  fut_0, fut_1;
 
         if(rank==0 || rank==recv_rank)
         {
-            fut_0 = app_0.ExecuteTaskAsync();
-            fut_1 = app_1.ExecuteTaskAsync();
-            fut_0.wait();
-            fut_1.wait();
+            ev_0 = app_0.ExecuteTaskAsync();
+            ev_1 = app_1.ExecuteTaskAsync();
+            ev_0.wait();
+            ev_1.wait();
         }
 
         CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
         if(rank==recv_rank)
         {
-            std::pair<double, double> timings_0 = fut_0.get();
-            std::pair<double, double> timings_1 = fut_1.get();
-            if (timings_0.first>timings_1.first)
-                times.push_back(timings_0.first * 1e6);
-            else
-                times.push_back(timings_1.first * 1e6);
+
+            cl_ulong event_start_ev0 = 0, event_start_ev1 = 0;
+            cl_ulong event_end_ev0 = 0, event_end_ev1 = 0;
+            
+            ev_0.getProfilingInfo(CL_PROFILING_COMMAND_START, &event_start_ev0);
+            ev_0.getProfilingInfo(CL_PROFILING_COMMAND_END, &event_end_ev0);
+
+            ev_1.getProfilingInfo(CL_PROFILING_COMMAND_START, &event_start_ev1);
+            ev_1.getProfilingInfo(CL_PROFILING_COMMAND_END, &event_end_ev1);
+
+            cl_ulong elapsed_time = max(event_end_ev0, event_end_ev1) - min(event_start_ev0, event_start_ev1);
+            times.push_back(elapsed_time*1e-6);
 
             //check
             char res_0,res_1;

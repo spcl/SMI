@@ -69,13 +69,13 @@ SMI_Comm SmiInit_{{ name }}(
 
     // start the kernels
     for (auto &k : comm_kernels) {
-      // Will never terminate, so we don't care about the return value of fork
-      k.ExecuteTaskFork();
+      // Will never terminate, so we don't care about the return value of the async execution
+      k.ExecuteTaskAsync();
     }
     
     for (auto &k : collective_kernels) {
-      // Will never terminate, so we don't care about the return value of fork
-      k.ExecuteTaskFork();
+      // Will never terminate, so we don't care about the return value of the async execution
+      k.ExecuteTaskAsync();
     }
 
     //move created buffers to the vector given my the user
