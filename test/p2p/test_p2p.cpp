@@ -11,7 +11,6 @@
 #include <iostream>
 #include <fstream>
 #include <unistd.h>
-#include <utils/ocl_utils.hpp>
 #include <utils/utils.hpp>
 #include <limits.h>
 #include <cmath>
